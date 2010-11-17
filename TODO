@@ -1,0 +1,46 @@
+
+implement the server in js
+--------------------------
+implement a basic application framework with a function system
+implement a function system with the following functions:
+ [index] serves up the basic website
+ [library] lists the entire library, accompanied with the file info
+ [get] try and return the file saved in the hash
+ [set] modify the status of a file
+ [info] return the info for the content of this hash
+
+
+finish up the basic functions
+-----------------------------
+export the following functions to the app:
+ [start] connect the playbox to the internet, listening on the specified ports
+ [stop] disconnect the playbox from the network, but maintain the library functioning
+ [library] returns a javascript object with the entire library listing
+ [get] pass a pipe back to the app
+ [set] modify the status of a file, returning true or false
+ [info] return a javascript object of the file's info
+
+
+determine mp3 duration, id3 data, etc
+-------------------------------------
+add the C++ library you saw on that dev website
+retain the iconv dependency if the above library isn't sufficient
+
+
+download metadata from dht extension
+------------------------------------
+it's a plugin for libtorrent-rasterbar, so it should be easy to implement :)
+
+
+emit events on the js object
+----------------------------
+implement a comet sort of system which holds the connection, waiting for the event
+for the following events:
+...
+
+
+implement a basic client admin interface
+----------------------------------------
+implement the following functions:
+...
+write a clientside js application
