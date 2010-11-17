@@ -1,14 +1,18 @@
 #!/usr/bin/env python
 
 import Options
+import sys
 from os import unlink, symlink, popen
 from os.path import exists 
 
 srcdir = "."
+top = "release"
 blddir = "build"
-VERSION = "1.0"
+APPNAME = "playbox"
+VERSION = "1.01"
 
 def set_options(opt):
+  opt.tool_options("compiler_cc")
   opt.tool_options("compiler_cxx")
   opt.add_option( '--debug'
                 , action='store_true'
@@ -18,19 +22,68 @@ def set_options(opt):
                 )  
 
 def configure(conf):
+  conf.check_tool("compiler_cc")
   conf.check_tool("compiler_cxx")
   conf.check_tool("node_addon")
-  conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0', '-Wall', '-Wextra'])
+  #conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0', '-Wall', '-Wextra'])
+  conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections'])
+  #conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
+  conf.env.append_value('LINKFLAGS', ['-Wl,-bind_at_load'])
+#  conf.check(lib="pthread",
+#                     includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+#                     libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+#                     uselib_store="PTHREAD")
+  conf.check(lib="boost_system-mt",
+                       includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+                       libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+                       uselib_store="BOOST_SYSTEM")
+  conf.check(lib="boost_iostreams-mt",
+                      includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+                      libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+                      uselib_store="BOOST_IOSTREAMS")
+  conf.check(lib="boost_date_time-mt",
+                     includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+                     libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+                     uselib_store="BOOST_DATE_TIME")
+  conf.check(lib="boost_thread-mt",
+                     includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+                     libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+                     uselib_store="BOOST_THREAD")
+  conf.check(lib="boost_filesystem-mt",
+                     includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+                     libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+                     uselib_store="BOOST_FILESYSTEM")
+  
+  conf.define("HAVE_CONFIG_H", 1)
+
+  if sys.platform.startswith("sunos"):
+    conf.env.append_value ('CCFLAGS', '-threads')
+    conf.env.append_value ('CXXFLAGS', '-threads')
+    #conf.env.append_value ('LINKFLAGS', ' -threads')
+  elif not sys.platform.startswith("cygwin"):
+    conf.env.append_value ('CCFLAGS', '-pthread')
+    conf.env.append_value ('CXXFLAGS', '-pthread')
+    conf.env.append_value ('LINKFLAGS', '-pthread')
 
   # conf.check(lib='node', libpath=['/usr/lib', '/usr/local/lib'], uselib_store='NODE')
 
 def build(bld):
-  obj = bld.new_task_gen("cxx", "shlib", "node_addon")
-  obj.target = "playbox"
-  obj.source = ["playbox.cc"]
-  more_sources = [
-    "libtorrent/src/GeoIP.c",
-    "libtorrent/src/mpi.c",
+  playbox = bld.new_task_gen("cxx", "shlib", "node_addon", install_path=None, use="torrent")
+  playbox.name = "playbox"
+  playbox.target = "playbox"
+  playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
+  playbox.uselib_local = 'torrent'
+  playbox.source = ["playbox.cc"]
+  playbox.includes = ['libtorrent/include', 'libtorrent/include/libtorrent', '/opt/local/include']
+  
+  libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", vnum='0.1.16.9', defs="libtorrent.def")
+  libtorrent.name = "torrent"
+  libtorrent.target = "torrent"
+  libtorrent.includes = ['libtorrent', 'libtorrent/include', 'libtorrent/include/libtorrent', '/opt/local/include']
+  libtorrent.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_DATE_TIME BOOST_IOSTREAMS PTHREAD'
+  libtorrent.libpath = ['/usr/lib', '/usr/local/lib', '/opt/local/lib']
+  libtorrent.defines = ["NDEBUG", "TORRENT_USE_TOMMATH", "_FILE_OFFSET_BITS=64"]
+  libtorrent.source = [
     "libtorrent/src/ConvertUTF.cpp",
     "libtorrent/src/alert.cpp",
     "libtorrent/src/allocator.cpp",
@@ -106,7 +159,13 @@ def build(bld):
     "libtorrent/src/kademlia/rpc_manager.cpp",
     "libtorrent/src/kademlia/traversal_algorithm.cpp"
   ]
-  # obj.uselib = "NODE"
+  libtorrent.source = bld.path.ant_glob('libtorrent/src/*.c')+' '+bld.path.ant_glob('libtorrent/src/*.cpp')+' '+bld.path.ant_glob('libtorrent/src/kademlia/*.cpp')+' '+bld.path.ant_glob('libtorrent/include/*')
+  
+  bld.install_files('${PREFIX}/include/libtorrent/', 'libtorrent/include/libtorrent/*.hpp')
+
+def dist(ctx):
+  ctx.algo = "zip"
+  ctx.files = ["node/build/node", "build/libtorrent.dylib", "build/playbox.node"]
 
 def shutdown():
   # HACK to get compress.node out of build directory.
@@ -116,3 +175,6 @@ def shutdown():
   else:
     if exists('build/default/playbox.node') and not exists('playbox.node'):
       symlink('build/default/playbox.node', 'playbox.node')
+
+    if exists('build/default/libtorrent.dylib') and not exists('libtorrent.dylib'):
+      symlink('build/default/libtorrent.dylib', 'libtorrent.dylib')
