@@ -41,6 +41,10 @@ using namespace v8;
 using namespace node;
 using namespace boost;
 
+// static function declarations
+static Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata);
+static std::string xml_special_chars(std::string str);
+
 // static vars
 static libtorrent::session cur_session;
 static std::string library_path;
@@ -175,32 +179,37 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		if(stack) {                    
 			std::cout << stack << std::endl;
 		}
+		
+		return False();
 	}
 #endif
 	
-	return Undefined();
+	return True();
 }
 
 Handle<Value> Playbox::stop(const Arguments &args) {
+	//cur_session.stop_listening();
 	return Undefined();
 }
 
 Handle<Value> Playbox::library(const Arguments &args) {
-	return Undefined();
+	HandleScope scope;
+	
+	Local<Object> result = Object::New();
+	for(std::map<std::string, libtorrent::entry>::iterator it = torrents_metadata.begin(); it != torrents_metadata.end(); it++) {
+		std::string hash(it->first);
+		libtorrent::entry metadata = it->second;
+		result->Set(String::New(hash.c_str()), song_info(hash, metadata));
+	}
+	
+	return scope.Close(result);
 }
 
 Handle<Value> Playbox::info(const Arguments &args) {
 	HandleScope scope;
-	std::string ret("{ds: \"");
-	String::Utf8Value ds(args[0]->ToString());
-	ret.append(*ds);
-	ret.append("\"}");
-	Handle<String> result = String::New(ret.c_str());
 	
-	
-	//Handle<String> result = String::New("ds: \"");
-	//result->ToString()->Concat(result, Handle<String>(args[0]));
-	//result->ToString()->Concat("lala");
+	Local<Object> result = Object::New();
+	result->Set(String::New("info"), args[0]->ToString());
 	
 	return scope.Close(result);
 }
@@ -208,12 +217,132 @@ Handle<Value> Playbox::info(const Arguments &args) {
 Handle<Value> Playbox::get(const Arguments &args) {
 	HandleScope scope;
 	
-	Handle<Value> result = String::New("{hello: \"world\"}");
+	Local<Object> result = Object::New();
+	result->Set(String::New("get"), args[0]->ToString());
+	
 	return scope.Close(result);
 }
 
 Handle<Value> Playbox::set(const Arguments &args) {
-	return Undefined();
+	HandleScope scope;
+	
+	Local<Object> result = Object::New();
+	result->Set(String::New("set"), args[0]->ToString());
+	
+	return scope.Close(result);
+}
+
+
+Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata) {
+	std::string title;
+	std::string status;
+	libtorrent::entry const* value;
+	
+	Local<Object> result = Object::New();
+	result->Set(String::New("id"), String::New(hash.c_str()));
+	
+	libtorrent::torrent_handle h_torrent = cur_session.find_torrent(lexical_cast<libtorrent::sha1_hash>(hash));
+	if(h_torrent.is_valid()) {
+		status = "valid";
+		
+		libtorrent::torrent_status status = h_torrent.status();
+		filesystem::path path(h_torrent.save_path());
+		std::cout << hash << std::endl;
+		//std::cout << "status: " << (int)status.state << " " << libtorrent::torrent_status::finished << std::endl;
+		//std::cout << "paused: " << cur_session.is_paused() << " " << h_torrent.is_paused() << std::endl;
+		//std::cout << "progress: " << status.progress_ppm << std::endl;
+		//std::cout << "complete: " << status.num_complete << " " << status.num_complete << " " << status.total_done << std::endl;
+		//std::cout << "error: " << status.error << std::endl;
+		
+		const libtorrent::torrent_info& ti = h_torrent.get_torrent_info();
+		const libtorrent::file_entry file = ti.file_at(0);
+		//std::cout << "path: " << path << file.path << " " << filesystem::exists(path.string() + "/" + file.path.string()) << std::endl;
+		//if(h_torrent.is_paused()) {
+			// only for when streaming
+			//h_torrent.set_sequential_download(true);
+			//h_torrent.force_recheck();
+			//h_torrent.super_seeding(true);
+			//h_torrent.resume();
+		//}
+	} else {
+		std::cout << "invalid torrent: " << hash << std::endl;
+		status = "invalid";
+	}
+	
+	// print out the torrent status ..
+	// 0-100 - file is downloading and that's the current percentage
+	// LOOKUP - torrent has is trying to be located
+	// OK - file exists and all parts are good
+	// MISSING - file is missing entirely
+	result->Set(String::New("status"), String::New(status.c_str()));
+	
+	value = metadata.find_key("media_time");
+	if(value) {
+		result->Set(String::New("time"), String::New(value->string().c_str()));
+		//text_xml += "\" time=\"";
+		//text_xml += value->string();
+	}
+	
+	value = metadata.find_key("media_year");
+	if(value) {
+		text_xml += "\" year=\"";
+		text_xml += value->string();
+	}
+	
+	value = metadata.find_key("media_album");
+	if(value) {
+		text_xml += "\" album=\"";
+		text_xml += value->string();
+	}
+	
+	value = metadata.find_key("media_artist");
+	if(value) {
+		text_xml += "\" artist=\"";
+		text_xml += value->string();
+		title += value->string();
+	}
+	
+	value = metadata.find_key("media_title");
+	if(value) {
+		text_xml += "\" title=\"";
+		text_xml += value->string();
+		if(title.length()) {
+			title += " - ";
+		}
+		
+		title += value->string();
+	}
+	
+	text_xml += "\">";
+	text_xml.append(xml_special_chars(title.length() ? title : "unknown"));
+	text_xml += "</song>";
+}
+
+
+static std::string xml_special_chars(std::string str) {
+	std::string::iterator it_end = str.end();
+	size_t i = 0;
+	for(std::string::iterator it = str.begin(); it < it_end; ++it, i++) {
+		switch(it[0]) {
+		case '&':
+			str.replace(i, 1, "&amp;");
+			break;
+			
+		case '"':
+			str.replace(i, 1, "&quot;");
+			break;
+			
+		case '<':
+			str.replace(i, 1, "&lt;");
+			break;
+			
+		case '>':
+			str.replace(i, 1, "&gt;");
+			break;
+		}
+	}
+	
+	return str;
 }
 
 /*
