@@ -25,7 +25,9 @@ def configure(conf):
   conf.check_tool("compiler_cc")
   conf.check_tool("compiler_cxx")
   conf.check_tool("node_addon")
-  #conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0', '-Wall', '-Wextra'])
+  conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0'])
+  #conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
+  conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections'])
   conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections'])
   #conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
   conf.env.append_value('LINKFLAGS', ['-Wl,-bind_at_load'])
@@ -84,6 +86,8 @@ def build(bld):
   libtorrent.libpath = ['/usr/lib', '/usr/local/lib', '/opt/local/lib']
   libtorrent.defines = ["NDEBUG", "TORRENT_USE_TOMMATH", "_FILE_OFFSET_BITS=64"]
   libtorrent.source = [
+    "libtorrent/src/GeoIP.c",
+    "libtorrent/src/mpi.c",
     "libtorrent/src/ConvertUTF.cpp",
     "libtorrent/src/alert.cpp",
     "libtorrent/src/allocator.cpp",
@@ -161,11 +165,8 @@ def build(bld):
   ]
   libtorrent.source = bld.path.ant_glob('libtorrent/src/*.c')+' '+bld.path.ant_glob('libtorrent/src/*.cpp')+' '+bld.path.ant_glob('libtorrent/src/kademlia/*.cpp')+' '+bld.path.ant_glob('libtorrent/include/*')
   
-  bld.install_files('${PREFIX}/include/libtorrent/', 'libtorrent/include/libtorrent/*.hpp')
-
-def dist(ctx):
-  ctx.algo = "zip"
-  ctx.files = ["node/build/node", "build/libtorrent.dylib", "build/playbox.node"]
+  #bld.install_files('${PREFIX}/include/libtorrent/', 'libtorrent/include/libtorrent/*.hpp')
+  #bld.install_files('release/')
 
 def shutdown():
   # HACK to get compress.node out of build directory.

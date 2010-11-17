@@ -14,6 +14,14 @@ class Playbox : public EventEmitter {
     ~Playbox() {}
     
     static void Initialize(Handle<Object> target);
+	static Handle<Value> init(const Arguments &args);
+	static Handle<Value> start(const Arguments &args);
+	static Handle<Value> stop(const Arguments &args);
+	
+	static Handle<Value> library(const Arguments &args);
+	static Handle<Value> info(const Arguments &args);
+	static Handle<Value> get(const Arguments &args);
+	static Handle<Value> set(const Arguments &args);
     /*
 	static Handle<Value> BSONSerialize(const Arguments &args);
     static Handle<Value> BSONDeserialize(const Arguments &args);
