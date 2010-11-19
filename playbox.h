@@ -5,6 +5,9 @@
 #include <node_object_wrap.h>
 #include <v8.h>
 
+#include <id3/tag.h>
+#include <libtorrent/entry.hpp>
+
 using namespace v8;
 using namespace node;
 
@@ -33,6 +36,13 @@ class Playbox : public EventEmitter {
   */
   private:
     static Handle<Value> New(const Arguments &args);
+
+	static void do_update();
+	static void make_torrent(const std::string path);
+	static void add_media(const std::string path);
+	static void load_media(const std::string torrent_path);
+	static int save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata);
+	
 /*
     static Handle<Value> deserialize(char *data, bool is_array_item);
     static uint32_t serialize(char *serialized_object, uint32_t index, Handle<Value> name, Handle<Value> value, bool check_key);

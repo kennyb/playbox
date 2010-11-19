@@ -29,12 +29,17 @@ def configure(conf):
   #conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
   conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections'])
   conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections'])
-  #conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
-  conf.env.append_value('LINKFLAGS', ['-Wl,-bind_at_load'])
-#  conf.check(lib="pthread",
-#                     includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
-#                     libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
-#                     uselib_store="PTHREAD")
+  conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
+  #conf.env.append_value('LINKFLAGS', ['-Wl,-bind_at_load'])
+  conf.check(lib="iconv",
+                     includes=['/opt/local/include', '/usr/include', '/usr/local/include'],
+                     libpath=['/opt/local/lib', '/usr/lib', '/usr/local/lib'],
+                     header_name='iconv.h',
+                     uselib_store="ICONV")
+  conf.check(lib="z",
+                     includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+                     libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+                     uselib_store="ZLIB")
   conf.check(lib="boost_system-mt",
                        includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
                        libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
@@ -74,11 +79,22 @@ def build(bld):
   playbox.name = "playbox"
   playbox.target = "playbox"
   playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
-  playbox.uselib_local = 'torrent'
+  playbox.uselib_local = 'torrent id3'
   playbox.source = ["playbox.cc"]
   playbox.includes = ['libtorrent/include', 'libtorrent/include/libtorrent', '/opt/local/include']
+  playbox.cflags = ['-Wall', '-Wextra']
+  playbox.cxxflags = ['-Wall', '-Wextra']
   
-  libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", vnum='0.1.16.9', defs="libtorrent.def")
+  id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", vnum='1.0.0.1', defs="id3.def")
+  id3.name = "id3"
+  id3.target = "id3"
+  id3.includes = ['id3lib', 'id3lib/include', 'id3lib/include/id3', '/opt/local/include']
+  id3.uselib = "ZLIB ICONV LIBC"
+  id3.defines = ['HAVE_CONFIG_H']
+  id3.source = bld.path.ant_glob('id3lib/src/*.cpp')
+  id3.linkflags = ["-flat_namespace", "-undefined", "suppress"]
+  
+  libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", vnum='1.0.0.1', defs="libtorrent.def")
   libtorrent.name = "torrent"
   libtorrent.target = "torrent"
   libtorrent.includes = ['libtorrent', 'libtorrent/include', 'libtorrent/include/libtorrent', '/opt/local/include']

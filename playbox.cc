@@ -11,6 +11,11 @@
 #include <iostream>
 #include <limits>
 
+#include <id3/tag.h>
+#include <id3/utils.h>
+#include <id3/misc_support.h>
+#include <id3/readers.h>
+
 #include <libtorrent/entry.hpp>
 #include <libtorrent/bencode.hpp>
 #include <libtorrent/torrent_info.hpp>
@@ -279,33 +284,27 @@ Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata
 	value = metadata.find_key("media_time");
 	if(value) {
 		result->Set(String::New("time"), String::New(value->string().c_str()));
-		//text_xml += "\" time=\"";
-		//text_xml += value->string();
 	}
 	
 	value = metadata.find_key("media_year");
 	if(value) {
-		text_xml += "\" year=\"";
-		text_xml += value->string();
+		result->Set(String::New("year"), String::New(value->string().c_str()));
 	}
 	
 	value = metadata.find_key("media_album");
 	if(value) {
-		text_xml += "\" album=\"";
-		text_xml += value->string();
+		result->Set(String::New("album"), String::New(value->string().c_str()));
 	}
 	
 	value = metadata.find_key("media_artist");
 	if(value) {
-		text_xml += "\" artist=\"";
-		text_xml += value->string();
+		result->Set(String::New("artist"), String::New(value->string().c_str()));
 		title += value->string();
 	}
 	
 	value = metadata.find_key("media_title");
 	if(value) {
-		text_xml += "\" title=\"";
-		text_xml += value->string();
+		result->Set(String::New("title"), String::New(value->string().c_str()));
 		if(title.length()) {
 			title += " - ";
 		}
@@ -313,9 +312,7 @@ Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata
 		title += value->string();
 	}
 	
-	text_xml += "\">";
-	text_xml.append(xml_special_chars(title.length() ? title : "unknown"));
-	text_xml += "</song>";
+	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : "unknown").c_str()));
 }
 
 
@@ -343,6 +340,342 @@ static std::string xml_special_chars(std::string str) {
 	}
 	
 	return str;
+}
+
+
+// make a function called "load_torrent" which looks in the .torrents/ dir
+// if it is not in the cache, grab it from the fs, else look on DHT
+void Playbox::do_update() {
+	// parse the torrents directory
+	filesystem::path p(library_torrents_path);
+	filesystem::directory_iterator end_itr;
+	int t = 0;
+	for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
+		t++;
+	}
+	
+	std::cout << library_torrents_path << ": # torrents: " << t << std::endl;
+	for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
+		std::string filename = itr->filename();
+		size_t len = filename.size();
+		if(len > 8 && filename.substr(len - 8, 8) == ".torrent") {
+			std::string hash(filename.substr(0, len - 8));
+			std::map<std::string, libtorrent::entry>::iterator it = torrents_metadata.find(hash);
+			if(it == torrents_metadata.end()) {
+				// add the torrent
+				std::cout << "loading torrent: " << itr->string() << std::endl;
+				Playbox::load_media(itr->string());
+			}
+		}
+	}
+			
+	//size_t len = torrents_metadata;
+	//std::cout << "len " << len << std::endl;
+	int tt = 0;
+	for(std::map<std::string, libtorrent::entry>::iterator it = torrents_metadata.begin(); it != torrents_metadata.end(); it++) {
+		//std::cout << "::" << (it->first) << std::endl;
+		tt++;
+	}
+	
+	std::cout << "total: " << tt << " " << cur_session.is_dht_running() << std::endl;
+	
+	if(!tt) {
+		if(torrent_queue.size()) {
+			Playbox::make_torrent(torrent_queue.front());
+			torrent_queue.pop_front();
+			usleep(2000);
+		}
+	}
+	
+	std::auto_ptr<libtorrent::alert> alert;
+	while((alert = cur_session.pop_alert()).get() != NULL) {
+		std::cout << "alert: " << (*alert).message() << std::endl;
+	}
+}
+
+
+static void print_progress(int i, int num) {
+	usleep(100);
+	std::cerr << "\r" << (i+1) << "/" << num;
+}
+
+void Playbox::load_media(const std::string torrent_path) {
+	using namespace boost;
+	using namespace libtorrent;
+	
+	libtorrent::file_storage fs;
+	libtorrent::file_pool fp;
+	
+	filesystem::path torrent_file(torrent_path);
+	
+#ifndef BOOST_NO_EXCEPTIONS
+	try {
+#endif
+		//======
+		// add_torrent parameters
+		std::string hash;
+		libtorrent::add_torrent_params params;
+		params.duplicate_is_error = false;
+		params.storage_mode = libtorrent::storage_mode_allocate;
+		params.save_path = library_path;
+		
+		if(torrent_path.size() == 40
+				&& torrent_path.find('/') == std::string::npos
+				&& torrent_file.extension() != ".torrent") {
+			// this is a hash, not a file
+			params.info_hash = lexical_cast<sha1_hash>(torrent_path);
+			hash = torrent_path;
+		} else {
+			//======
+			// check the file size, not to blow out the memory (2MB)
+			int size = filesystem::file_size(torrent_path);
+			if(size > 2 * 1024 * 1024) {
+				std::cerr << "file too big! (" << size << "), aborting" << std::endl;
+				return;
+			}
+
+			//======
+			// stream the file in, and decode it			
+			std::vector<char> buf(size);
+			std::ifstream(torrent_path.c_str(), std::ios_base::binary).read(&buf[0], size);
+			entry metadata = bdecode(&buf[0], &buf[0] + buf.size());
+			/*if (ret != 0) {
+				std::cerr << "invalid bencoding: " << ret << std::endl;
+				return;
+			}*/
+			
+			//======
+			// check to see if the media_path exists
+			libtorrent::entry const* save_path = metadata.find_key("media_path");
+			bool use_local_file = false;
+			if(save_path) {
+				const std::string save_path_cstr(save_path->string());
+				if(filesystem::exists(save_path_cstr)
+					/*&& is a valid media file */) {
+					filesystem::path save_path(save_path_cstr);
+					params.save_path = filesystem::path(save_path.branch_path().string() + "/").string();
+					use_local_file = true;
+				}
+			}
+			
+			if(!use_local_file) {
+				params.save_path = library_path;
+			}
+			
+			
+			// if no media data is found, grab the id3 info!
+			
+			// now, verify that the file is indeed a media file
+			
+			//======
+			// load up the torrent info into the params
+			torrent_info* ti = new torrent_info(metadata);
+			hash = lexical_cast<std::string>(ti->info_hash());
+			params.ti = ti;
+			if(use_local_file) {
+				std::cout << "renaming to file: " << ti->name() << std::endl;
+				ti->rename_file(0, ti->name());
+			} else {
+				std::cout << "renaming to hash: " << hash << std::endl;
+				ti->rename_file(0, hash);
+			}
+			
+			//======
+			// check for media metadata
+			torrents_metadata[hash] = entry(metadata);
+		}
+		
+		std::cerr << "loading torrent... " << hash << " " << params.save_path << " " << filesystem::exists(params.save_path) << std::endl;
+		cur_session.add_torrent(params);
+		
+#ifndef BOOST_NO_EXCEPTIONS
+	} catch (std::exception& e) {
+		std::cerr << e.what() << "\n";
+		std::string const *stack = boost::get_error_info<stack_error_info>(e);
+		if(stack) {                    
+			std::cout << stack << std::endl;
+		}
+	}
+#endif
+}
+
+// this creates a torrent for the file, and then creates a symlink in the directory
+void Playbox::add_media(const std::string path) {
+	using namespace boost;
+	using namespace libtorrent;
+	
+	if(filesystem::is_directory(path)) {
+		std::cout << "adding a directory: " << path << std::endl;
+		
+		//TODO: recurse the directory and add them one by one...
+		filesystem::directory_iterator end_itr;
+		for(filesystem::directory_iterator itr(path); itr != end_itr; ++itr) {
+			std::string filename = itr->filename();
+			if(filesystem::is_regular_file(itr->status()) && filename.substr(filename.length() - 4) == ".mp3") {
+				//std::cout << "mp3! " << itr->filename() << std::endl;
+				//Playbox::add_media(itr->string());
+				torrent_queue.push_back(itr->string());
+			} else if(filesystem::is_directory(itr->status())) {
+				//std::cout << "dir " << itr->string() << std::endl;
+				Playbox::add_media(itr->string());
+			} else {
+				std::cerr << "unknown file: " << itr->string() << std::endl;
+			}
+		}
+		
+		return;
+	}
+}
+	
+void Playbox::make_torrent(const std::string path) {
+	using namespace boost;
+	using namespace libtorrent;
+	
+	filesystem::path media_path(path);
+	libtorrent::file_storage fs;
+	libtorrent::file_pool fp;
+	
+#ifndef BOOST_NO_EXCEPTIONS
+	try {
+#endif
+		//======
+		// build the file list
+		filesystem::path full_path = filesystem::complete(path);
+		uintmax_t size = filesystem::file_size(media_path);
+		std::time_t mtime = filesystem::last_write_time(full_path);
+		fs.add_file(full_path.filename(), size, 0, mtime);
+		
+		//======
+		// begin hash generation
+		create_torrent torrent(fs, 16 * 1024, -1, 9 /* optimize + merkle + symlink */); // should be 11
+		torrent.set_creator("playbox-2.0");
+		torrent.set_comment("torrent created by playbox-2.0");
+		
+		//======
+		// compute the hashes
+		std::cout << "set_piece_hashes(" << torrent.num_pieces() << ") " << full_path.string() << std::endl;
+		libtorrent::set_piece_hashes(torrent, full_path.branch_path().string(), boost::bind(&print_progress, _1, torrent.num_pieces()));
+		std::cerr << std::endl;
+		
+		
+		
+		//======
+		// generate the torrent & file hashes
+		libtorrent::entry metadata = entry(torrent.generate());
+		
+		//======
+		// add the real file path to the torrent (to know that it's not in the library)
+		metadata["media_path"] = entry(path);
+		
+		//======
+		// add all the id3 info to the torrent
+		ID3_Tag id3_tag;
+		id3_tag.Link(path.c_str());
+		save_id3_info(id3_tag, &metadata);
+		
+		// output the metadata to a buffer
+		std::vector<char> buffer;
+		bencode(std::back_inserter(buffer), metadata);
+		torrent_info ti(&buffer[0], buffer.size());
+		buffer.clear();
+		
+		//======
+		// generate the filename based on the info hash
+		std::string torrent_file(library_torrents_path);
+		std::string hash(lexical_cast<std::string>(ti.info_hash()));
+		torrent_file.append(hash);
+		torrent_file.append(".torrent");
+		
+		//======
+		// add a symlink in the library to the real file
+		std::string file_path("Library/" + hash);
+		//unlink(file_path.c_str());
+		if(!filesystem::exists(file_path)) {
+			if(symlink(path.c_str(), file_path.c_str()) != 0) {
+				perror("symlink(MusicDirectory)");
+				return;
+			}
+		}
+		
+		//======
+		// output the buffer to a file
+		if(!filesystem::exists(torrent_file)) {
+			filesystem::ofstream out(filesystem::complete(filesystem::path(torrent_file)), std::ios_base::binary);
+			bencode(std::ostream_iterator<char>(out), metadata);
+		}
+		
+		torrents_metadata[hash] = entry(metadata);
+		
+		//======
+		// load the torrent into the music dir
+		//TODO
+		//Playbox::load_media(torrent_file);
+		
+#ifndef BOOST_NO_EXCEPTIONS
+	} catch (std::exception& e) {
+		std::cerr << e.what() << "\n";
+		std::string const *stack = boost::get_error_info<stack_error_info>(e);
+		if(stack) {                    
+			std::cout << stack << std::endl;
+		}
+	}
+#endif
+}
+
+
+int Playbox::save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata) {
+	ID3_Tag::ConstIterator* iter = tag.CreateIterator();
+	const ID3_Frame* frame = NULL;
+	char already[ID3FID_LASTFRAMEID] = {};
+	
+	// implement song duration discovery
+	// http://www.codeproject.com/KB/audio-video/mpegaudioinfo.aspx
+	
+	while (NULL != (frame = iter->GetNext())) {
+		//const char *desc;
+		ID3_FrameID frame_id;
+		char *field;
+		//desc = frame->GetDescription();
+		frame_id = frame->GetID();
+		
+		if(already[frame_id] == '*') {
+			continue;
+		}
+		
+		const char* str = ID3_GetString(frame, ID3FN_TEXT);
+		if(str) {
+			std::string value(xml_special_chars(std::string(str)));
+			switch(frame_id) {
+				case ID3FID_SONGLEN:
+					(*metadata)["media_time"] = libtorrent::entry(value);
+					break;
+					
+				case ID3FID_YEAR:
+					(*metadata)["media_year"] = libtorrent::entry(value);
+					break;
+					
+				case ID3FID_ALBUM:
+					(*metadata)["media_album"] = libtorrent::entry(value);
+					break;
+					
+				case ID3FID_LEADARTIST:
+					(*metadata)["media_artist"] = libtorrent::entry(value);
+					break;
+					
+				case ID3FID_TITLE:
+					(*metadata)["media_title"] = libtorrent::entry(value);
+					break;
+					
+				//default:
+					//printf("unknown frame id: %d\n", frame_id);
+			}
+		
+			already[frame_id] = '*';
+		}
+	}
+	
+	delete iter;
+	return 0;
 }
 
 /*
