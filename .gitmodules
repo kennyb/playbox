@@ -1,3 +1,6 @@
 [submodule "libtorrent"]
 	path = libtorrent
 	url = ./libtorrent
+[submodule "node"]
+	path = node
+	url = ./node
