@@ -1,26 +1,47 @@
 
-implement the server in js
---------------------------
-implement a basic application framework with a function system
-implement a function system with the following functions:
- [index] serves up the basic website
- [library] lists the entire library, accompanied with the file info
- [get] try and return the file saved in the hash
- [set] modify the status of a file
- [info] return the info for the content of this hash (if it doesn't exist, get it over dht)
- [settings] returns all of the current settings
+implement the playbox js interface
+----------------------------------
+implement the object with the following: (depends on the above)
+ Object(Playbox)
+  -> Event(archiveUnknown)
+  -> Event(archiveMetadata)
+  -> Event(archiveDownloading)
+  -> Event(archiveProgress)
+  -> Event(archiveComplete)
+  -> Event(archiveRemoved)
+  -> Function(start)
+  -> Function(stop)
+  -> Function(query) returns a list of the archives matching the query parameters
+  -> Function(archive) returns an Object with the resulting archive status and a pipe to the archive if it exists
+  -> Array(info) getter/setter which returns an object with the resulting archive status and metadata
+  -> String(library_path) getter/setter for the library path
+  -> Array(dirs) getter/setter for the array of source directories
+  -> Number(scan_speed) MB/s at which to scan the directories
+  -> Function(rescan) force a directory rescan
 
+implement a basic application framework
+---------------------------------------
+allow applications to receive function calls over http
+allow applications to receive function calls over plain sockets
 
-finish up the basic functions
------------------------------
-export the following functions to the app:
- [start] connect the playbox to the internet, listening on the specified ports
- [stop] disconnect the playbox from the network, but maintain the library functioning
- [library] returns a javascript object with the entire library listing
- [get] pass a pipe back to the app
- [set] modify the status of a file, returning true or false
- [info] return a javascript object of the file's info
+implement http interface
+------------------------
+export the following functions to the http interface:
+ [-] connect the playbox to the internet, listening on the specified ports
+ [o] disconnect the playbox from the network, but maintain the library functioning
+ [l] returns a javascript object with the entire library listing
+ [g] return the archive to http
+  -> 100 waiting for first chunk
+  -> 200 + contents of the file
+  -> 404 file doesn't exist
+ [i] request archive info
+  -> 100 waiting for the metadata to be downloaded
+  -> 200 + js object with object info
+  -> 404 metadata cannot be found on the DHT
 
+implement plain socket interface
+--------------------------------
+I dunno yet :)
 
 determine mp3 duration, id3 data, etc
 -------------------------------------
