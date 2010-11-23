@@ -1,6 +1,6 @@
 [submodule "libtorrent"]
 	path = libtorrent
-	url = ./libtorrent
+	url = http://git.deluge-torrent.org/libtorrent.git
 [submodule "node"]
 	path = node
-	url = ./node
+	url = http://github.com/ry/node.git
