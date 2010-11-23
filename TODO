@@ -3,21 +3,22 @@ implement the playbox js interface
 ----------------------------------
 implement the object with the following: (depends on the above)
  Object(Playbox)
-  -> Event(archiveUnknown)
-  -> Event(archiveMetadata)
-  -> Event(archiveDownloading)
-  -> Event(archiveProgress)
-  -> Event(archiveComplete)
-  -> Event(archiveRemoved)
-  -> Function(start)
-  -> Function(stop)
-  -> Function(query) returns a list of the archives matching the query parameters
-  -> Function(archive) returns an Object with the resulting archive status and a pipe to the archive if it exists
-  -> Array(info) getter/setter which returns an object with the resulting archive status and metadata
-  -> String(library_path) getter/setter for the library path
-  -> Array(dirs) getter/setter for the array of source directories
-  -> Number(scan_speed) MB/s at which to scan the directories
-  -> Function(rescan) force a directory rescan
+  -> ( ) Event(archiveUnknown)
+  -> ( ) Event(archiveMetadata)
+  -> ( ) Event(archiveDownloading)
+  -> ( ) Event(archiveProgress)
+  -> ( ) Event(archiveComplete)
+  -> ( ) Event(archiveRemoved)
+  -> (*) Function(init)
+  -> (*) Function(start)
+  -> (*) Function(stop)
+  -> (+) Function(query) - returns a list of the archives matching the query parameters
+  -> (-) Function(archive) - returns an Object with the resulting archive status and a pipe to the archive if it exists
+  -> (+) Function(info) - getter/setter which returns an object with the resulting archive status and metadata
+  -> ( ) String(library_path) - getter/setter for the library path
+  -> ( ) Array(dirs) - getter/setter for the array of source directories
+  -> ( ) Number(scan_speed) - MB/s at which to scan the directories
+  -> ( ) Function(rescan) - force a directory rescan
 
 implement a basic application framework
 ---------------------------------------

@@ -90,19 +90,13 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	NODE_SET_PROTOTYPE_METHOD(t, "stop", stop);
 	
 	// starts the server on the specified ports
-	NODE_SET_PROTOTYPE_METHOD(t, "settings", settings);
+	NODE_SET_PROTOTYPE_METHOD(t, "query", query);
 	
-	// returns a json of the playbox library
-	NODE_SET_PROTOTYPE_METHOD(t, "library", library);
+	// returns an object with the archive status
+	NODE_SET_PROTOTYPE_METHOD(t, "archive", archive);
 	
 	// returns json info for the song (status, length, title, etc)
 	NODE_SET_PROTOTYPE_METHOD(t, "info", info);
-	
-	// returns true or false
-	NODE_SET_PROTOTYPE_METHOD(t, "get", get);
-	
-	// returns function response
-	NODE_SET_PROTOTYPE_METHOD(t, "set", set);
 	
 	target->Set(String::NewSymbol("Playbox"), t->GetFunction());
 }
@@ -237,7 +231,7 @@ Handle<Value> Playbox::stop(const Arguments &args) {
 	return Undefined();
 }
 
-Handle<Value> Playbox::library(const Arguments &args) {
+Handle<Value> Playbox::query(const Arguments &args) {
 	HandleScope scope;
 	
 	Local<Object> result = Object::New();
@@ -246,16 +240,6 @@ Handle<Value> Playbox::library(const Arguments &args) {
 		libtorrent::entry metadata = it->second;
 		result->Set(String::New(hash.c_str()), song_info(hash, metadata));
 	}
-	
-	return scope.Close(result);
-}
-
-Handle<Value> Playbox::settings(const Arguments &args) {
-	HandleScope scope;
-	
-	Local<Object> result = Object::New();
-	result->Set(String::New("library_path"), String::New(library_path.c_str()));
-	result->Set(String::New("library_torrents_path"), String::New(library_torrents_path.c_str()));
 	
 	return scope.Close(result);
 }
@@ -269,7 +253,7 @@ Handle<Value> Playbox::info(const Arguments &args) {
 	return scope.Close(result);
 }
 
-Handle<Value> Playbox::get(const Arguments &args) {
+Handle<Value> Playbox::archive(const Arguments &args) {
 	HandleScope scope;
 	
 	Local<Object> result = Object::New();
@@ -278,17 +262,19 @@ Handle<Value> Playbox::get(const Arguments &args) {
 	return scope.Close(result);
 }
 
-Handle<Value> Playbox::set(const Arguments &args) {
+/*
+Handle<Value> Playbox::settings(const Arguments &args) {
 	HandleScope scope;
 	
 	Local<Object> result = Object::New();
-	result->Set(String::New("set"), args[0]->ToString());
+	result->Set(String::New("library_path"), String::New(library_path.c_str()));
+	result->Set(String::New("library_torrents_path"), String::New(library_torrents_path.c_str()));
 	
 	return scope.Close(result);
 }
+*/
 
-
-Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata) {
+static Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata) {
 	std::string title;
 	std::string status;
 	libtorrent::entry const* value;
