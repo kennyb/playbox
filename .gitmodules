@@ -3,4 +3,4 @@
 	url = http://git.deluge-torrent.org/libtorrent.git
 [submodule "node"]
 	path = node
-	url = http://github.com/ry/node.git
+	url = git://github.com/ry/node.git
