@@ -20,6 +20,7 @@ class Playbox : public EventEmitter {
 	static Handle<Value> init(const Arguments &args);
 	static Handle<Value> start(const Arguments &args);
 	static Handle<Value> stop(const Arguments &args);
+	static Handle<Value> settings(const Arguments &args);
 	
 	static Handle<Value> library(const Arguments &args);
 	static Handle<Value> info(const Arguments &args);

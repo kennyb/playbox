@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+#include <pwd.h>
 #include <v8.h>
 #include <node.h>
 #include <node_events.h>
@@ -88,6 +89,9 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	// starts the server on the specified ports
 	NODE_SET_PROTOTYPE_METHOD(t, "stop", stop);
 	
+	// starts the server on the specified ports
+	NODE_SET_PROTOTYPE_METHOD(t, "settings", settings);
+	
 	// returns a json of the playbox library
 	NODE_SET_PROTOTYPE_METHOD(t, "library", library);
 	
@@ -117,30 +121,66 @@ Handle<Value> Playbox::init(const Arguments &args) {
 		return VException("arg should be a string of the library path");
 	}
 	
-	String::Utf8Value library_path(args[0]->ToString());
-	::library_path.append(*library_path);
-	::library_torrents_path = std::string(::library_path).append(".torrents/");
+	uid_t uid = getuid();
+	struct passwd* user_passwd = getpwuid(uid);
+	char* dir;
+	struct stat status;
 	
-	filesystem::create_directory(filesystem::path(::library_path));
-	
-	filesystem::path p(library_torrents_path);
-	if(filesystem::exists(p)) {
-		std::cout << "torrent dir exists " << library_torrents_path << " .. beginning scan..." << std::endl;
-		filesystem::directory_iterator end_itr;
-		for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
-			std::string filename = itr->filename();
-			size_t len = filename.size();
-			
-			if(len > 8 && filename.substr(len - 8, 8) == ".torrent") {
-				//std::cout << "TORRENT: " << filename << std::endl;
-				//Playbox::load_media(itr->string());
-			} else {
-				std::cout << "FILE: " << filename << std::endl;
+	if(user_passwd) {
+		
+		size_t homedir_len = strlen(user_passwd->pw_dir);
+		
+		library_path = user_passwd->pw_dir;
+		library_path += "/Library/playbox";
+		
+		//String::Utf8Value library_path(args[0]->ToString());
+		//::library_path.append(*library_path);
+
+		//if(library_path.length() <= 1 || library_path[0] == '/') {
+		//	return VException("the library path cannot be absolute");
+		//}
+
+		::library_torrents_path = std::string(::library_path).append("/.torrents/");
+
+		filesystem::create_directory(filesystem::path(::library_path));
+		// now, chroot to the dir
+
+		filesystem::path p(library_torrents_path);
+		if(filesystem::exists(p)) {
+			std::cout << "torrent dir exists " << library_torrents_path << " .. beginning scan..." << std::endl;
+			filesystem::directory_iterator end_itr;
+			for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
+				std::string filename = itr->filename();
+				size_t len = filename.size();
+
+				if(len > 8 && filename.substr(len - 8, 8) == ".torrent") {
+					//std::cout << "TORRENT: " << filename << std::endl;
+					//Playbox::load_media(itr->string());
+				} else {
+					std::cout << "FILE: " << filename << std::endl;
+				}
 			}
+		} else {
+			filesystem::create_directory(p);
 		}
+		
+		
+		// -------
+		
+		std::string music_dir(user_passwd->pw_dir);
+		music_dir += "/Music";
+		
+		if(stat(music_dir.c_str(), &status) != -1) {
+			// TODO!!!!! automatically add the music directory to the sources list
+			Playbox::add_media(music_dir);
+		}
+		
+		
 	} else {
-		filesystem::create_directory(p);
+		return VException("playbox could not find the user's home directory! HUGE FAIL");
 	}
+	
+	
 	
 	//TODO: return number of songs in library
 	return Undefined();
@@ -206,6 +246,16 @@ Handle<Value> Playbox::library(const Arguments &args) {
 		libtorrent::entry metadata = it->second;
 		result->Set(String::New(hash.c_str()), song_info(hash, metadata));
 	}
+	
+	return scope.Close(result);
+}
+
+Handle<Value> Playbox::settings(const Arguments &args) {
+	HandleScope scope;
+	
+	Local<Object> result = Object::New();
+	result->Set(String::New("library_path"), String::New(library_path.c_str()));
+	result->Set(String::New("library_torrents_path"), String::New(library_torrents_path.c_str()));
 	
 	return scope.Close(result);
 }
@@ -313,6 +363,8 @@ Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata
 	}
 	
 	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : "unknown").c_str()));
+	
+	return result;
 }
 
 
@@ -547,7 +599,7 @@ void Playbox::make_torrent(const std::string path) {
 		
 		//======
 		// begin hash generation
-		create_torrent torrent(fs, 16 * 1024, -1, 9 /* optimize + merkle + symlink */); // should be 11
+		create_torrent torrent(fs, 16 * 1024, -1, 9 /* optimize + merkle + symlink */); // should be 11, removed merkle
 		torrent.set_creator("playbox-2.0");
 		torrent.set_comment("torrent created by playbox-2.0");
 		
@@ -634,7 +686,6 @@ int Playbox::save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata) {
 	while (NULL != (frame = iter->GetNext())) {
 		//const char *desc;
 		ID3_FrameID frame_id;
-		char *field;
 		//desc = frame->GetDescription();
 		frame_id = frame->GetID();
 		
@@ -666,7 +717,8 @@ int Playbox::save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata) {
 					(*metadata)["media_title"] = libtorrent::entry(value);
 					break;
 					
-				//default:
+				default:
+					break;
 					//printf("unknown frame id: %d\n", frame_id);
 			}
 		

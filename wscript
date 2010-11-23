@@ -82,8 +82,8 @@ def build(bld):
   playbox.uselib_local = 'torrent id3'
   playbox.source = ["playbox.cc"]
   playbox.includes = ['libtorrent/include', 'libtorrent/include/libtorrent', '/opt/local/include']
-  playbox.cflags = ['-Wall', '-Wextra']
-  playbox.cxxflags = ['-Wall', '-Wextra']
+  #playbox.cflags = ['-Wall', '-Wextra']
+  #playbox.cxxflags = ['-Wall', '-Wextra']
   
   id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", vnum='1.0.0.1', defs="id3.def")
   id3.name = "id3"

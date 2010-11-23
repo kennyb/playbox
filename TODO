@@ -7,7 +7,8 @@ implement a function system with the following functions:
  [library] lists the entire library, accompanied with the file info
  [get] try and return the file saved in the hash
  [set] modify the status of a file
- [info] return the info for the content of this hash
+ [info] return the info for the content of this hash (if it doesn't exist, get it over dht)
+ [settings] returns all of the current settings
 
 
 finish up the basic functions
