@@ -263,9 +263,6 @@ def shutdown(ctx):
 	if Options.commands['clean']:
 		if exists('playbox.node'): unlink('playbox.node')
 	else:
-		if exists('build/default/playbox.node') and not exists('playbox.node'):
-			symlink('build/default/playbox.node', 'playbox.node')
-
 		if not exists('build/release/libs'):
 			makedirs('build/release/libs')
 		
