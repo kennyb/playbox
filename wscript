@@ -2,14 +2,24 @@
 
 import Options
 import sys
-from os import unlink, symlink, popen
-from os.path import exists 
+from os import unlink, symlink, popen, environ, makedirs
+from os.path import exists
+from shutil import copy2
 
 srcdir = "."
 top = "release"
 blddir = "build"
 APPNAME = "playbox"
 VERSION = "1.01"
+
+def canonical_cpu_type(arch):
+  m = {'x86': 'ia32', 'i386':'ia32', 'x86_64':'x64', 'amd64':'x64'}
+  if arch in m: arch = m[arch]
+  if not arch in supported_archs:
+    raise Exception("supported architectures are "+', '.join(supported_archs)+\
+                    " but NOT '" + arch + "'.")
+  return arch
+
 
 def set_options(opt):
   opt.tool_options("compiler_cc")
@@ -22,14 +32,24 @@ def set_options(opt):
                 )  
 
 def configure(conf):
+  if 'DEST_CPU' in environ and environ['DEST_CPU']:
+    conf.env['DEST_CPU'] = canonical_cpu_type(os.environ['DEST_CPU'])
+  elif 'DEST_CPU' in conf.env and conf.env['DEST_CPU']:
+    conf.env['DEST_CPU'] = canonical_cpu_type(conf.env['DEST_CPU'])
+  
+  print conf.env['DEST_CPU']
   conf.check_tool("compiler_cc")
   conf.check_tool("compiler_cxx")
   conf.check_tool("node_addon")
-  conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0'])
-  #conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
-  conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections'])
+  #conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0'])
+  conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
+  conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections', '-fPIC'])
   conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections'])
-  conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
+  
+  if sys.platform.startswith("darwin"):
+    conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
+  elif sys.platform.startswith("linux"):
+	conf.env.append_value('LINKFLAGS', ['-Wl,--gc-section'])
   #conf.env.append_value('LINKFLAGS', ['-Wl,-bind_at_load'])
   conf.check(lib="iconv",
                      includes=['/opt/local/include', '/usr/include', '/usr/local/include'],
@@ -74,30 +94,69 @@ def configure(conf):
 
   # conf.check(lib='node', libpath=['/usr/lib', '/usr/local/lib'], uselib_store='NODE')
 
+
 def build(bld):
+  bld.add_group('libs')
+  build_id3(bld)
+  build_libtorrent(bld)
+  
+  bld.add_group('libs_done')
+  install_libs(bld)
+  
+  bld.add_group('playbox')
+  build_playbox(bld)
+  #bld.add_post_fun(build_playbox)
+  
+def build_playbox(bld):
   playbox = bld.new_task_gen("cxx", "shlib", "node_addon", install_path=None, use="torrent")
   playbox.name = "playbox"
   playbox.target = "playbox"
+  #playbox.linkflags = ['libs/libtorrent.so']
+  playbox.linkflags = ['libs/libtorrent.so', 'libs/libid3.so']
+  #playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]
+  #playbox.cflags = ["-I../id3lib/include", "-I../libtorrent/include"]
   playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
-  playbox.uselib_local = 'torrent id3'
+  #playbox.uselib_local = ['torrent', 'id3']
   playbox.source = ["playbox.cc"]
-  playbox.includes = ['libtorrent/include', 'libtorrent/include/libtorrent', '/opt/local/include']
+  playbox.includes = ['id3lib/include', 'libtorrent/include', '/opt/local/include']
   #playbox.cflags = ['-Wall', '-Wextra']
   #playbox.cxxflags = ['-Wall', '-Wextra']
+
+def install_libs(bld):
+  if not exists('build/libs'):
+	makedirs('build/libs')
   
-  id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", vnum='1.0.0.1', defs="id3.def")
+  if exists('build/default/libtorrent.dylib') and not exists('build/libs/libtorrent.dylib'):
+    copy2('build/default/libtorrent.dylib', 'build/libs')
+  elif exists('build/default/libtorrent.so') and not exists('build/libs/libtorrent.so'):
+    copy2('build/default/libtorrent.so', 'build/libs')
+    
+  if exists('build/default/libid3.dylib') and not exists('build/libs/libid3.dylib'):
+    copy2('build/default/libid3.dylib', 'build/libs')
+  elif exists('build/default/libid3.so') and not exists('build/libs/libid3.so'):
+    copy2('build/default/libid3.so', 'build/libs')
+
+def build_id3(bld):
+  id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
   id3.name = "id3"
   id3.target = "id3"
+  id3.cxxflags = ["-I../id3lib/include"]
+  id3.cflags = ["-I../id3lib/include"]
   id3.includes = ['id3lib', 'id3lib/include', 'id3lib/include/id3', '/opt/local/include']
   id3.uselib = "ZLIB ICONV LIBC"
   id3.defines = ['HAVE_CONFIG_H']
   id3.source = bld.path.ant_glob('id3lib/src/*.cpp')
-  id3.linkflags = ["-flat_namespace", "-undefined", "suppress"]
-  
-  libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", vnum='1.0.0.1', defs="libtorrent.def")
+  id3.linkflags = ["-flat_namespace"]
+  if sys.platform.startswith("darwin"):
+	id3.linkflags += ["-undefined", "suppress"]
+
+def build_libtorrent(bld):
+  libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="libtorrent.def")
   libtorrent.name = "torrent"
   libtorrent.target = "torrent"
-  libtorrent.includes = ['libtorrent', 'libtorrent/include', 'libtorrent/include/libtorrent', '/opt/local/include']
+  libtorrent.cxxflags = ["-I../libtorrent/include"]
+  libtorrent.cflags = ["-I../libtorrent/include", "-fPIC"]
+  libtorrent.includes = ['libtorrent/include', '/opt/local/include']
   libtorrent.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_DATE_TIME BOOST_IOSTREAMS PTHREAD'
   libtorrent.libpath = ['/usr/lib', '/usr/local/lib', '/opt/local/lib']
   libtorrent.defines = ["NDEBUG", "TORRENT_USE_TOMMATH", "_FILE_OFFSET_BITS=64"]
@@ -181,8 +240,10 @@ def build(bld):
   ]
   libtorrent.source = bld.path.ant_glob('libtorrent/src/*.c')+' '+bld.path.ant_glob('libtorrent/src/*.cpp')+' '+bld.path.ant_glob('libtorrent/src/kademlia/*.cpp')+' '+bld.path.ant_glob('libtorrent/include/*')
   
+  bld.install_files('build/release/libs', 'build/default/libtorrent.so')
   #bld.install_files('${PREFIX}/include/libtorrent/', 'libtorrent/include/libtorrent/*.hpp')
   #bld.install_files('release/')
+  
 
 def shutdown():
   # HACK to get compress.node out of build directory.
@@ -193,5 +254,17 @@ def shutdown():
     if exists('build/default/playbox.node') and not exists('playbox.node'):
       symlink('build/default/playbox.node', 'playbox.node')
 
-    if exists('build/default/libtorrent.dylib') and not exists('libtorrent.dylib'):
-      symlink('build/default/libtorrent.dylib', 'libtorrent.dylib')
+    if not exists('build/release/libs'):
+	  makedirs('build/release/libs')
+	
+    #if not exists('build/release/node'):
+    copy2('node/build/default/node', 'build/release')
+    
+    #if not exists('build/release/playbox.node'):
+    copy2('build/default/playbox.node', 'build/release')
+    
+    #if not exists('build/release/libs/libtorrent.so'):
+    copy2('build/libs/libtorrent.so', 'build/release/libs')
+    
+    #if not exists('build/release/libs/libid3.so'):
+    copy2('build/libs/libid3.so', 'build/release/libs')

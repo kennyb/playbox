@@ -117,15 +117,9 @@ Handle<Value> Playbox::init(const Arguments &args) {
 	
 	uid_t uid = getuid();
 	struct passwd* user_passwd = getpwuid(uid);
-	char* dir;
 	struct stat status;
 	
 	if(user_passwd) {
-		
-		size_t homedir_len = strlen(user_passwd->pw_dir);
-		
-		library_path = user_passwd->pw_dir;
-		library_path += "/Library/playbox";
 		
 		//String::Utf8Value library_path(args[0]->ToString());
 		//::library_path.append(*library_path);
@@ -134,11 +128,15 @@ Handle<Value> Playbox::init(const Arguments &args) {
 		//	return VException("the library path cannot be absolute");
 		//}
 
-		::library_torrents_path = std::string(::library_path).append("/.torrents/");
-
+		library_path = user_passwd->pw_dir;
+		library_path += "/Library";
+		filesystem::create_directory(filesystem::path(::library_path));
+		
+		library_path += "/playbox";
 		filesystem::create_directory(filesystem::path(::library_path));
 		// now, chroot to the dir
-
+		
+		::library_torrents_path = std::string(::library_path).append("/.torrents/");
 		filesystem::path p(library_torrents_path);
 		if(filesystem::exists(p)) {
 			std::cout << "torrent dir exists " << library_torrents_path << " .. beginning scan..." << std::endl;

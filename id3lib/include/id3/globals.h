@@ -34,7 +34,11 @@
 #ifndef _ID3LIB_GLOBALS_H_
 #define _ID3LIB_GLOBALS_H_
 
-#include <stdlib.h>
+extern "C" {
+	#include <stdlib.h>
+	#include <string.h>
+}
+
 #include "id3/sized_types.h"
 
 /* id3lib version.
