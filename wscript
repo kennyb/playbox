@@ -3,8 +3,8 @@
 import Options
 import sys
 from os import unlink, symlink, popen, environ, makedirs
-from os.path import exists
-from shutil import copy2
+from os.path import exists, abspath
+from shutil import copy2, copytree
 
 srcdir = "."
 top = "release"
@@ -123,25 +123,26 @@ def build_playbox(bld):
 	playbox.cxxflags = ['-Wall', '-Wextra']
 
 def install_app(bld):
-	copy2(bld.path.ant_glob('app/*'), 'build/release')
+	#copytree('app', 'build/release')
 	#copy2('app/main.js', 'build/release')
+	pass
 
 def install_libs(bld):
 	if not exists('build/libs'):
 		makedirs('build/libs')
 	
 	if exists('build/default/playbox.node') and not exists('build/libs/playbox.node'):
-		copy2('build/default/playbox.node', 'build/libs')
+		symlink('build/default/playbox.node', 'build/libs')
 	
 	if exists('build/default/libtorrent.dylib') and not exists('build/libs/libtorrent.dylib'):
-		copy2('build/default/libtorrent.dylib', 'build/libs')
+		symlink('build/default/libtorrent.dylib', 'build/libs')
 	elif exists('build/default/libtorrent.so') and not exists('build/libs/libtorrent.so'):
-		copy2('build/default/libtorrent.so', 'build/libs')
+		symlink('build/default/libtorrent.so', 'build/libs')
 		
 	if exists('build/default/libid3.dylib') and not exists('build/libs/libid3.dylib'):
-		copy2('build/default/libid3.dylib', 'build/libs')
+		symlink('build/default/libid3.dylib', 'build/libs')
 	elif exists('build/default/libid3.so') and not exists('build/libs/libid3.so'):
-		copy2('build/default/libid3.so', 'build/libs')
+		symlink('build/default/libid3.so', 'build/libs')
 
 def build_id3(bld):
 	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
@@ -253,6 +254,7 @@ def build_libtorrent(bld):
 	
 
 def shutdown(ctx):
+	#todo: implement copytree to resolve all the symlinks
 	if Options.commands['clean']:
 		if exists('playbox.node'): unlink('playbox.node')
 	else:
@@ -261,14 +263,32 @@ def shutdown(ctx):
 
 		if not exists('build/release/libs'):
 			makedirs('build/release/libs')
-	
-		# libs
-		copy2('build/default/playbox.node', 'build/release/libs')
-		copy2('build/libs/libtorrent.so', 'build/release/libs')
-		copy2('build/libs/libid3.so', 'build/release/libs')
+		
+		# generic libs
+		print abspath('build/libs/libtorrent.so')
+		if exists('build/libs/libtorrent.so') and not exists('build/release/libs/libtorrent.so'):
+			symlink(abspath('build/libs/libtorrent.so'), 'build/release/libs/libtorrent.so')
+		elif exists('build/libs/libtorrent.dylib') and not exists('build/release/libs/libtorrent.dylib'):
+			symlink(abspath('build/libs/libtorrent.dylib'), 'build/release/libs/libtorrent.dylib')
+		
+		if exists('build/libs/libid3.so') and not exists('build/release/libs/libid3.so'):
+			symlink(abspath('build/libs/libid3.so'), 'build/release/libs/libid3.so')
+		elif exists('build/libs/libid3.dylib') and not exists('build/release/libs/libid3.dylib'):
+			symlink(abspath('build/libs/libid3.dylib'), 'build/release/libs/libid3.dylib')
+		
+		# node libs
+		if exists('build/default/playbox.node') and not exists('build/release/libs/playbox.node'):
+			symlink(abspath('build/default/playbox.node'), 'build/release/libs/playbox.node')
 		
 		# custom node
 		# todo: if this doesn't exist, then build node
-		copy2('node/build/default/node', 'build/release')
+		if exists('node/build/default/node') and not exists('build/release/node'):
+			symlink(abspath('node/build/default/node'), 'build/release/node')
 		
 		# app
+		if not exists('build/release/main.js'):
+			symlink(abspath('app/main.js'), 'build/release/main.js')
+		
+		# default apps
+		if not exists('build/release/apps'):
+			symlink(abspath('apps'), 'build/release/apps')
