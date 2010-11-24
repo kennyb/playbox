@@ -112,15 +112,20 @@ def build_playbox(bld):
 	playbox = bld.new_task_gen("cxx", "shlib", "node_addon", install_path=None, use="torrent")
 	playbox.name = "playbox"
 	playbox.target = "playbox"
-	playbox.linkflags = ['libs/libtorrent.so', 'libs/libid3.so']
-	#playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]
-	#playbox.cflags = ["-I../id3lib/include", "-I../libtorrent/include"]
-	playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
-	#playbox.uselib_local = ['torrent', 'id3']
+	if sys.platform.startswith("darwin"):
+	  playbox.linkflags = ['libs/libtorrent.dylib', 'libs/libid3.dylib']
+	if sys.platform.startswith("linux"):
+	  playbox.linkflags = ['libs/libtorrent.so', 'libs/libid3.so']
+  
 	playbox.source = ["playbox.cc"]
 	playbox.includes = ['id3lib/include', 'libtorrent/include', '/opt/local/include']
 	playbox.cflags = ['-Wall', '-Wextra']
 	playbox.cxxflags = ['-Wall', '-Wextra']
+	#playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
+  #playbox.uselib_local = ['torrent', 'id3']
+  #playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]
+	#playbox.cflags = ["-I../id3lib/include", "-I../libtorrent/include"]
+  
 
 def install_app(bld):
 	#copytree('app', 'build/release')
@@ -287,7 +292,7 @@ def shutdown(ctx):
 		
 		# app
 		if not exists('build/release/main.js'):
-			symlink(abspath('app/main.js'), 'build/release/main.js')
+		  symlink(abspath('app/main.js'), 'build/release/main.js')
 		
 		# default apps
 		if not exists('build/release/apps'):
