@@ -42,7 +42,7 @@ def configure(conf):
   conf.check_tool("compiler_cxx")
   conf.check_tool("node_addon")
   #conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0'])
-  conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
+  #conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
   conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections', '-fPIC'])
   conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections'])
   
@@ -111,7 +111,6 @@ def build_playbox(bld):
   playbox = bld.new_task_gen("cxx", "shlib", "node_addon", install_path=None, use="torrent")
   playbox.name = "playbox"
   playbox.target = "playbox"
-  #playbox.linkflags = ['libs/libtorrent.so']
   playbox.linkflags = ['libs/libtorrent.so', 'libs/libid3.so']
   #playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]
   #playbox.cflags = ["-I../id3lib/include", "-I../libtorrent/include"]
@@ -119,8 +118,8 @@ def build_playbox(bld):
   #playbox.uselib_local = ['torrent', 'id3']
   playbox.source = ["playbox.cc"]
   playbox.includes = ['id3lib/include', 'libtorrent/include', '/opt/local/include']
-  #playbox.cflags = ['-Wall', '-Wextra']
-  #playbox.cxxflags = ['-Wall', '-Wextra']
+  playbox.cflags = ['-Wall', '-Wextra']
+  playbox.cxxflags = ['-Wall', '-Wextra']
 
 def install_libs(bld):
   if not exists('build/libs'):
