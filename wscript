@@ -280,7 +280,7 @@ def shutdown(ctx):
 		
 		# node libs
 		if exists('build/default/playbox.node') and not exists('build/release/libs/playbox.node'):
-			symlink(abspath('build/default/playbox.node'), 'build/release/libs/playbox.node')
+			copy2('build/default/playbox.node', 'build/release/libs/playbox.node')
 		
 		# custom node
 		# todo: if this doesn't exist, then build node

@@ -21,6 +21,8 @@ var QueryString = require("querystring");
 //var mongo = require('./lib/mongodb');
 //var mongoose = require('./lib/mongoose');
 
+// global objects
+Playbox = require('./libs/playbox').Playbox;
 Url = require("url");
 QueryString = require("querystring");
 //cookie = require( "./lib/cookie");
@@ -104,7 +106,10 @@ Connection = exports.Connection = function(req, res) {
 			console.log("func", app_func);
 			console.log("args", app_args);
 			
-			// do the app router
+			var app = apps[app_name];
+			if(app !== undefined) {
+				app.http(this, app_func, app_args);
+			}
 		}
 		
 		
@@ -486,8 +491,8 @@ fs.readdir("apps", function(err, files) {
 	if(err) throw err;
 	
 	files.forEach(function(app) {
-		console.log(app);
-		//apps[app] = require("./apps/"+app+"/app.js");
+		console.log("loading:", app);
+		apps[app] = require("./apps/"+app+"/exports.js");
 	});
 });
 
