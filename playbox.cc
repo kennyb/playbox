@@ -55,7 +55,6 @@ static std::string xml_special_chars(std::string str);
 static libtorrent::session cur_session;
 static std::string library_path;
 static std::string library_torrents_path;
-static std::string text_xml;
 static std::map<std::string, libtorrent::entry> torrents_metadata;
 static std::list<std::string> torrent_queue;
 

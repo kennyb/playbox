@@ -1,6 +1,7 @@
 
 var playbox = new Playbox();
 playbox.init("Library");
+playbox.start();
 
 var update_loop;
 
@@ -18,7 +19,7 @@ exports.http = function(c, func, args) {
 	
 	switch(func) {
 		case '?':
-			output.ret = update_loop > 0;
+			output.ret = update_loop > 0 ? true : false;
 			break;
 		
 		case '-':
