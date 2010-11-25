@@ -279,7 +279,7 @@ def shutdown(ctx):
 			symlink(abspath('build/libs/libid3.dylib'), 'build/release/libs/libid3.dylib')
 		
 		# node libs
-		if exists('build/default/playbox.node') and not exists('build/release/libs/playbox.node'):
+		if exists('build/default/playbox.node'):
 			copy2('build/default/playbox.node', 'build/release/libs/playbox.node')
 		
 		# custom node

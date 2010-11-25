@@ -86,8 +86,11 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	// starts the server on the specified ports
 	NODE_SET_PROTOTYPE_METHOD(t, "start", start);
 	
-	// starts the server on the specified ports
+	// stops the server and pauses all downloads
 	NODE_SET_PROTOTYPE_METHOD(t, "stop", stop);
+	
+	// run an update pass
+	NODE_SET_PROTOTYPE_METHOD(t, "update", update);
 	
 	// starts the server on the specified ports
 	NODE_SET_PROTOTYPE_METHOD(t, "query", query);
@@ -381,7 +384,7 @@ static std::string xml_special_chars(std::string str) {
 
 // make a function called "load_torrent" which looks in the .torrents/ dir
 // if it is not in the cache, grab it from the fs, else look on DHT
-void Playbox::do_update() {
+Handle<Value> Playbox::update(const Arguments &args) {
 	// parse the torrents directory
 	filesystem::path p(library_torrents_path);
 	filesystem::directory_iterator end_itr;
@@ -415,7 +418,7 @@ void Playbox::do_update() {
 	
 	std::cout << "total: " << tt << " " << cur_session.is_dht_running() << std::endl;
 	
-	if(!tt) {
+	if(tt < 11) {
 		if(torrent_queue.size()) {
 			Playbox::make_torrent(torrent_queue.front());
 			torrent_queue.pop_front();
@@ -624,7 +627,7 @@ void Playbox::make_torrent(const std::string path) {
 		
 		//======
 		// add a symlink in the library to the real file
-		std::string file_path("Library/" + hash);
+		std::string file_path(library_path + hash);
 		//unlink(file_path.c_str());
 		if(!filesystem::exists(file_path)) {
 			if(symlink(path.c_str(), file_path.c_str()) != 0) {

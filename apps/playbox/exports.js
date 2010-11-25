@@ -2,6 +2,11 @@
 var playbox = new Playbox();
 playbox.init("Library");
 
+var update_loop;
+
+update_loop = setInterval(function() {
+	playbox.update();
+}, 2000);
 
 exports.http = function(c, func, args) {
 	var output = {
@@ -12,15 +17,28 @@ exports.http = function(c, func, args) {
 	};
 	
 	switch(func) {
+		case '?':
+			output.ret = update_loop > 0;
+			break;
+		
 		case '-':
-			output.ret = playbox.start();
+			if(update_loop === null) {
+				output.ret = playbox.start();
+				update_loop = setInterval(function() {
+					playbox.update();
+				}, 33);
+			} else {
+				update.ret = false;
+			}
+			
 			break;
 			
 		case 'o':
+			clearInterval(update_loop);
 			output.ret = playbox.stop();
 			break;
 			
-		case 'l':
+		case 'q':
 			output.ret = playbox.query();
 			break;
 			
