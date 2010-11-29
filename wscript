@@ -52,34 +52,34 @@ def configure(conf):
 		conf.env.append_value('LINKFLAGS', ['-Wl,--gc-section'])
 	
 	conf.check(lib="iconv",
-										 includes=['/opt/local/include', '/usr/include', '/usr/local/include'],
-										 libpath=['/opt/local/lib', '/usr/lib', '/usr/local/lib'],
-										 header_name='iconv.h',
-										 uselib_store="ICONV")
+						includes=['/opt/local/include', '/usr/include', '/usr/local/include'],
+						libpath=['/opt/local/lib', '/usr/lib', '/usr/local/lib'],
+						header_name='iconv.h',
+						uselib_store="ICONV")
 	conf.check(lib="z",
-										 includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
-										 libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
-										 uselib_store="ZLIB")
+						includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+						libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+						uselib_store="ZLIB")
 	conf.check(lib="boost_system-mt",
-											 includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
-											 libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
-											 uselib_store="BOOST_SYSTEM")
+						includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+						libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+						uselib_store="BOOST_SYSTEM")
 	conf.check(lib="boost_iostreams-mt",
-											includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
-											libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
-											uselib_store="BOOST_IOSTREAMS")
+						includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+						libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+						uselib_store="BOOST_IOSTREAMS")
 	conf.check(lib="boost_date_time-mt",
-										 includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
-										 libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
-										 uselib_store="BOOST_DATE_TIME")
+						includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+						libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+						uselib_store="BOOST_DATE_TIME")
 	conf.check(lib="boost_thread-mt",
-										 includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
-										 libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
-										 uselib_store="BOOST_THREAD")
+						includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+						libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+						uselib_store="BOOST_THREAD")
 	conf.check(lib="boost_filesystem-mt",
-										 includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
-										 libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
-										 uselib_store="BOOST_FILESYSTEM")
+						includes=['/usr/include', '/usr/local/include', '/opt/local/include'],
+						libpath=['/usr/lib', '/usr/local/lib', '/opt/local/lib'],
+						uselib_store="BOOST_FILESYSTEM")
 	
 	conf.define("HAVE_CONFIG_H", 1)
 
@@ -102,11 +102,9 @@ def build(bld):
 	
 	bld.add_group('libs_built')
 	install_libs(bld)
-	install_app(bld)
 	
 	bld.add_group('playbox')
 	build_playbox(bld)
-	#bld.add_post_fun(build_playbox)
 	
 def build_playbox(bld):
 	playbox = bld.new_task_gen("cxx", "shlib", "node_addon", install_path=None, use="torrent")
@@ -122,32 +120,27 @@ def build_playbox(bld):
 	playbox.cflags = ['-Wall', '-Wextra']
 	playbox.cxxflags = ['-Wall', '-Wextra']
 	#playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
-  #playbox.uselib_local = ['torrent', 'id3']
-  #playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]
+	#playbox.uselib_local = ['torrent', 'id3']
+	#playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]
 	#playbox.cflags = ["-I../id3lib/include", "-I../libtorrent/include"]
   
-
-def install_app(bld):
-	#copytree('app', 'build/release')
-	#copy2('app/main.js', 'build/release')
-	pass
 
 def install_libs(bld):
 	if not exists('build/libs'):
 		makedirs('build/libs')
 	
-	if exists('build/default/playbox.node') and not exists('build/libs/playbox.node'):
-		symlink('build/default/playbox.node', 'build/libs')
+	if exists('build/default/playbox.node') and not lexists('build/libs/playbox.node'):
+		symlink(abspath('build/default/playbox.node'), 'build/libs/playbox.node')
 	
-	if exists('build/default/libtorrent.dylib') and not exists('build/libs/libtorrent.dylib'):
-		symlink('build/default/libtorrent.dylib', 'build/libs')
-	elif exists('build/default/libtorrent.so') and not exists('build/libs/libtorrent.so'):
-		symlink('build/default/libtorrent.so', 'build/libs')
+	if exists('build/default/libtorrent.dylib') and not lexists('build/libs/libtorrent.dylib'):
+		symlink(abspath('build/default/libtorrent.dylib'), 'build/libs/libtorrent.dylib')
+	elif exists('build/default/libtorrent.so') and not lexists('build/libs/libtorrent.so'):
+		symlink(abspath('build/default/libtorrent.so'), 'build/libs/libtorrent.so')
 		
-	if exists('build/default/libid3.dylib') and not exists('build/libs/libid3.dylib'):
-		symlink('build/default/libid3.dylib', 'build/libs')
-	elif exists('build/default/libid3.so') and not exists('build/libs/libid3.so'):
-		symlink('build/default/libid3.so', 'build/libs')
+	if exists('build/default/libid3.dylib') and not lexists('build/libs/libid3.dylib'):
+		symlink(abspath('build/default/libid3.dylib'), 'build/libs/libid3.dylib')
+	elif exists('build/default/libid3.so') and not lexists('build/libs/libid3.so'):
+		symlink(abspath('build/default/libid3.so'), 'build/libs/libid3.so')
 
 def build_id3(bld):
 	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
@@ -263,27 +256,23 @@ def shutdown(ctx):
 	if Options.commands['clean']:
 		if exists('playbox.node'): unlink('playbox.node')
 	else:
-		if exists('build/default/playbox.node') and not exists('playbox.node'):
-			symlink('build/default/playbox.node', 'playbox.node')
-
 		if not exists('build/release/libs'):
 			makedirs('build/release/libs')
 		
 		# generic libs
-		print abspath('build/libs/libtorrent.so')
-		if exists('build/libs/libtorrent.so') and not exists('build/release/libs/libtorrent.so'):
+		if exists('build/libs/libtorrent.so') and not lexists('build/release/libs/libtorrent.so'):
 			symlink(abspath('build/libs/libtorrent.so'), 'build/release/libs/libtorrent.so')
-		elif exists('build/libs/libtorrent.dylib') and not exists('build/release/libs/libtorrent.dylib'):
+		elif exists('build/libs/libtorrent.dylib') and not lexists('build/release/libs/libtorrent.dylib'):
 			symlink(abspath('build/libs/libtorrent.dylib'), 'build/release/libs/libtorrent.dylib')
 		
-		if exists('build/libs/libid3.so') and not exists('build/release/libs/libid3.so'):
+		if exists('build/libs/libid3.so') and not lexists('build/release/libs/libid3.so'):
 			symlink(abspath('build/libs/libid3.so'), 'build/release/libs/libid3.so')
-		elif exists('build/libs/libid3.dylib') and not exists('build/release/libs/libid3.dylib'):
+		elif exists('build/libs/libid3.dylib') and not lexists('build/release/libs/libid3.dylib'):
 			symlink(abspath('build/libs/libid3.dylib'), 'build/release/libs/libid3.dylib')
 		
 		# node libs
-		if exists('build/default/playbox.node') and not exists('build/release/libs/playbox.node'):
-			symlink(abspath('build/default/playbox.node'), 'build/release/libs/playbox.node')
+		if exists('build/default/playbox.node'):
+			copy2('build/default/playbox.node', 'build/release/libs/playbox.node')
 		
 		# custom node
 		# todo: if this doesn't exist, then build node
