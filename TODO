@@ -3,22 +3,23 @@ implement the playbox js interface
 ----------------------------------
 implement the object with the following: (depends on the above)
  Object(Playbox)
-  -> ( ) Event(archiveUnknown)
-  -> ( ) Event(archiveMetadata)
-  -> ( ) Event(archiveDownloading)
-  -> ( ) Event(archiveProgress)
-  -> ( ) Event(archiveComplete)
-  -> ( ) Event(archiveRemoved)
+  -> ( ) Event(archiveUnknown) - fired after archive() or info() call when the metadata can't be found on the dht
+  -> ( ) Event(archiveMetadata) - fired after archive() or info() when the metadata is available
+  -> ( ) Event(archiveDownloading) - fired when an archive changes state to downloading
+  -> ( ) Event(archiveProgress) - fired periodically as an archive is downloading
+  -> ( ) Event(archiveComplete) - fired when an archive is completely downloaded
+  -> ( ) Event(archiveRemoved) - fired when an archive is removed from the library
   -> (*) Function(init)
   -> (*) Function(start)
   -> (*) Function(stop)
   -> (+) Function(query) - returns a list of the archives matching the query parameters
   -> (-) Function(archive) - returns an Object with the resulting archive status and a pipe to the archive if it exists
   -> (+) Function(info) - getter/setter which returns an object with the resulting archive status and metadata
+  -> ( ) Function(rescan) - force a directory rescan
+  -> ( ) Object(status) - returns the playbox status
   -> ( ) String(library_path) - getter/setter for the library path
   -> ( ) Array(dirs) - getter/setter for the array of source directories
   -> ( ) Number(scan_speed) - MB/s at which to scan the directories
-  -> ( ) Function(rescan) - force a directory rescan
 
 implement a basic application framework
 ---------------------------------------
@@ -67,3 +68,12 @@ implement a basic client admin interface
 implement the following functions:
 ...
 write a clientside js application
+
+
+STUPID SHIT
+-----------
+fix the stupid submodule bug on my mac for node (and move the submodules to a folder called deps)
+fix the deprecated libtorrent stuff (remove deprecated)
+make a custom libtorrent library with only the necessary functions
+compile the app code into node (removing all of the unused node code) and provide the application with its own context (so node functions can't be accessed)
+when autoupdating becomes reality, split up the major node libraries (build with v8, c-ares, and libev)

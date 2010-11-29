@@ -3,7 +3,7 @@
 import Options
 import sys
 from os import unlink, symlink, popen, environ, makedirs
-from os.path import exists, abspath
+from os.path import exists, lexists, abspath
 from shutil import copy2, copytree
 
 srcdir = "."
@@ -291,7 +291,7 @@ def shutdown(ctx):
 			symlink(abspath('node/build/default/node'), 'build/release/node')
 		
 		# app
-		if not exists('build/release/main.js'):
+		if not lexists('build/release/main.js'):
 		  symlink(abspath('app/main.js'), 'build/release/main.js')
 		
 		# default apps
