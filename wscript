@@ -111,7 +111,7 @@ def build_playbox(bld):
 	playbox.name = "playbox"
 	playbox.target = "playbox"
 	if sys.platform.startswith("darwin"):
-	  playbox.linkflags = ['libs/libtorrent.dylib', 'libs/libid3.dylib']
+	  playbox.linkflags = ['libs/libtorrent.dylib'] #, 'libs/libid3.dylib'
 	if sys.platform.startswith("linux"):
 	  playbox.linkflags = ['libs/libtorrent.so', 'libs/libid3.so']
   

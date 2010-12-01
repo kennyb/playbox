@@ -3,11 +3,9 @@ var playbox = new Playbox();
 playbox.init("Library");
 playbox.start();
 
-var update_loop;
-
-update_loop = setInterval(function() {
+var do_update = function() {
 	playbox.update();
-}, 2000);
+}
 
 exports.http = function(c, func, args) {
 	var output = {
@@ -25,9 +23,7 @@ exports.http = function(c, func, args) {
 		case '-':
 			if(update_loop === null) {
 				output.ret = playbox.start();
-				update_loop = setInterval(function() {
-					playbox.update();
-				}, 33);
+				update_loop = setInterval(do_update, 33);
 			} else {
 				update.ret = false;
 			}
@@ -60,3 +56,6 @@ exports.http = function(c, func, args) {
 	c.print(JSON.stringify(output));
 	c.end(output.status);
 };
+
+// debug shit
+var update_loop = setInterval(do_update, 2000);

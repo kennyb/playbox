@@ -284,8 +284,11 @@ Connection.prototype.end = function(ret_code) {
 	
 	this._res.writeHead(this._ret || 200, this._headers);
 	
-	this._res.shouldKeepAlive = false;
-	this._res.write(output_str);
+	//this._res.shouldKeepAlive = false;
+	if(output_str && output_str.length) {
+		this._res.write(output_str);
+	}
+	
 	this._res.end();
 }
 
@@ -565,7 +568,6 @@ p.start();
 var server = http.createServer(function (req, res) {
 
 	// the options are usually optional, accept for 'set'
-	console.log(p.settings()); // should return the settings array
 	console.log(p.library()); // should print all of the songs
 	console.log(p.info("1234")); // should throw an exception saying the number of arguments is bad
 	console.log(p.info("...")); // should return the file information

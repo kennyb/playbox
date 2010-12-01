@@ -12,10 +12,10 @@
 #include <iostream>
 #include <limits>
 
-#include <id3/tag.h>
-#include <id3/utils.h>
-#include <id3/misc_support.h>
-#include <id3/readers.h>
+//#include <id3/tag.h>
+//#include <id3/utils.h>
+//#include <id3/misc_support.h>
+//#include <id3/readers.h>
 
 #include <libtorrent/entry.hpp>
 #include <libtorrent/bencode.hpp>
@@ -72,12 +72,9 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	Local<FunctionTemplate> t = FunctionTemplate::New(New);
 	t->Inherit(EventEmitter::constructor_template);
 	t->InstanceTemplate()->SetInternalFieldCount(1);
-	
+	t->SetClassName(String::NewSymbol("Playbox"));
 	//constructor_template = Persistent<FunctionTemplate>::New(t);
 	//constructor_template->InstanceTemplate()->SetInternalFieldCount(1);
-	t->SetClassName(String::NewSymbol("Playbox"));	
-	
-	// everything returns json objects or data
 	
 	// right now, only accepts the library path
 	NODE_SET_PROTOTYPE_METHOD(t, "init", init);
@@ -429,6 +426,8 @@ Handle<Value> Playbox::update(const Arguments &args) {
 	while((alert = cur_session.pop_alert()).get() != NULL) {
 		std::cout << "alert: " << (*alert).message() << std::endl;
 	}
+	
+	return Undefined();
 }
 
 
@@ -605,11 +604,13 @@ void Playbox::make_torrent(const std::string path) {
 		// add the real file path to the torrent (to know that it's not in the library)
 		metadata["media_path"] = entry(path);
 		
+		/*
 		//======
 		// add all the id3 info to the torrent
 		ID3_Tag id3_tag;
 		id3_tag.Link(path.c_str());
 		save_id3_info(id3_tag, &metadata);
+		*/
 		
 		// output the metadata to a buffer
 		std::vector<char> buffer;
@@ -661,6 +662,7 @@ void Playbox::make_torrent(const std::string path) {
 }
 
 
+/*
 int Playbox::save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata) {
 	ID3_Tag::ConstIterator* iter = tag.CreateIterator();
 	const ID3_Frame* frame = NULL;
@@ -715,6 +717,7 @@ int Playbox::save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata) {
 	delete iter;
 	return 0;
 }
+*/
 
 /*
 Handle<Value> BSON::BSONSerialize(const Arguments &args) {
