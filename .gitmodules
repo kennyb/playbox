@@ -7,3 +7,6 @@
 [submodule "deps/node-static"]
 	path = deps/node-static
 	url = https://github.com/cloudhead/node-static.git
+[submodule "apps/playbox/node-static"]
+	path = apps/playbox/node-static
+	url = https://github.com/cloudhead/node-static.git

@@ -49,6 +49,7 @@ using namespace boost;
 
 // static function declarations
 static Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata);
+static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info);
 static std::string xml_special_chars(std::string str);
 
 // static vars
@@ -97,7 +98,13 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	// returns json info for the song (status, length, title, etc)
 	NODE_SET_PROTOTYPE_METHOD(t, "info", info);
 	
+	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("library_path"), __library_path);
+	
 	target->Set(String::NewSymbol("Playbox"), t->GetFunction());
+}
+
+static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info) {
+	return String::New(library_path.c_str());
 }
 
 // Create a new instance of BSON and assing it the existing context
@@ -204,8 +211,8 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		cur_session.start_upnp();
 		cur_session.start_natpmp();
 		cur_session.start_lsd();
-		//cur_session.add_extension(&create_metadata_plugin);
-		//cur_session.add_extension(&create_ut_metadata_plugin);
+		cur_session.add_extension(&libtorrent::create_metadata_plugin);
+		cur_session.add_extension(&libtorrent::create_ut_metadata_plugin);
 		cur_session.set_alert_mask(libtorrent::alert::all_categories);
 	
 #ifndef BOOST_NO_EXCEPTIONS
@@ -279,6 +286,7 @@ static Local<Value> song_info(const std::string hash, const libtorrent::entry& m
 	Local<Object> result = Object::New();
 	result->Set(String::New("id"), String::New(hash.c_str()));
 	
+	std::cout << "hash: " << hash << std::endl;
 	libtorrent::torrent_handle h_torrent = cur_session.find_torrent(lexical_cast<libtorrent::sha1_hash>(hash));
 	if(h_torrent.is_valid()) {
 		status = "valid";
@@ -314,6 +322,7 @@ static Local<Value> song_info(const std::string hash, const libtorrent::entry& m
 	// MISSING - file is missing entirely
 	result->Set(String::New("status"), String::New(status.c_str()));
 	
+	/*
 	value = metadata.find_key("media_time");
 	if(value) {
 		result->Set(String::New("time"), String::New(value->string().c_str()));
@@ -346,6 +355,8 @@ static Local<Value> song_info(const std::string hash, const libtorrent::entry& m
 	}
 	
 	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : "unknown").c_str()));
+	*/
+	result->Set(String::New("name"), String::New(xml_special_chars(hash).c_str()));
 	
 	return result;
 }
@@ -627,7 +638,7 @@ void Playbox::make_torrent(const std::string path) {
 		
 		//======
 		// add a symlink in the library to the real file
-		std::string file_path(library_path + hash);
+		std::string file_path(library_path + '/' + hash);
 		//unlink(file_path.c_str());
 		if(!filesystem::exists(file_path)) {
 			if(symlink(path.c_str(), file_path.c_str()) != 0) {

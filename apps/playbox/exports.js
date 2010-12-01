@@ -1,10 +1,44 @@
 
+var sys = require("sys"),
+	fs = require('fs'),
+	path = require('path'),
+	buffer = require('buffer'),
+	static = require('./node-static/lib/node-static');
 var playbox = new Playbox();
+var update_loop = null;
+var file;
+
 playbox.init("Library");
-playbox.start();
+start();
+
 
 var do_update = function() {
 	playbox.update();
+};
+
+function start() {
+	if(update_loop === null) {
+		var ret = playbox.start();
+		file = new(static.Server)(playbox.library_path);
+		
+		update_loop = setInterval(function(playbox) {
+			return function() {
+				playbox.update();
+			};
+		}(playbox), 2000);
+		
+		return ret;
+	} else {
+		return false;
+	}
+}
+
+function stop() {
+	if(update_loop !== null) {
+		clearInterval(update_loop);
+		update_loop = null;
+		output.ret = playbox.stop();
+	}
 }
 
 exports.http = function(c, func, args) {
@@ -31,8 +65,7 @@ exports.http = function(c, func, args) {
 			break;
 			
 		case 'o':
-			clearInterval(update_loop);
-			output.ret = playbox.stop();
+			
 			break;
 			
 		case 'q':
@@ -40,9 +73,15 @@ exports.http = function(c, func, args) {
 			break;
 			
 		case 'g':
-			output.ret = false;
-			output.status = 404;
-			break;
+			//output.ret = true;
+			//output.status = 404;
+			console.log("g", c._req.url, '/'+args);
+			//c._req.url = '/'+args;
+			//file.serveFile(c._req, c._res, function(result) {
+			//	console.log(sys.inspect(result));
+			//});
+			c.file("audio/mp3", playbox.library_path+"/"+args);
+			return;
 			
 		case 'i':
 			output.ret = playbox.info(args);

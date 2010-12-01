@@ -117,8 +117,8 @@ def build_playbox(bld):
   
 	playbox.source = ["playbox.cc"]
 	playbox.includes = ['id3lib/include', 'libtorrent/include', '/opt/local/include']
-	playbox.cflags = ['-Wall', '-Wextra']
-	playbox.cxxflags = ['-Wall', '-Wextra']
+	playbox.cflags = ['-Wall']
+	playbox.cxxflags = ['-Wall']
 	#playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
 	#playbox.uselib_local = ['torrent', 'id3']
 	#playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]

@@ -9,11 +9,12 @@
 
 global.start_time = new Date();
 
-var http = require("http");
-var sys = require("sys");
-var Url = require("url");
-var fs = require("fs");
-var QueryString = require("querystring");
+var http = require("http"),
+	sys = require("sys"),
+	Url = require("url"),
+	fs = require("fs"),
+	buffer = require("buffer"),
+	QueryString = require("querystring");
 
 //var jsp = require("./lib/UglifyJS/lib/parse-js");
 //var pro = require("./lib/UglifyJS/lib/process");
@@ -109,6 +110,7 @@ Connection = exports.Connection = function(req, res) {
 			var app = apps[app_name];
 			if(app !== undefined) {
 				app.http(this, app_func, app_args);
+				return this;
 			}
 		}
 		
@@ -240,7 +242,6 @@ Connection.prototype.onDataEnd = function() {
 		this._funcs = JSON.parse(this._input_string);
 	} else {
 		this._funcs = {};
-		//this._funcs_done = true;
 	}
 	
 	this.start();
@@ -253,7 +254,9 @@ Connection.prototype.start = function() {
 		this._output_string = func(this, this._url.pathname);
 	}
 	
-	this.end();
+	if(this._output_string !== false) {
+		this.end();
+	}
 }
 
 
@@ -262,7 +265,7 @@ Connection.prototype.print = function(str) {
 };
 
 Connection.prototype.end = function(ret_code) {
-	
+	throw new Error("ending");
 	var output_str = this._output_string || "";
 	
 	// TODO update the expire time in both the session and the cookie 
@@ -290,6 +293,46 @@ Connection.prototype.end = function(ret_code) {
 	}
 	
 	this._res.end();
+}
+
+Connection.prototype.file = function(mime, file_path) {
+	this._output_string = false;
+	fs.stat(file_path, function(c) { return function (e, stat) {
+		var res = c._res;
+		
+		if(e) {
+			res.writeHead(404, this._headers);
+			res.write("404!");
+			res.end(404);
+		} else if(stat.isFile()) {      // Stream a single file.
+			c._headers['Content-Length'] = stat.size;
+			c._headers['Content-Type'] = mime;
+			res.writeHead(200, c._headers);
+			
+			(function streamFile(buffer, offset) {
+				fs.createReadStream(file_path, {
+					flags: 'r',
+					encoding: 'binary',
+					mode: 0666,
+					bufferSize: 4096
+				}).addListener('data', function (chunk) {
+					buffer.write(chunk, offset, 'binary');
+					c._res.write   (chunk, 'binary');
+					offset    += chunk.length;
+				}).addListener('close', function () {
+					res.end();
+				}).addListener('error', function (err) {
+					c.end(500);
+					//sys.error(err);
+				});
+			})(new(buffer.Buffer)(stat.size), 0);
+			
+		} else {
+			res.writeHead(404, this._headers);
+			res.write("404!");
+			res.end(404);
+		}
+	}}(this));
 }
 
 
