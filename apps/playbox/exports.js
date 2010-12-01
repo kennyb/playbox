@@ -2,8 +2,7 @@
 var sys = require("sys"),
 	fs = require('fs'),
 	path = require('path'),
-	buffer = require('buffer'),
-	static = require('./node-static/lib/node-static');
+	buffer = require('buffer');
 var playbox = new Playbox();
 var update_loop = null;
 var file;
@@ -19,7 +18,6 @@ var do_update = function() {
 function start() {
 	if(update_loop === null) {
 		var ret = playbox.start();
-		file = new(static.Server)(playbox.library_path);
 		
 		update_loop = setInterval(function(playbox) {
 			return function() {
@@ -73,13 +71,6 @@ exports.http = function(c, func, args) {
 			break;
 			
 		case 'g':
-			//output.ret = true;
-			//output.status = 404;
-			console.log("g", c._req.url, '/'+args);
-			//c._req.url = '/'+args;
-			//file.serveFile(c._req, c._res, function(result) {
-			//	console.log(sys.inspect(result));
-			//});
 			c.file("audio/mp3", playbox.library_path+"/"+args);
 			return;
 			
