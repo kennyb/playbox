@@ -7,7 +7,6 @@ var playbox = new Playbox();
 var update_loop = null;
 var file;
 
-playbox.init("Library");
 start();
 
 

@@ -78,9 +78,6 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	//constructor_template = Persistent<FunctionTemplate>::New(t);
 	//constructor_template->InstanceTemplate()->SetInternalFieldCount(1);
 	
-	// right now, only accepts the library path
-	NODE_SET_PROTOTYPE_METHOD(t, "init", init);
-	
 	// starts the server on the specified ports
 	NODE_SET_PROTOTYPE_METHOD(t, "start", start);
 	
@@ -103,43 +100,14 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrent_path"), __torrent_path);
 	
 	target->Set(String::NewSymbol("Playbox"), t->GetFunction());
-}
-
-static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info) {
-	return String::New(library_path.c_str());
-}
-
-static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info) {
-	return String::New(torrent_path.c_str());
-}
-
-// Create a new instance of BSON and assing it the existing context
-Handle<Value> Playbox::New(const Arguments &args) {
-	HandleScope scope;
 	
-	Playbox *playbox = new Playbox();
-	playbox->Wrap(args.This());
-	return args.This();
-}
-
-Handle<Value> Playbox::init(const Arguments &args) {
-	if(args.Length() != 1 || !args[0]->IsString()) {
-		return VException("arg should be a string of the library path");
-	}
+	// ----------------
 	
 	uid_t uid = getuid();
 	struct passwd* user_passwd = getpwuid(uid);
 	struct stat status;
 	
 	if(user_passwd) {
-		
-		//String::Utf8Value library_path(args[0]->ToString());
-		//::library_path.append(*library_path);
-
-		//if(library_path.length() <= 1 || library_path[0] == '/') {
-		//	return VException("the library path cannot be absolute");
-		//}
-
 		library_path = user_passwd->pw_dir;
 		library_path += "/Library";
 		filesystem::create_directory(filesystem::path(::library_path));
@@ -181,13 +149,26 @@ Handle<Value> Playbox::init(const Arguments &args) {
 		
 		
 	} else {
-		return VException("playbox could not find the user's home directory! HUGE FAIL");
+		// todo: move most of this into the constructor, and separate the static functions from the methods
+		//return VException("playbox could not find the user's home directory! HUGE FAIL");
 	}
+}
+
+static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info) {
+	return String::New(library_path.c_str());
+}
+
+static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info) {
+	return String::New(torrent_path.c_str());
+}
+
+// Create a new instance of BSON and assing it the existing context
+Handle<Value> Playbox::New(const Arguments &args) {
+	HandleScope scope;
 	
-	
-	
-	//TODO: return number of songs in library
-	return Undefined();
+	Playbox *playbox = new Playbox();
+	playbox->Wrap(args.This());
+	return args.This();
 }
 
 Handle<Value> Playbox::start(const Arguments &args) {
