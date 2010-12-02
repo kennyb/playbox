@@ -161,11 +161,18 @@ def build_libtorrent(bld):
 	libtorrent.name = "torrent"
 	libtorrent.target = "torrent"
 	libtorrent.cxxflags = ["-I../libtorrent/include"]
-	libtorrent.cflags = ["-I../libtorrent/include", "-fPIC"]
+	libtorrent.cflags = ["-I../libtorrent/include", "-fPIC", "-fvisibility=hidden"]
 	libtorrent.includes = ['libtorrent/include', '/opt/local/include']
 	libtorrent.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_DATE_TIME BOOST_IOSTREAMS PTHREAD'
 	libtorrent.libpath = ['/usr/lib', '/usr/local/lib', '/opt/local/lib']
-	libtorrent.defines = ["NDEBUG", "TORRENT_USE_TOMMATH", "_FILE_OFFSET_BITS=64"]
+	libtorrent.defines = [
+		"NDEBUG",
+		"TORRENT_USE_TOMMATH",
+		"TORRENT_NO_DEPRECATE",
+		"TORRENT_NO_ASSERTS=1",
+		"_FILE_OFFSET_BITS=64",
+		"BOOST_ASIO_ENABLE_CANCELIO"
+	]
 	libtorrent.source = [
 		"libtorrent/src/GeoIP.c",
 		"libtorrent/src/mpi.c",
