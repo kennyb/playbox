@@ -50,12 +50,13 @@ using namespace boost;
 // static function declarations
 static Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata);
 static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info);
+static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info);
 static std::string xml_special_chars(std::string str);
 
 // static vars
 static libtorrent::session cur_session;
 static std::string library_path;
-static std::string library_torrents_path;
+static std::string torrent_path;
 //static std::map<std::string, libtorrent::lazy_entry> torrents_metadata;
 static std::list<std::string> torrent_queue;
 
@@ -99,12 +100,17 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	NODE_SET_PROTOTYPE_METHOD(t, "info", info);
 	
 	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("library_path"), __library_path);
+	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrent_path"), __torrent_path);
 	
 	target->Set(String::NewSymbol("Playbox"), t->GetFunction());
 }
 
 static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info) {
 	return String::New(library_path.c_str());
+}
+
+static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info) {
+	return String::New(torrent_path.c_str());
 }
 
 // Create a new instance of BSON and assing it the existing context
@@ -142,10 +148,10 @@ Handle<Value> Playbox::init(const Arguments &args) {
 		filesystem::create_directory(filesystem::path(::library_path));
 		// now, chroot to the dir
 		
-		::library_torrents_path = std::string(::library_path).append("/.torrents/");
-		filesystem::path p(library_torrents_path);
+		::torrent_path = std::string(::library_path).append("/.torrents/");
+		filesystem::path p(torrent_path);
 		if(filesystem::exists(p)) {
-			std::cout << "torrent dir exists " << library_torrents_path << " .. beginning scan..." << std::endl;
+			std::cout << "torrent dir exists " << torrent_path << " .. beginning scan..." << std::endl;
 			filesystem::directory_iterator end_itr;
 			for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
 				std::string filename = itr->filename();
@@ -275,7 +281,7 @@ Handle<Value> Playbox::settings(const Arguments &args) {
 	
 	Local<Object> result = Object::New();
 	result->Set(String::New("library_path"), String::New(library_path.c_str()));
-	result->Set(String::New("library_torrents_path"), String::New(library_torrents_path.c_str()));
+	result->Set(String::New("torrent_path"), String::New(torrent_path.c_str()));
 	
 	return scope.Close(result);
 }
@@ -396,14 +402,14 @@ static std::string xml_special_chars(std::string str) {
 // if it is not in the cache, grab it from the fs, else look on DHT
 Handle<Value> Playbox::update(const Arguments &args) {
 	// parse the torrents directory
-	filesystem::path p(library_torrents_path);
+	filesystem::path p(torrent_path);
 	filesystem::directory_iterator end_itr;
 	int t = 0;
 	for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
 		t++;
 	}
 	
-	std::cout << library_torrents_path << ": # torrents: " << t << std::endl;
+	std::cout << torrent_path << ": # torrents: " << t << std::endl;
 	for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
 		std::string filename = itr->filename();
 		size_t len = filename.size();
@@ -651,7 +657,7 @@ void Playbox::make_torrent(const std::string path) {
 		
 		//======
 		// generate the filename based on the info hash
-		std::string torrent_file(library_torrents_path);
+		std::string torrent_file(torrent_path);
 		std::string hash(lexical_cast<std::string>(ti.info_hash()));
 		torrent_file.append(hash);
 		torrent_file.append(".torrent");
