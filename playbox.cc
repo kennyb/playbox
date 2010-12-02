@@ -494,15 +494,22 @@ void Playbox::load_media(const std::string torrent_path) {
 			
 			//======
 			// check to see if the media_path exists
-			libtorrent::entry const* save_path = metadata.find_key("media_path");
+			libtorrent::entry const* media_path_entry = metadata.find_key("media_path");
 			bool use_local_file = false;
-			if(save_path) {
-				const std::string save_path_cstr(save_path->string());
-				if(filesystem::exists(save_path_cstr)
+			if(media_path_entry) {
+				const std::string media_path(media_path_entry->string());
+				if(filesystem::exists(media_path)
 					/*&& is a valid media file */) {
-					filesystem::path save_path(save_path_cstr);
-					params.save_path = filesystem::path(save_path.branch_path().string() + "/").string();
+					filesystem::path media_path_path(media_path);
+					std::string library_sym(media_path + "/" + hash);
+					params.save_path = filesystem::path(media_path_path.branch_path().string() + "/").string();
 					use_local_file = true;
+					if(!filesystem::exists(library_sym)) {
+						if(symlink(media_path.c_str(), library_sym.c_str()) != 0) {
+							//perror("symlink(MediaPath)");
+							//return;
+						}
+					}
 				}
 			}
 			

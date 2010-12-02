@@ -265,7 +265,6 @@ Connection.prototype.print = function(str) {
 };
 
 Connection.prototype.end = function(ret_code) {
-	throw new Error("ending");
 	var output_str = this._output_string || "";
 	
 	// TODO update the expire time in both the session and the cookie 
@@ -303,7 +302,7 @@ Connection.prototype.file = function(mime, file_path) {
 		if(e) {
 			res.writeHead(404, this._headers);
 			res.write("404!");
-			res.end(404);
+			res.end();
 		} else if(stat.isFile()) {      // Stream a single file.
 			c._headers['Content-Length'] = stat.size;
 			c._headers['Content-Type'] = mime;
