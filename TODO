@@ -1,3 +1,9 @@
+current:
+make the playbox object a singleton essentially, with each class instance simply being event emiters
+when the metadata is parsed, emit an event with the metadata
+
+later:
+
 
 implement the playbox js interface
 ----------------------------------
@@ -11,12 +17,12 @@ implement the object with the following: (depends on the above)
   -> ( ) Event(archiveRemoved) - fired when an archive is removed from the library
   -> (*) Function(start) - connect it to the network and begin sharing
   -> (*) Function(stop) - disconnect it from the network
-  -> (+) Function(query) - returns a list of the archives matching the query parameters
   -> (-) Function(archive) - returns an Object with the resulting archive status and a pipe to the archive if it exists
-  -> (+) Function(info) - getter/setter which returns an object with the resulting archive status and metadata
-  -> ( ) Function(add_archive) - force a directory rescan
-  -> ( ) Function(add_archive_metadata) - force a directory rescan
+  -> (+) Function(add_archive) - import a traditional file into the library
+  -> (+) Function(add_archive_metadata) - import any torrent file or hash
   -> ( ) Object(status) - returns the playbox status
+  -> ( ) Object(stats) - returns the playbox stats
+  -> ( ) Object(disk_stats) - returns the disk stats
   -> ( ) String(library_path) - getter/setter for the library path
   -> ( ) String(torrent_path) - getter/setter for the torrent path
   -> ( ) Array(dirs) - getter/setter for the array of source directories
