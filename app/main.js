@@ -61,9 +61,7 @@ Connection = exports.Connection = function(req, res) {
 		return function() {
 			connection.onDataEnd.call(connection);
 		}
-	}(this));
-	
-	req.on('data', function(connection) {
+	}(this)).on('data', function(connection) {
 		return function(chunk) {
 			connection.onData.call(connection, chunk);
 		}
@@ -83,10 +81,10 @@ Connection = exports.Connection = function(req, res) {
 			return this;
 		} else {
 			//static_file_url = path;
-			var app_name = path.substr(1);
-			var app_func = "/";
-			var app_func_offset = app_name.indexOf('/');
-			var app_args = "";
+			var app_name = path.substr(1),
+				app_func = "/",
+				app_func_offset = app_name.indexOf('/'),
+				app_args = "";
 			
 			if(app_func_offset !== -1) {
 				app_func = app_func_offset === app_name.length-1 ? "/" : app_name.substr(app_func_offset);
@@ -101,9 +99,24 @@ Connection = exports.Connection = function(req, res) {
 						app_func = app_func.substr(0, app_func_offset);
 					}
 				}
+			} else {
+				switch(app_name) {
+					case "crossdomain.xml":
+						this._headers["Content-Type"] = "text/xml";
+						this._output_string = "<?xml version=\"1.0\"?>"+
+									"<cross-domain-policy>"+
+										"<site-control permitted-cross-domain-policies=\"all\"/>"+
+										"<allow-access-from domain=\"*\" />"+
+									"</cross-domain-policy>";
+						this.end();
+						return this;
+						
+					case "favicon.ico":
+						console.log("fixme");
+				}
 			}
 			
-			console.log("name", app_name);
+			console.log("app", app_name);
 			console.log("func", app_func);
 			console.log("args", app_args);
 			
