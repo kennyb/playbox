@@ -3,12 +3,10 @@ var sys = require("sys"),
 	fs = require('fs'),
 	path = require('path'),
 	buffer = require('buffer');
-var playbox = new Playbox();
-var update_loop = null;
-var file;
 
-start();
-
+var playbox = new Playbox(),
+	update_loop = null,
+	torrents = {};
 
 var do_update = function() {
 	playbox.update();
@@ -17,6 +15,7 @@ var do_update = function() {
 function start() {
 	if(update_loop === null) {
 		var ret = playbox.start();
+		init();
 		
 		update_loop = setInterval(function(playbox) {
 			return function() {
@@ -36,6 +35,40 @@ function stop() {
 		update_loop = null;
 		output.ret = playbox.stop();
 	}
+}
+
+function init() {
+	console.log("Initializing playbox-2");
+	console.log(" library_path: "+playbox.library_path);
+	console.log(" torrent_path: "+playbox.torrent_path);
+	
+	// dir scan of the library
+	fs.readdir(playbox.library_path, function(err, files) {
+		if(err) throw err;
+		
+		files.forEach(function(hash) {
+			torrents[hash] = {status:"LOOKUP"};
+		});
+	});
+	
+	// dir scan of the torrents
+	fs.readdir(playbox.torrent_path, function(err, files) {
+		if(err) throw err;
+		
+		files.forEach(function(hash) {
+			var t = torrents[hash];
+			if(t) {
+				if(t.status === "LOOKUP") {
+					// a file was found in the library with this hash, load up the torrent
+					torrents[hash].status = "VERIFY";
+					
+				} else {
+					
+				}
+			}
+		});
+	});
+	
 }
 
 exports.http = function(c, func, args) {
@@ -87,4 +120,4 @@ exports.http = function(c, func, args) {
 };
 
 // debug shit
-var update_loop = setInterval(do_update, 2000);
+start();
