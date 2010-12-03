@@ -5,24 +5,27 @@ var sys = require("sys"),
 	buffer = require('buffer');
 
 var playbox = new Playbox(),
+	add_archive_queue = [],
+	add_archive_metadata_queue = [],
 	update_loop = null,
 	torrents = {};
 
 var do_update = function() {
+	var path;
 	playbox.update();
+	//TODO: put limits.. no fumes discos duros
+	if(add_archive_metadata_queue.length) {
+		path = add_archive_metadata_queue.shift();
+		playbox.add_archive_metadata(playbox.torrent_path + path);
+	} else if(add_archive_queue.length) {
+		path = add_archive_queue.shift();
+		playbox.add_archive(playbox.library_path + path);
+	}
 };
 
 function start() {
 	if(update_loop === null) {
 		var ret = playbox.start();
-		init();
-		
-		update_loop = setInterval(function(playbox) {
-			return function() {
-				playbox.update();
-			};
-		}(playbox), 2000);
-		
 		return ret;
 	} else {
 		return false;
@@ -45,30 +48,33 @@ function init() {
 	// dir scan of the library
 	fs.readdir(playbox.library_path, function(err, files) {
 		if(err) throw err;
-		
-		files.forEach(function(hash) {
-			torrents[hash] = {status:"LOOKUP"};
-		});
+		var i = files.length-1;
+		if(i >= 0) {
+			do {
+				hash = files[i].toString();
+				if(hash.length === 40) {
+					torrents[hash] = {status:"LOOKUP"};
+					add_archive_queue.push(hash);
+					console.log(" =>", hash);
+				}
+			} while(i--);
+		}
 	});
 	
 	// dir scan of the torrents
 	fs.readdir(playbox.torrent_path, function(err, files) {
 		if(err) throw err;
-		
-		files.forEach(function(hash) {
-			var t = torrents[hash];
-			if(t) {
-				if(t.status === "LOOKUP") {
-					// a file was found in the library with this hash, load up the torrent
-					torrents[hash].status = "VERIFY";
-					
-				} else {
-					
-				}
-			}
-		});
+		var i = files.length-1;
+		if(i >= 0) {
+			do {
+				hash = files[i].toString();
+				add_archive_metadata_queue.push(hash);
+			} while(i--);
+		}
 	});
 	
+	// start the updates
+	update_loop = setInterval(do_update, 100);
 }
 
 exports.http = function(c, func, args) {
@@ -85,17 +91,11 @@ exports.http = function(c, func, args) {
 			break;
 		
 		case '-':
-			if(update_loop === null) {
-				output.ret = playbox.start();
-				update_loop = setInterval(do_update, 33);
-			} else {
-				update.ret = false;
-			}
-			
+			start();
 			break;
 			
 		case 'o':
-			
+			stop();
 			break;
 			
 		case 'q':
@@ -119,5 +119,5 @@ exports.http = function(c, func, args) {
 	c.end(output.status);
 };
 
-// debug shit
-start();
+// start it up!
+init();

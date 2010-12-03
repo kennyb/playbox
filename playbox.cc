@@ -264,7 +264,7 @@ Handle<Value> Playbox::add_archive(const Arguments &args) {
     }
     
 	String::Utf8Value archive_path(args[0]->ToString());
-	Playbox::add_media(*archive_path);
+	Playbox::add_media(std::string(*archive_path));
 	return Undefined();
 }
 
@@ -274,7 +274,7 @@ Handle<Value> Playbox::add_archive_metadata(const Arguments &args) {
     }
     
 	String::Utf8Value archive_path(args[0]->ToString());
-	Playbox::load_media(*archive_path);
+	Playbox::load_media(std::string(*archive_path));
 	return Undefined();
 }
 
@@ -404,49 +404,8 @@ static std::string xml_special_chars(std::string str) {
 // make a function called "load_torrent" which looks in the .torrents/ dir
 // if it is not in the cache, grab it from the fs, else look on DHT
 Handle<Value> Playbox::update(const Arguments &args) {
-	// parse the torrents directory
-	filesystem::path p(torrent_path);
-	filesystem::directory_iterator end_itr;
-	int t = 0;
-	for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
-		t++;
-	}
 	
-	std::cout << torrent_path << ": # torrents: " << t << std::endl;
-	for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
-		std::string filename = itr->filename();
-		size_t len = filename.size();
-		if(len > 8 && filename.substr(len - 8, 8) == ".torrent") {
-			std::string hash(filename.substr(0, len - 8));
-			//std::map<std::string, libtorrent::entry>::iterator it = torrents_metadata.find(hash);
-			//if(it == torrents_metadata.end()) {
-				// add the torrent
-				std::cout << "loading torrent: " << itr->string() << std::endl;
-				Playbox::load_media(itr->string());
-			//}
-		}
-	}
-			
-	//size_t len = torrents_metadata;
-	//std::cout << "len " << len << std::endl;
-	int tt = 0;
-	/*
-	for(std::map<std::string, libtorrent::entry>::iterator it = torrents_metadata.begin(); it != torrents_metadata.end(); it++) {
-		//std::cout << "::" << (it->first) << std::endl;
-		tt++;
-	}
-	
-	std::cout << "total: " << tt << " " << cur_session.is_dht_running() << std::endl;
-	*/
-	
-	if(tt < 11) {
-		if(torrent_queue.size()) {
-			Playbox::make_torrent(torrent_queue.front());
-			torrent_queue.pop_front();
-			usleep(2000);
-		}
-	}
-	
+	std::cout << "update.." << std::endl;
 	std::auto_ptr<libtorrent::alert> alert;
 	while((alert = cur_session.pop_alert()).get() != NULL) {
 		std::cout << "alert: " << (*alert).message() << std::endl;
@@ -504,8 +463,8 @@ void Playbox::load_media(const std::string torrent_path) {
 			lazy_entry metadata;
 			boost::system::error_code ec;
 			int pos;
-			if(lazy_bdecode((const char*) &buf[0], &buf[0] + buf.size(), metadata, ec, &pos, 10, 10)) {
-				//std::cerr << "invalid bencoding: " << ret << std::endl;
+			if(lazy_bdecode(&buf[0], &buf[0] + buf.size(), metadata, ec, &pos, 3, 100)) {
+				std::cerr << "invalid bencoding: " << ec << std::endl;
 				// unlink the file
 				return;
 			}
@@ -546,15 +505,16 @@ void Playbox::load_media(const std::string torrent_path) {
 			torrent_info* ti = new torrent_info(metadata, 0);
 			if(ti) {
 				hash = lexical_cast<std::string>(ti->info_hash());
-				params.ti = ti;
 				if(use_local_file) {
-					//std::cout << "renaming to file: " << ti->name() << std::endl;
+					//std::cout << "renaming to file: " << (ti->name()) << std::endl;
 					const std::string filename(ti->name());
 					ti->rename_file(0, filename);
 				} else {
 					//std::cout << "renaming to hash: " << hash << std::endl;
 					ti->rename_file(0, hash);
 				}
+				
+				params.ti = ti;
 			}
 			
 			//======
