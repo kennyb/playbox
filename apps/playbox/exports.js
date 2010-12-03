@@ -25,19 +25,19 @@ var do_update = function() {
 
 function start() {
 	if(update_loop === null) {
-		var ret = playbox.start();
-		return ret;
-	} else {
-		return false;
+		update_loop = setInterval(do_update, 100);
 	}
+	
+	return playbox.start();
 }
 
 function stop() {
 	if(update_loop !== null) {
 		clearInterval(update_loop);
 		update_loop = null;
-		output.ret = playbox.stop();
 	}
+	
+	return playbox.stop();
 }
 
 function init() {
@@ -91,11 +91,11 @@ exports.http = function(c, func, args) {
 			break;
 		
 		case '-':
-			start();
+			output.ret = start();
 			break;
 			
 		case 'o':
-			stop();
+			output.ret = stop();
 			break;
 			
 		case 'q':
@@ -120,4 +120,7 @@ exports.http = function(c, func, args) {
 };
 
 // start it up!
-init();
+console.log("init:", init());
+
+// debug shit
+console.log("starting:", start());

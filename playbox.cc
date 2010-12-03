@@ -180,7 +180,7 @@ Handle<Value> Playbox::start(const Arguments &args) {
 #ifndef BOOST_NO_EXCEPTIONS
 	try {
 #endif
-		switch(	args.Length()) {
+		switch(args.Length()) {
 			case 2:
 				// localhost, select the ports
 				port1 = args[0]->ToInt32()->Value();
@@ -188,12 +188,14 @@ Handle<Value> Playbox::start(const Arguments &args) {
 				if(port1 < 6000 || port2 < 6000) {
 					return VException("ports given can not be less than 6000");
 				}
+				
 			default:
 				printf("connecting %d %d (%d)\n", port1, port2, args.Length());
-				cur_session.listen_on(std::make_pair(port1, port2));
 				//return VException("args should be: [hostname] || [port1, port2] || [hostname, port1, port2]");
 		}
 		
+		printf("starting, listening: %d\n", cur_session.is_listening());
+		cur_session.listen_on(std::make_pair(port1, port2));
 		cur_session.add_dht_router(std::make_pair("router.bitorrent.com", 6881));
 		//cur_session.add_dht_node(std::make_pair("192.168.1.37", 6881));
 		cur_session.start_dht();
@@ -404,8 +406,6 @@ static std::string xml_special_chars(std::string str) {
 // make a function called "load_torrent" which looks in the .torrents/ dir
 // if it is not in the cache, grab it from the fs, else look on DHT
 Handle<Value> Playbox::update(const Arguments &args) {
-	
-	std::cout << "update.." << std::endl;
 	std::auto_ptr<libtorrent::alert> alert;
 	while((alert = cur_session.pop_alert()).get() != NULL) {
 		std::cout << "alert: " << (*alert).message() << std::endl;
@@ -527,7 +527,7 @@ void Playbox::load_media(const std::string torrent_path) {
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {
-		std::cerr << e.what() << "\n";
+		std::cout << e.what() << "\n";
 		std::string const *stack = boost::get_error_info<stack_error_info>(e);
 		if(stack) {                    
 			std::cout << stack << std::endl;

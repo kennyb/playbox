@@ -30,7 +30,7 @@ class Playbox : public EventEmitter {
 	static void add_media(const std::string path);
 	static void load_media(const std::string torrent_path);
 	static void make_torrent(const std::string path);
-
+	
   private:
     static Handle<Value> New(const Arguments &args);
 	static int save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata);

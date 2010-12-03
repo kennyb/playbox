@@ -168,6 +168,9 @@ def build_libtorrent(bld):
 	libtorrent.defines = [
 		"NDEBUG",
 		"TORRENT_USE_TOMMATH",
+		"TORRENT_STATS",
+		"TORRENT_DISK_STATS",
+#		"TORRENT_LOGGING",
 		"TORRENT_NO_DEPRECATE",
 		"TORRENT_NO_ASSERTS=1",
 		"_FILE_OFFSET_BITS=64",
