@@ -256,6 +256,9 @@ Handle<Value> Playbox::info(const Arguments &args) {
 	
 	Local<Object> result = Object::New();
 	result->Set(String::New("info"), args[0]->ToString());
+	String::Utf8Value hash(args[0]->ToString());
+	
+	load_media(std::string(*hash));
 	
 	return scope.Close(result);
 }

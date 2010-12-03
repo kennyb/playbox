@@ -19,7 +19,7 @@ var do_update = function() {
 		playbox.add_archive_metadata(playbox.torrent_path + path);
 	} else if(add_archive_queue.length) {
 		path = add_archive_queue.shift();
-		playbox.add_archive(playbox.library_path + path);
+		//playbox.add_archive(playbox.library_path + path);
 	}
 };
 
