@@ -49,8 +49,6 @@ using namespace boost;
 
 // static function declarations
 static Local<Value> song_info(const std::string hash, const libtorrent::entry& metadata);
-static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info);
-static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info);
 static std::string xml_special_chars(std::string str);
 
 // static vars
@@ -65,6 +63,14 @@ static Handle<Value> VException(const char *msg) {
 	HandleScope scope;
 	return ThrowException(Exception::Error(String::New(msg)));
 };
+
+static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info) {
+	return String::New(library_path.c_str());
+}
+
+static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info) {
+	return String::New(torrent_path.c_str());
+}
 
 
 void Playbox::Initialize(v8::Handle<v8::Object> target) {
@@ -95,6 +101,12 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	
 	// returns json info for the song (status, length, title, etc)
 	NODE_SET_PROTOTYPE_METHOD(t, "info", info);
+	
+	// adds a physical archive into the library
+	NODE_SET_PROTOTYPE_METHOD(t, "add_archive", add_archive);
+	
+	// adds a physical torrent file into the library
+	NODE_SET_PROTOTYPE_METHOD(t, "add_archive_metadata", add_archive_metadata);
 	
 	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("library_path"), __library_path);
 	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrent_path"), __torrent_path);
@@ -146,20 +158,10 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 			// TODO!!!!! automatically add the music directory to the sources list
 			Playbox::add_media(music_dir);
 		}
-		
-		
 	} else {
 		// todo: move most of this into the constructor, and separate the static functions from the methods
 		//return VException("playbox could not find the user's home directory! HUGE FAIL");
 	}
-}
-
-static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info) {
-	return String::New(library_path.c_str());
-}
-
-static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info) {
-	return String::New(torrent_path.c_str());
 }
 
 // Create a new instance of BSON and assing it the existing context
@@ -238,6 +240,15 @@ Handle<Value> Playbox::query(const Arguments &args) {
 	return scope.Close(result);
 }
 
+Handle<Value> Playbox::archive(const Arguments &args) {
+	HandleScope scope;
+	
+	Local<Object> result = Object::New();
+	result->Set(String::New("get"), args[0]->ToString());
+	
+	return scope.Close(result);
+}
+
 Handle<Value> Playbox::info(const Arguments &args) {
 	HandleScope scope;
 	
@@ -247,13 +258,24 @@ Handle<Value> Playbox::info(const Arguments &args) {
 	return scope.Close(result);
 }
 
-Handle<Value> Playbox::archive(const Arguments &args) {
-	HandleScope scope;
-	
-	Local<Object> result = Object::New();
-	result->Set(String::New("get"), args[0]->ToString());
-	
-	return scope.Close(result);
+Handle<Value> Playbox::add_archive(const Arguments &args) {
+	if(args.Length() == 0 || !args[0]->IsString()) {
+		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
+    }
+    
+	String::Utf8Value archive_path(args[0]->ToString());
+	Playbox::add_media(*archive_path);
+	return Undefined();
+}
+
+Handle<Value> Playbox::add_archive_metadata(const Arguments &args) {
+	if(args.Length() == 0 || !args[0]->IsString()) {
+		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
+    }
+    
+	String::Utf8Value archive_path(args[0]->ToString());
+	Playbox::load_media(*archive_path);
+	return Undefined();
 }
 
 /*
