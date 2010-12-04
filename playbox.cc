@@ -103,23 +103,17 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	// stops the server and pauses all downloads
 	NODE_SET_PROTOTYPE_METHOD(t, "stop", stop);
 	
-	// run an update pass
-	NODE_SET_PROTOTYPE_METHOD(t, "update", update);
-	
-	// starts the server on the specified ports
-	NODE_SET_PROTOTYPE_METHOD(t, "query", query);
-	
 	// returns an object with the archive status
 	NODE_SET_PROTOTYPE_METHOD(t, "archive", archive);
-	
-	// returns json info for the song (status, length, title, etc)
-	NODE_SET_PROTOTYPE_METHOD(t, "info", info);
 	
 	// adds a physical archive into the library
 	NODE_SET_PROTOTYPE_METHOD(t, "add_archive", add_archive);
 	
 	// adds a physical torrent file into the library
 	NODE_SET_PROTOTYPE_METHOD(t, "add_archive_metadata", add_archive_metadata);
+	
+	// run an update pass
+	NODE_SET_PROTOTYPE_METHOD(t, "update", update);
 	
 	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("library_path"), __library_path);
 	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrent_path"), __torrent_path);
@@ -245,24 +239,9 @@ Handle<Value> Playbox::start(const Arguments &args) {
 }
 
 Handle<Value> Playbox::stop(const Arguments &args) {
-	//cur_session.stop_listening();
+	// stop listening
+	//cur_session.pause();
 	return Undefined();
-}
-
-Handle<Value> Playbox::query(const Arguments &args) {
-	HandleScope scope;
-	
-	Local<Object> result = Object::New();
-	
-	/*
-	for(std::map<std::string, libtorrent::lazy_entry>::iterator it = torrents_metadata.begin(); it != torrents_metadata.end(); it++) {
-		std::string hash(it->first);
-		libtorrent::lazy_entry* metadata = &(it->second);
-		result->Set(String::New(hash.c_str()), song_info(hash, metadata));
-	}
-	*/
-	
-	return scope.Close(result);
 }
 
 Handle<Value> Playbox::archive(const Arguments &args) {
@@ -270,18 +249,6 @@ Handle<Value> Playbox::archive(const Arguments &args) {
 	
 	Local<Object> result = Object::New();
 	result->Set(String::New("get"), args[0]->ToString());
-	
-	return scope.Close(result);
-}
-
-Handle<Value> Playbox::info(const Arguments &args) {
-	HandleScope scope;
-	
-	Local<Object> result = Object::New();
-	result->Set(String::New("info"), args[0]->ToString());
-	String::Utf8Value hash(args[0]->ToString());
-	
-	load_media(std::string(*hash));
 	
 	return scope.Close(result);
 }
@@ -434,32 +401,46 @@ static std::string xml_special_chars(std::string str) {
 Handle<Value> Playbox::update(const Arguments &args) {
 	std::auto_ptr<libtorrent::alert> alert;
 	while((alert = cur_session.pop_alert()).get() != NULL) {
-		switch((*alert).type()) {
+		int type = (*alert).type();
+		switch(type) {
 			case libtorrent::torrent_finished_alert::alert_type:
-				//TODO: get the hash from the torrent_handle
-				playbox->Emit(archiveComplete, 0, NULL);
-				break;
-				
 			case libtorrent::torrent_deleted_alert::alert_type:
-				playbox->Emit(archiveRemoved, 0, NULL);
-				break;
-				
 			case libtorrent::torrent_paused_alert::alert_type:
-				playbox->Emit(archivePaused, 0, NULL);
-				break;
-				
 			case libtorrent::torrent_resumed_alert::alert_type:
-				playbox->Emit(archiveResumed, 0, NULL);
-				break;
-				
 			case libtorrent::metadata_failed_alert::alert_type:
-				playbox->Emit(archiveUnknown, 0, NULL);
-				break;
-				
 			case libtorrent::metadata_received_alert::alert_type:
-				playbox->Emit(archiveMetadata, 0, NULL);
-				break;
+				std::string hash;
+				Persistent<String>* symbol;
+				Local<Value> args[2];
+				Local<Object> extra = Object::New();
 				
+				if(libtorrent::torrent_finished_alert* p = libtorrent::alert_cast<libtorrent::torrent_finished_alert>(alert.get())) {
+					hash = lexical_cast<std::string>(p->handle.info_hash());
+					symbol = &archiveComplete;
+				} else if(libtorrent::torrent_deleted_alert* p = libtorrent::alert_cast<libtorrent::torrent_deleted_alert>(alert.get())) {
+					hash = lexical_cast<std::string>(p->handle.info_hash());
+					symbol = &archiveRemoved;
+				} else if(libtorrent::torrent_paused_alert* p = libtorrent::alert_cast<libtorrent::torrent_paused_alert>(alert.get())) {
+					hash = lexical_cast<std::string>(p->handle.info_hash());
+					symbol = &archivePaused;
+				} else if(libtorrent::torrent_resumed_alert* p = libtorrent::alert_cast<libtorrent::torrent_resumed_alert>(alert.get())) {
+					hash = lexical_cast<std::string>(p->handle.info_hash());
+					symbol = &archiveResumed;
+				} else if(libtorrent::metadata_failed_alert* p = libtorrent::alert_cast<libtorrent::metadata_failed_alert>(alert.get())) {
+					hash = lexical_cast<std::string>(p->handle.info_hash());
+					symbol = &archiveUnknown;
+				} else if(libtorrent::metadata_received_alert* p = libtorrent::alert_cast<libtorrent::metadata_received_alert>(alert.get())) {
+					hash = lexical_cast<std::string>(p->handle.info_hash());
+					symbol = &archiveMetadata;
+				} else {
+					// some sort of error
+				}
+				
+				args[0] = Local<Value>::New(String::New(hash.c_str()));
+				args[1] = extra;
+				playbox->Emit(*symbol, 2, args);
+				break;
+			
 			//case libtorrent::listen_failed_alert::alert_type:
 			//case libtorrent::listen_succeeded_alert::alert_type:
 			//	printf("LISTENING\n");

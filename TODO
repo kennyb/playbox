@@ -9,27 +9,35 @@ implement the playbox js interface
 ----------------------------------
 implement the object with the following: (depends on the above)
  Object(Playbox)
-  -> ( ) Event(archiveUnknown) - fired after archive() or info() call when the metadata can't be found on the dht
-  -> ( ) Event(archiveMetadata) - fired after archive() or info() when the metadata is available
-  -> ( ) Event(archiveDownloading) - fired when an archive changes state to downloading
-  -> ( ) Event(archiveProgress) - fired periodically as an archive is downloading
-  -> ( ) Event(archiveComplete) - fired when an archive is completely downloaded
-  -> ( ) Event(archiveRemoved) - fired when an archive is removed from the library
-  -> (*) Function(start) - connect it to the network and begin sharing
-  -> (*) Function(stop) - disconnect it from the network
-  -> (-) Function(archive) - returns an Object with the resulting archive status and a pipe to the archive if it exists
-  -> (+) Function(add_archive) - import a traditional file into the library
-  -> (+) Function(add_archive_metadata) - import any torrent file or hash
-  -> ( ) Object(status) - returns the playbox status
-  -> ( ) Object(stats) - returns the playbox stats
-  -> ( ) Object(disk_stats) - returns the disk stats
-  -> ( ) String(library_path) - getter/setter for the library path
-  -> ( ) String(torrent_path) - getter/setter for the torrent path
-  -> ( ) Array(dirs) - getter/setter for the array of source directories
-  -> ( ) Number(scan_speed) - MB/s at which to scan the directories
+  -> Event(archiveUnknown) - fired after archive() or info() call when the metadata can't be found on the dht
+  -> Event(archiveMetadata) - fired after archive() or info() when the metadata is available
+  -> Event(archiveDownloading) - fired when an archive changes state to downloading
+  -> Event(archiveProgress) - fired periodically as an archive is downloading
+  -> Event(archiveComplete) - fired when an archive is completely downloaded
+  -> Event(archiveRemoved) - fired when an archive is removed from the library
+  -> Function(start) - connect it to the network and begin sharing
+  -> Function(stop) - disconnect it from the network
+  -> Function(archive) - returns an Object with the resulting archive status and a pipe to the archive if it exists
+  -> Function(add_archive) - import a traditional file into the library
+  -> Function(add_archive_metadata) - import any torrent file or hash
+  -> Object(status) - returns the playbox status
+  -> Object(stats) - returns the playbox stats
+  -> Object(disk_stats) - returns the disk stats
+  -> String(library_path) - getter/setter for the library path
+  -> String(torrent_path) - getter/setter for the torrent path
+  -> Array(dirs) - getter/setter for the array of source directories
+  -> Number(scan_speed) - MB/s at which to scan the directories
 
  Object(Archive)
-  -> ( ) buncha stuff :)
+  -> Event(metadata) - event when metadata is changed or discovered
+  -> Event(downloading) - 
+  -> Event(progress) - 
+  -> Event(complete) - 
+  -> Event(paused) - 
+  -> String(id) - the hash
+  -> String(path) - the real location of the file
+  -> String(status) - the current state of the archive
+  -> Object(stats) - the stats of the archive
 
 implement a basic application framework
 ---------------------------------------

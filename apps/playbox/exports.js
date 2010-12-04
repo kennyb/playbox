@@ -36,7 +36,7 @@ playbox.on("archiveUnknown", function(e) {
 }).on("archiveProgress", function(e) {
 	console.log("PROGRESS");
 }).on("archiveComplete", function(e) {
-	console.log("COMPLETE");
+	console.log("COMPLETE", hash, e);
 }).on("archiveRemoved", function(e) {
 	console.log("REMOVED");
 });
