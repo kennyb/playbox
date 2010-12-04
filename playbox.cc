@@ -57,6 +57,15 @@ static std::string library_path;
 static std::string torrent_path;
 //static std::map<std::string, libtorrent::lazy_entry> torrents_metadata;
 static std::list<std::string> torrent_queue;
+static Playbox *playbox;
+
+// events
+static Persistent<String> archiveUnknown = NODE_PSYMBOL("archiveUnknown");
+static Persistent<String> archiveMetadata = NODE_PSYMBOL("archiveMetadata");
+static Persistent<String> archiveDownloading = NODE_PSYMBOL("archiveDownloading");
+static Persistent<String> archiveProgress = NODE_PSYMBOL("archiveProgress");
+static Persistent<String> archiveComplete = NODE_PSYMBOL("archiveComplete");
+static Persistent<String> archiveRemoved = NODE_PSYMBOL("archiveRemoved");
 
 
 static Handle<Value> VException(const char *msg) {
@@ -115,6 +124,10 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	
 	// ----------------
 	
+	playbox = new Playbox();
+	
+	// ----------------
+	
 	uid_t uid = getuid();
 	struct passwd* user_passwd = getpwuid(uid);
 	struct stat status;
@@ -168,7 +181,7 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 Handle<Value> Playbox::New(const Arguments &args) {
 	HandleScope scope;
 	
-	Playbox *playbox = new Playbox();
+	//Playbox *playbox = new Playbox();
 	playbox->Wrap(args.This());
 	return args.This();
 }
@@ -217,6 +230,8 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		return False();
 	}
 #endif
+	
+	playbox->Emit(archiveUnknown, 0, NULL);
 	
 	return True();
 }

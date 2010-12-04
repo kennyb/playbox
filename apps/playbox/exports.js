@@ -23,6 +23,10 @@ var do_update = function() {
 	}
 };
 
+playbox.on("archiveUnknown", function(e) {
+	console.log("UNKNOWN ARCHIVE");
+});
+
 function start() {
 	if(update_loop === null) {
 		update_loop = setInterval(do_update, 100);
