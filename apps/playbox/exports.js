@@ -25,6 +25,20 @@ var do_update = function() {
 
 playbox.on("archiveUnknown", function(e) {
 	console.log("UNKNOWN ARCHIVE");
+}).on("archivePaused", function(e) {
+	console.log("PAUSED");
+}).on("archiveResumed", function(e) {
+	console.log("RESUMED");
+}).on("archiveMetadata", function(e) {
+	console.log("METADATA");
+}).on("archiveDownloading", function(e) {
+	console.log("DOWNLOADING");
+}).on("archiveProgress", function(e) {
+	console.log("PROGRESS");
+}).on("archiveComplete", function(e) {
+	console.log("COMPLETE");
+}).on("archiveRemoved", function(e) {
+	console.log("REMOVED");
 });
 
 function start() {

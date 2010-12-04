@@ -25,6 +25,8 @@
 #include <libtorrent/hasher.hpp>
 #include <libtorrent/create_torrent.hpp>
 #include <libtorrent/session.hpp>
+#include <libtorrent/alert.hpp>
+#include <libtorrent/alert_types.hpp>
 #include <libtorrent/extensions/metadata_transfer.hpp>
 #include <libtorrent/extensions/ut_metadata.hpp>
 
@@ -61,6 +63,8 @@ static Playbox *playbox;
 
 // events
 static Persistent<String> archiveUnknown = NODE_PSYMBOL("archiveUnknown");
+static Persistent<String> archivePaused = NODE_PSYMBOL("archivePaused");
+static Persistent<String> archiveResumed = NODE_PSYMBOL("archiveResumed");
 static Persistent<String> archiveMetadata = NODE_PSYMBOL("archiveMetadata");
 static Persistent<String> archiveDownloading = NODE_PSYMBOL("archiveDownloading");
 static Persistent<String> archiveProgress = NODE_PSYMBOL("archiveProgress");
@@ -217,7 +221,13 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		cur_session.start_lsd();
 		cur_session.add_extension(&libtorrent::create_metadata_plugin);
 		cur_session.add_extension(&libtorrent::create_ut_metadata_plugin);
-		cur_session.set_alert_mask(libtorrent::alert::all_categories);
+		//cur_session.set_alert_mask(libtorrent::alert::all_categories);
+		cur_session.set_alert_mask(libtorrent::alert::error_notification |
+									libtorrent::alert::storage_notification |
+									libtorrent::alert::status_notification |
+									libtorrent::alert::progress_notification |
+									libtorrent::alert::performance_warning |
+									libtorrent::alert::dht_notification);
 	
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch(std::exception& e) {
@@ -230,8 +240,6 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		return False();
 	}
 #endif
-	
-	playbox->Emit(archiveUnknown, 0, NULL);
 	
 	return True();
 }
@@ -426,7 +434,40 @@ static std::string xml_special_chars(std::string str) {
 Handle<Value> Playbox::update(const Arguments &args) {
 	std::auto_ptr<libtorrent::alert> alert;
 	while((alert = cur_session.pop_alert()).get() != NULL) {
-		std::cout << "alert: " << (*alert).message() << std::endl;
+		switch((*alert).type()) {
+			case libtorrent::torrent_finished_alert::alert_type:
+				//TODO: get the hash from the torrent_handle
+				playbox->Emit(archiveComplete, 0, NULL);
+				break;
+				
+			case libtorrent::torrent_deleted_alert::alert_type:
+				playbox->Emit(archiveRemoved, 0, NULL);
+				break;
+				
+			case libtorrent::torrent_paused_alert::alert_type:
+				playbox->Emit(archivePaused, 0, NULL);
+				break;
+				
+			case libtorrent::torrent_resumed_alert::alert_type:
+				playbox->Emit(archiveResumed, 0, NULL);
+				break;
+				
+			case libtorrent::metadata_failed_alert::alert_type:
+				playbox->Emit(archiveUnknown, 0, NULL);
+				break;
+				
+			case libtorrent::metadata_received_alert::alert_type:
+				playbox->Emit(archiveMetadata, 0, NULL);
+				break;
+				
+			//case libtorrent::listen_failed_alert::alert_type:
+			//case libtorrent::listen_succeeded_alert::alert_type:
+			//	printf("LISTENING\n");
+			//break;
+			
+		}
+		
+		//std::cout << "alert: " << (*alert).type() << ": " << (*alert).message() << std::endl;
 	}
 	
 	return Undefined();
