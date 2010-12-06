@@ -1,5 +1,4 @@
 current:
-make the playbox object a singleton essentially, with each class instance simply being event emiters
 when the metadata is parsed, emit an event with the metadata
 
 later:
