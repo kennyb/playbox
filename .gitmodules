@@ -10,3 +10,9 @@
 [submodule "apps/playbox/node-static"]
 	path = apps/playbox/node-static
 	url = https://github.com/cloudhead/node-static.git
+[submodule "deps/node"]
+	path = deps/node
+	url = https://github.com/ry/node.git
+[submodule "deps/ffmpeg"]
+	path = deps/ffmpeg
+	url = git://gitorious.org/ffmpeg/mainline.git
