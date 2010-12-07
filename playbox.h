@@ -5,7 +5,6 @@
 #include <node_object_wrap.h>
 #include <v8.h>
 
-#include <id3/tag.h>
 #include <libtorrent/entry.hpp>
 
 using namespace v8;
@@ -33,7 +32,7 @@ class Playbox : public EventEmitter {
 	
   private:
     static Handle<Value> New(const Arguments &args);
-	static int save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata);
+	//static int save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata);
 };
 
 #endif  // PLAYBOX_H_

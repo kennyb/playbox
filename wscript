@@ -97,7 +97,7 @@ def configure(conf):
 
 def build(bld):
 	bld.add_group('libs')
-	build_id3(bld)
+	#build_id3(bld)
 	build_libtorrent(bld)
 	
 	bld.add_group('libs_built')
@@ -113,17 +113,12 @@ def build_playbox(bld):
 	if sys.platform.startswith("darwin"):
 	  playbox.linkflags = ['libs/libtorrent.dylib'] #, 'libs/libid3.dylib'
 	if sys.platform.startswith("linux"):
-	  playbox.linkflags = ['libs/libtorrent.so', 'libs/libid3.so']
+	  playbox.linkflags = ['libs/libtorrent.so'] #, 'libs/libid3.so'
   
 	playbox.source = ["playbox.cc"]
-	playbox.includes = ['id3lib/include', 'libtorrent/include', '/opt/local/include']
+	playbox.includes = ['libtorrent/include', '/opt/local/include'] #'id3lib/include', 
 	playbox.cflags = ['-Wall']
 	playbox.cxxflags = ['-Wall']
-	#playbox.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_IOSTREAMS'
-	#playbox.uselib_local = ['torrent', 'id3']
-	#playbox.cxxflags = ["-I../id3lib/include", "-I../libtorrent/include"]
-	#playbox.cflags = ["-I../id3lib/include", "-I../libtorrent/include"]
-  
 
 def install_libs(bld):
 	if not exists('build/libs'):
@@ -137,24 +132,24 @@ def install_libs(bld):
 	elif exists('build/default/libtorrent.so') and not lexists('build/libs/libtorrent.so'):
 		symlink(abspath('build/default/libtorrent.so'), 'build/libs/libtorrent.so')
 		
-	if exists('build/default/libid3.dylib') and not lexists('build/libs/libid3.dylib'):
-		symlink(abspath('build/default/libid3.dylib'), 'build/libs/libid3.dylib')
-	elif exists('build/default/libid3.so') and not lexists('build/libs/libid3.so'):
-		symlink(abspath('build/default/libid3.so'), 'build/libs/libid3.so')
+	#if exists('build/default/libid3.dylib') and not lexists('build/libs/libid3.dylib'):
+	#	symlink(abspath('build/default/libid3.dylib'), 'build/libs/libid3.dylib')
+	#elif exists('build/default/libid3.so') and not lexists('build/libs/libid3.so'):
+	#	symlink(abspath('build/default/libid3.so'), 'build/libs/libid3.so')
 
-def build_id3(bld):
-	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
-	id3.name = "id3"
-	id3.target = "id3"
-	id3.cxxflags = ["-I../id3lib/include"]
-	id3.cflags = ["-I../id3lib/include"]
-	id3.includes = ['id3lib', 'id3lib/include', 'id3lib/include/id3', '/opt/local/include']
-	id3.uselib = "ZLIB ICONV LIBC"
-	id3.defines = ['HAVE_CONFIG_H']
-	id3.source = bld.path.ant_glob('id3lib/src/*.cpp')
-	id3.linkflags = ["-flat_namespace"]
-	if sys.platform.startswith("darwin"):
-		id3.linkflags += ["-undefined", "suppress"]
+#def build_id3(bld):
+#	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
+#	id3.name = "id3"
+#	id3.target = "id3"
+#	id3.cxxflags = ["-I../id3lib/include"]
+#	id3.cflags = ["-I../id3lib/include"]
+#	id3.includes = ['id3lib', 'id3lib/include', 'id3lib/include/id3', '/opt/local/include']
+#	id3.uselib = "ZLIB ICONV LIBC"
+#	id3.defines = ['HAVE_CONFIG_H']
+#	id3.source = bld.path.ant_glob('id3lib/src/*.cpp')
+#	id3.linkflags = ["-flat_namespace"]
+#	if sys.platform.startswith("darwin"):
+#		id3.linkflags += ["-undefined", "suppress"]
 
 def build_libtorrent(bld):
 	libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="libtorrent.def")
@@ -275,10 +270,10 @@ def shutdown(ctx):
 		elif exists('build/libs/libtorrent.dylib') and not lexists('build/release/libs/libtorrent.dylib'):
 			symlink(abspath('build/libs/libtorrent.dylib'), 'build/release/libs/libtorrent.dylib')
 		
-		if exists('build/libs/libid3.so') and not lexists('build/release/libs/libid3.so'):
-			symlink(abspath('build/libs/libid3.so'), 'build/release/libs/libid3.so')
-		elif exists('build/libs/libid3.dylib') and not lexists('build/release/libs/libid3.dylib'):
-			symlink(abspath('build/libs/libid3.dylib'), 'build/release/libs/libid3.dylib')
+		#if exists('build/libs/libid3.so') and not lexists('build/release/libs/libid3.so'):
+		#	symlink(abspath('build/libs/libid3.so'), 'build/release/libs/libid3.so')
+		#elif exists('build/libs/libid3.dylib') and not lexists('build/release/libs/libid3.dylib'):
+		#	symlink(abspath('build/libs/libid3.dylib'), 'build/release/libs/libid3.dylib')
 		
 		# node libs
 		if exists('build/default/playbox.node'):
