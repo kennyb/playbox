@@ -3,8 +3,11 @@ NODE = ./node
 name = all
 
 all:
-	node-waf build
+	node-waf build || (node-waf configure && node-waf build)
 	cd build/release && CWD=`pwd` && ./node main.js
 
-configure:
-	node-waf configure
+
+prepare:
+	git submodule update --init
+	cd deps/ffmpeg && ./configure --disable-static --enable-shared --enable-gpl --enable-version3 --enable-pthreads --enable-small --enable-runtime-cpudetect --disable-everything --enable-pic --disable-network --disable-debug --disable-swscale --arch=x86_64 --disable-ffprobe && make -j2
+

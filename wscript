@@ -111,12 +111,12 @@ def build_playbox(bld):
 	playbox.name = "playbox"
 	playbox.target = "playbox"
 	if sys.platform.startswith("darwin"):
-	  playbox.linkflags = ['libs/libtorrent.dylib'] #, 'libs/libid3.dylib'
+	  playbox.linkflags = ['libs/libtorrent.dylib', 'libs/libavformat.dylib']
 	if sys.platform.startswith("linux"):
-	  playbox.linkflags = ['libs/libtorrent.so'] #, 'libs/libid3.so'
+	  playbox.linkflags = ['libs/libtorrent.so', 'libs/libavformat.so']
   
 	playbox.source = ["playbox.cc"]
-	playbox.includes = ['libtorrent/include', '/opt/local/include'] #'id3lib/include', 
+	playbox.includes = ['libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
 	playbox.cflags = ['-Wall']
 	playbox.cxxflags = ['-Wall']
 
@@ -132,11 +132,11 @@ def install_libs(bld):
 	elif exists('build/default/libtorrent.so') and not lexists('build/libs/libtorrent.so'):
 		symlink(abspath('build/default/libtorrent.so'), 'build/libs/libtorrent.so')
 		
-	#if exists('build/default/libid3.dylib') and not lexists('build/libs/libid3.dylib'):
-	#	symlink(abspath('build/default/libid3.dylib'), 'build/libs/libid3.dylib')
-	#elif exists('build/default/libid3.so') and not lexists('build/libs/libid3.so'):
-	#	symlink(abspath('build/default/libid3.so'), 'build/libs/libid3.so')
-
+	if exists('deps/ffmpeg/libavformat/libavformat.so') and not lexists('build/libs/libavformat.so'):
+		symlink(abspath('deps/ffmpeg/libavformat/libavformat.so'), 'build/libs/libavformat.so')
+	elif exists('deps/ffmpeg/libavformat/libavformat.dylib') and not lexists('build/libs/libavformat.dylib'):
+		symlink(abspath('deps/ffmpeg/libavformat/libavformat.dylib'), 'build/libs/libavformat.dylib')
+	
 #def build_id3(bld):
 #	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
 #	id3.name = "id3"
@@ -177,7 +177,7 @@ def build_libtorrent(bld):
 		"libtorrent/src/ConvertUTF.cpp",
 		"libtorrent/src/alert.cpp",
 		"libtorrent/src/allocator.cpp",
-		"libtorrent/src/assert.cpp",
+		"libtorrent/src/assert.cpp", # compile me without asserts?
 		"libtorrent/src/bandwidth_limit.cpp",
 		"libtorrent/src/bandwidth_manager.cpp",
 		"libtorrent/src/bandwidth_queue_entry.cpp",
@@ -234,7 +234,7 @@ def build_libtorrent(bld):
 		"libtorrent/src/torrent_info.cpp",
 		"libtorrent/src/tracker_manager.cpp",
 		"libtorrent/src/udp_socket.cpp",
-		"libtorrent/src/udp_tracker_connection.cpp",
+		"libtorrent/src/udp_tracker_connection.cpp", # compile me?
 		"libtorrent/src/upnp.cpp",
 		"libtorrent/src/ut_metadata.cpp",
 		"libtorrent/src/ut_pex.cpp",
@@ -270,10 +270,10 @@ def shutdown(ctx):
 		elif exists('build/libs/libtorrent.dylib') and not lexists('build/release/libs/libtorrent.dylib'):
 			symlink(abspath('build/libs/libtorrent.dylib'), 'build/release/libs/libtorrent.dylib')
 		
-		#if exists('build/libs/libid3.so') and not lexists('build/release/libs/libid3.so'):
-		#	symlink(abspath('build/libs/libid3.so'), 'build/release/libs/libid3.so')
-		#elif exists('build/libs/libid3.dylib') and not lexists('build/release/libs/libid3.dylib'):
-		#	symlink(abspath('build/libs/libid3.dylib'), 'build/release/libs/libid3.dylib')
+		if exists('build/libs/libavformat.so') and not lexists('build/release/libs/libavformat.so'):
+			symlink(abspath('build/libs/libavformat.so'), 'build/release/libs/libavformat.so')
+		elif exists('build/libs/libavformat.dylib') and not lexists('build/release/libs/libavformat.dylib'):
+			symlink(abspath('build/libs/libavformat.dylib'), 'build/release/libs/libavformat.dylib')
 		
 		# node libs
 		if exists('build/default/playbox.node'):

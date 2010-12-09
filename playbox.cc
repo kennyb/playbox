@@ -31,6 +31,11 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 
+extern "C" {
+	//#include <avcodec.h>
+	#include <avformat.h>
+}
+
 #define BOOST_NO_EXCEPTIONS
 #ifndef BOOST_NO_EXCEPTIONS
 #include <boost/exception/error_info.hpp>
@@ -55,6 +60,7 @@ static std::string torrent_path;
 //static std::map<std::string, libtorrent::lazy_entry> torrents_metadata;
 static std::list<std::string> torrent_queue;
 static Playbox *playbox;
+static AVFormatContext *pFormatCtx;
 
 // events
 static Persistent<String> archiveUnknown = NODE_PSYMBOL("archiveUnknown");
@@ -153,6 +159,9 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrent_path"), __torrent_path);
 	
 	target->Set(String::NewSymbol("Playbox"), t->GetFunction());
+	
+	// avformat
+	av_register_all();
 	
 	// ----------------
 	
@@ -657,7 +666,7 @@ void Playbox::make_torrent(const std::string path) {
 		
 		//======
 		// begin hash generation
-		create_torrent torrent(fs, 16 * 1024, -1, 9 /* optimize + merkle + symlink */); // should be 11, removed merkle
+		create_torrent torrent(fs, 16 * 1024, -1, 1 /*+ 2*/ + 8 /* optimize + merkle + symlink */); // should be 11, removed merkle
 		torrent.set_creator("playbox-2.0");
 		torrent.set_comment("torrent created by playbox-2.0");
 		
@@ -675,6 +684,11 @@ void Playbox::make_torrent(const std::string path) {
 		//======
 		// add the real file path to the torrent (to know that it's not in the library)
 		metadata["media_path"] = entry(path);
+		
+		if(av_open_input_file(&pFormatCtx, path.c_str(), NULL, 0, NULL)) {
+			// failed
+			std::cout << "metadata unable to be parsed" << std::endl;
+		}
 		
 		// output the metadata to a buffer
 		std::vector<char> buffer;

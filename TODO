@@ -1,6 +1,9 @@
 current:
 when the metadata is parsed, emit an event with the metadata
 
+integrate ffmpeg and get the metadata correctly
+
+
 later:
 
 
