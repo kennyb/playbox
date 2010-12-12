@@ -16,3 +16,6 @@
 [submodule "deps/ffmpeg"]
 	path = deps/ffmpeg
 	url = git://gitorious.org/ffmpeg/mainline.git
+[submodule "deps/node-websocket-server"]
+	path = deps/node-websocket-server
+	url = https://github.com/miksago/node-websocket-server.git

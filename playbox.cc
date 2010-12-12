@@ -58,11 +58,11 @@ static libtorrent::session cur_session;
 static std::string library_path;
 static std::string torrent_path;
 //static std::map<std::string, libtorrent::lazy_entry> torrents_metadata;
-static std::list<std::string> torrent_queue;
 static Playbox *playbox;
 static AVFormatContext *pFormatCtx;
 
 // events
+static Persistent<String> metadataAdded = NODE_PSYMBOL("metadataAdded");
 static Persistent<String> archiveUnknown = NODE_PSYMBOL("archiveUnknown");
 static Persistent<String> archivePaused = NODE_PSYMBOL("archivePaused");
 static Persistent<String> archiveResumed = NODE_PSYMBOL("archiveResumed");
@@ -184,27 +184,12 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 		
 		::torrent_path = std::string(::library_path).append("/.torrents/");
 		filesystem::path p(torrent_path);
-		if(filesystem::exists(p)) {
-			std::cout << "torrent dir exists " << torrent_path << " .. beginning scan..." << std::endl;
-			filesystem::directory_iterator end_itr;
-			for(filesystem::directory_iterator itr(p); itr != end_itr; ++itr) {
-				std::string filename = itr->filename();
-				size_t len = filename.size();
-
-				if(len > 8 && filename.substr(len - 8, 8) == ".torrent") {
-					//std::cout << "TORRENT: " << filename << std::endl;
-					//Playbox::load_media(itr->string());
-				} else {
-					std::cout << "FILE: " << filename << std::endl;
-				}
-			}
-		} else {
+		if(!filesystem::exists(p)) {
 			filesystem::create_directory(p);
 		}
 		
-		
 		// -------
-		
+		/*
 		std::string music_dir(user_passwd->pw_dir);
 		music_dir += "/Music";
 		
@@ -212,6 +197,7 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 			// TODO!!!!! automatically add the music directory to the sources list
 			Playbox::add_media(music_dir);
 		}
+		//*/
 	} else {
 		// todo: move most of this into the constructor, and separate the static functions from the methods
 		//return VException("playbox could not find the user's home directory! HUGE FAIL");
@@ -297,12 +283,13 @@ Handle<Value> Playbox::archive(const Arguments &args) {
 }
 
 Handle<Value> Playbox::add_archive(const Arguments &args) {
-	if(args.Length() == 0 || !args[0]->IsString()) {
+	if(args.Length() != 1 || !args[0]->IsString()) {
 		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
     }
     
 	String::Utf8Value archive_path(args[0]->ToString());
-	Playbox::add_media(std::string(*archive_path));
+	std::string path(*archive_path);
+	Playbox::add_media(path);
 	return Undefined();
 }
 
@@ -451,7 +438,6 @@ Handle<Value> Playbox::update(const Arguments &args) {
 			case libtorrent::metadata_received_alert::alert_type:
 				std::string hash;
 				Persistent<String>* symbol;
-				Local<Value> args[2];
 				Local<Object> extra = Object::New();
 				
 				if(libtorrent::torrent_finished_alert* p = libtorrent::alert_cast<libtorrent::torrent_finished_alert>(alert.get())) {
@@ -477,6 +463,7 @@ Handle<Value> Playbox::update(const Arguments &args) {
 					continue;
 				}
 				
+				Local<Value> args[2];
 				args[0] = Local<Value>::New(String::New(hash.c_str()));
 				args[1] = extra;
 				playbox->Emit(*symbol, 2, args);
@@ -544,7 +531,7 @@ void Playbox::load_media(const std::string torrent_path) {
 			lazy_entry metadata;
 			boost::system::error_code ec;
 			int pos;
-			if(lazy_bdecode(&buf[0], &buf[0] + buf.size(), metadata, ec, &pos, 3, 100)) {
+			if(lazy_bdecode(&buf[0], &buf[0] + buf.size(), metadata, ec, &pos, 10, 1000)) {
 				std::cerr << "invalid bencoding: " << ec << std::endl;
 				// unlink the file
 				return;
@@ -562,13 +549,14 @@ void Playbox::load_media(const std::string torrent_path) {
 					std::string library_sym(media_path + "/" + hash);
 					params.save_path = filesystem::path(media_path_path.branch_path().string() + "/").string();
 					use_local_file = true;
-					if(!filesystem::exists(library_sym)) {
-						if(symlink(media_path.c_str(), library_sym.c_str()) != 0) {
-							//perror("symlink(MediaPath)");
-							//return;
-						}
+					if(!filesystem::exists(library_sym) && symlink(media_path.c_str(), library_sym.c_str()) != 0) {
+						std::cout << "symlink could not be created" << std::endl;
 					}
+				} else {
+					std::cout << "media path does not exist" << std::endl;
 				}
+			} else {
+				std::cout << "media path not found " << metadata.type() << std::endl;
 			}
 			
 			if(!use_local_file) {
@@ -578,6 +566,7 @@ void Playbox::load_media(const std::string torrent_path) {
 			//======
 			// load up the torrent info into the params
 			//torrent_info* ti = new torrent_info(metadata);
+			std::cout << "save_path: " << params.save_path << std::endl;
 			torrent_info* ti = new torrent_info(metadata, 0);
 			if(ti) {
 				hash = lexical_cast<std::string>(ti->info_hash());
@@ -625,17 +614,14 @@ void Playbox::add_media(const std::string path) {
 	
 	if(filesystem::is_directory(path)) {
 		std::cout << "adding a directory: " << path << std::endl;
+		//asm("int3");
 		
-		//TODO: recurse the directory and add them one by one...
 		filesystem::directory_iterator end_itr;
 		for(filesystem::directory_iterator itr(path); itr != end_itr; ++itr) {
 			std::string filename = itr->filename();
 			if(filesystem::is_regular_file(itr->status()) && filename.substr(filename.length() - 4) == ".mp3") {
-				//std::cout << "mp3! " << itr->filename() << std::endl;
-				//Playbox::add_media(itr->string());
-				torrent_queue.push_back(itr->string());
+				make_torrent(itr->string());
 			} else if(filesystem::is_directory(itr->status())) {
-				//std::cout << "dir " << itr->string() << std::endl;
 				Playbox::add_media(itr->string());
 			} else {
 				std::cerr << "unknown file: " << itr->string() << std::endl;
@@ -643,6 +629,13 @@ void Playbox::add_media(const std::string path) {
 		}
 		
 		return;
+	} else {
+		filesystem::path file_path(filesystem::complete(path));
+		filesystem::file_status st = filesystem::status(file_path);
+		std::cout << "regular file: " << filesystem::is_regular_file(st) << std::endl;
+		if(filesystem::is_regular_file(st) /* && is_media file */) {
+			make_torrent(file_path.string());
+		}
 	}
 }
 	
@@ -678,7 +671,6 @@ void Playbox::make_torrent(const std::string path) {
 		
 		//======
 		// generate the torrent & file hashes
-		// DELETE THIS SHIT, AND SEND AN EVENT THERE'S A NEW TORRENT
 		libtorrent::entry metadata = entry(torrent.generate());
 		
 		//======
@@ -704,13 +696,8 @@ void Playbox::make_torrent(const std::string path) {
 		torrent_file.append(".torrent");
 		
 		//======
-		// emit an event saying there's a new torrent available!
-		// TODO
-		
-		//======
 		// add a symlink in the library to the real file
 		std::string file_path(library_path + '/' + hash);
-		//unlink(file_path.c_str());
 		if(!filesystem::exists(file_path)) {
 			if(symlink(path.c_str(), file_path.c_str()) != 0) {
 				perror("symlink(MusicDirectory)");
@@ -721,8 +708,15 @@ void Playbox::make_torrent(const std::string path) {
 		//======
 		// output the buffer to a file
 		if(!filesystem::exists(torrent_file)) {
-			filesystem::ofstream out(filesystem::complete(filesystem::path(torrent_file)), std::ios_base::binary);
+			filesystem::ofstream out(filesystem::path(torrent_file), std::ios_base::binary);
 			bencode(std::ostream_iterator<char>(out), metadata);
+			
+			///*
+			Local<Value> args[2];
+			args[0] = Local<Value>::New(String::New(hash.c_str()));
+			args[1] = Local<Value>::New(String::New(torrent_file.c_str()));
+			playbox->Emit(metadataAdded, 2, args);
+			//*/
 		}
 		
 		//torrents_metadata[hash] = entry(metadata);

@@ -16,10 +16,12 @@ var do_update = function() {
 	//TODO: put limits.. no fumes discos duros
 	if(add_archive_metadata_queue.length) {
 		path = add_archive_metadata_queue.shift();
-		playbox.add_archive_metadata(playbox.torrent_path + path);
+		console.log("add_archive_metadata", path);
+		playbox.add_archive_metadata(path);
 	} else if(add_archive_queue.length) {
 		path = add_archive_queue.shift();
-		//playbox.add_archive(playbox.library_path + path);
+		console.log("add_archive", path);
+		playbox.add_archive(path);
 	}
 };
 
@@ -39,6 +41,8 @@ playbox.on("archiveUnknown", function(e) {
 	console.log("COMPLETE", hash, e);
 }).on("archiveRemoved", function(e) {
 	console.log("REMOVED");
+}).on("metadataAdded", function(hash, path) {
+	add_archive_metadata_queue.push(path);
 });
 
 function start() {
@@ -64,6 +68,7 @@ function init() {
 	console.log(" torrent_path: "+playbox.torrent_path);
 	
 	// dir scan of the library
+	/*
 	fs.readdir(playbox.library_path, function(err, files) {
 		if(err) throw err;
 		var i = files.length-1;
@@ -72,12 +77,12 @@ function init() {
 				hash = files[i].toString();
 				if(hash.length === 40) {
 					torrents[hash] = {status:"LOOKUP"};
-					add_archive_queue.push(hash);
-					console.log(" =>", hash);
+					//add_archive_queue.push(playbox.library_path + "/" + hash);
 				}
 			} while(i--);
 		}
 	});
+	*/
 	
 	// dir scan of the torrents
 	fs.readdir(playbox.torrent_path, function(err, files) {
@@ -86,13 +91,52 @@ function init() {
 		if(i >= 0) {
 			do {
 				hash = files[i].toString();
-				add_archive_metadata_queue.push(hash);
+				add_archive_metadata_queue.push(playbox.torrent_path+hash);
 			} while(i--);
 		}
 	});
 	
+	var music_dir = playbox.library_path.substr(0, playbox.library_path.indexOf("/Library"))+"/Music";
+	add_media(music_dir);
+	fs.stat(music_dir), function(err, st) {
+		if(st.isFile()) {
+			add_archive_queue.push(music_dir);
+		} else {
+			fs.readdir(playbox.torrent_path, function(err, files) {
+				if(err) throw err;
+				var i = files.length-1;
+				if(i >= 0) {
+					do {
+						hash = files[i].toString();
+						add_archive_metadata_queue.push(playbox.torrent_path+hash);
+					} while(i--);
+				}
+			});
+		}
+	}
+	
+	
 	// start the updates
 	update_loop = setInterval(do_update, 100);
+}
+
+function add_media(p) {
+	fs.stat(p, function(err, st) {
+		if(err) throw err;
+		if(st.isFile() && path.extname(p) === ".mp3") {
+			add_archive_queue.push(p);
+		} else if(st.isDirectory()) {
+			fs.readdir(p, function(err, files) {
+				if(err) throw err;
+				var i = files.length-1;
+				if(i >= 0) {
+					do {
+						add_media(p+"/"+files[i].toString());
+					} while(i--);
+				}
+			});
+		}
+	})
 }
 
 exports.http = function(c, func, args) {

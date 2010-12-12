@@ -124,6 +124,9 @@ def install_libs(bld):
 	if not exists('build/libs'):
 		makedirs('build/libs')
 	
+	if exists('deps/node-websocket-server/lib') and not lexists('build/libs/node-websocket-server'):
+		symlink(abspath('deps/node-websocket-server/lib'), 'build/libs/node-websocket-server')
+		
 	if exists('build/default/playbox.node') and not lexists('build/libs/playbox.node'):
 		symlink(abspath('build/default/playbox.node'), 'build/libs/playbox.node')
 	
@@ -274,6 +277,9 @@ def shutdown(ctx):
 			symlink(abspath('build/libs/libavformat.so'), 'build/release/libs/libavformat.so')
 		elif exists('build/libs/libavformat.dylib') and not lexists('build/release/libs/libavformat.dylib'):
 			symlink(abspath('build/libs/libavformat.dylib'), 'build/release/libs/libavformat.dylib')
+		
+		if exists('build/libs/node-websocket-server') and not lexists('build/release/libs/node-websocket-server'):
+			symlink(abspath('build/libs/node-websocket-server'), 'build/release/libs/node-websocket-server')
 		
 		# node libs
 		if exists('build/default/playbox.node'):
