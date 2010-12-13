@@ -24,7 +24,7 @@ require.paths.unshift("libs/node-websocket-server");
 //var mongoose = require('./lib/mongoose');
 
 // global objects
-Playbox = require('./libs/playbox').Playbox;
+Playbox = require('./lib/playbox').Playbox;
 ws = require("ws/server");
 Url = require("url");
 QueryString = require("querystring");
