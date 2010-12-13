@@ -1,11 +1,15 @@
 current:
-when the metadata is parsed, emit an event with the metadata
-
+list archives (query)
+create websocket test
+integrate head.js
+integrate video.js 
 integrate ffmpeg and get the metadata correctly
+save metadata into the js correctly
+query the metadata
 
 
 later:
-
+abstract the torrent api out to the js a little more, or figure out how to thread it
 
 implement the playbox js interface
 ----------------------------------

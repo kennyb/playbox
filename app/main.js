@@ -556,22 +556,70 @@ fs.readdir("apps", function(err, files) {
 	});
 });
 
-var server = http.createServer(
-	function(req, res) {
+var server = ws.createServer({
+	server: http.createServer(function(req, res) {
+		var c = new Connection(req, res);
+	})
+});
+
+// Handle WebSocket Requests
+server.addListener("connection", function(conn){
+	//conn.storage.set("username", "user_"+conn.id);
+
+	//conn.send("** Connected as: user_"+conn.id);
+	//conn.send("** Type `/nick USERNAME` to change your username");
+
+	//conn.broadcast("** "+conn.storage.get("username")+" connected");
+
+	conn.addListener("message", function(path){
+		// do func lookup
+		var app_name = path.substr(1),
+			app_func = "/",
+			app_func_offset = app_name.indexOf('/'),
+			app_args = "";
 		
-		// DEBUG
-		/*
-		for(var i in global.static_files) {
-			if(i.charAt(1) !== '!') {
-				add_file(i, global.static_files_mime[i], typeof global.static_files[i] === 'string');
+		if(app_func_offset !== -1) {
+			app_func = app_func_offset === app_name.length-1 ? "/" : app_name.substr(app_func_offset);
+			app_name = app_name.substr(0, app_func_offset);
+			
+			if(app_func !== "/" && app_func.length > 1/* && app_func.charAt(0) === '/'*/) {
+				app_func = app_func.substr(1);
+				app_func_offset = app_func.indexOf('/');
+			
+				if(app_func_offset !== -1) {
+					app_args = app_func.substr(app_func_offset+1);
+					app_func = app_func.substr(0, app_func_offset);
+				}
 			}
 		}
-		//*/
-
 		
-		var c = new Connection(req, res);
-	}
-);
+		console.log("app", app_name);
+		console.log("func", app_func);
+		console.log("args", app_args);
+		
+		var app = apps[app_name];
+		if(app !== undefined) {
+			var ret = {
+				_conn: conn,
+				_headers: {},
+				_output_string: "",
+				ret: null,
+				print: function(str) {
+					this._output_string += str.toString();
+				},
+				end: function(ret) {
+					this._conn.send(this._output_string);
+				}
+			};
+			
+			app.http(ret, app_func, app_args);
+		}
+	});
+});
+
+server.addListener("close", function(conn){
+  server.broadcast("<"+conn.id+"> disconnected");
+});
 
 
 /*

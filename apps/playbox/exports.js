@@ -12,37 +12,66 @@ var playbox = new Playbox(),
 
 var do_update = function() {
 	var path;
-	playbox.update();
+	process.nextTick(function() {
+		playbox.update();
+	});
+	
 	//TODO: put limits.. no fumes discos duros
 	if(add_archive_metadata_queue.length) {
 		path = add_archive_metadata_queue.shift();
 		console.log("add_archive_metadata", path);
-		playbox.add_archive_metadata(path);
+		process.nextTick(function() {
+			playbox.add_archive_metadata(path);
+		});
 	} else if(add_archive_queue.length) {
 		path = add_archive_queue.shift();
 		console.log("add_archive", path);
-		playbox.add_archive(path);
+		process.nextTick(function() {
+			playbox.add_archive(path);
+		});
 	}
 };
 
-playbox.on("archiveUnknown", function(e) {
+playbox.on("archiveUnknown", function(hash, e) {
 	console.log("UNKNOWN ARCHIVE");
-}).on("archivePaused", function(e) {
+	torrents[hash] = {status:"UNKNOWN"};
+});
+playbox.on("archivePaused", function(hash, e) {
 	console.log("PAUSED");
-}).on("archiveResumed", function(e) {
+	torrents[hash].active = false;
+});
+playbox.on("archiveResumed", function(hash, e) {
 	console.log("RESUMED");
-}).on("archiveMetadata", function(e) {
+	torrents[hash].active = true;
+});
+playbox.on("archiveMetadata", function(hash, e) {
 	console.log("METADATA");
-}).on("archiveDownloading", function(e) {
+	torrents[hash] = {status:"METADATA", downloaded: -1};
+});
+playbox.on("archiveDownloading", function(hash, e) {
+	torrents[hash].status = "DOWNLOADING";
 	console.log("DOWNLOADING");
-}).on("archiveProgress", function(e) {
+});
+playbox.on("archiveProgress", function(hash, progress) {
 	console.log("PROGRESS");
-}).on("archiveComplete", function(e) {
-	console.log("COMPLETE", hash, e);
-}).on("archiveRemoved", function(e) {
+	torrents[hash].downloaded = progress;
+});
+playbox.on("archiveComplete", function(hash, e) {
+	console.log("COMPLETE", hash, sys.inspect(e));
+	torrents[hash].status = "DOWNLOADING";
+});
+playbox.on("archiveRemoved", function(hash, e) {
 	console.log("REMOVED");
-}).on("metadataAdded", function(hash, path) {
+	torrents[hash].downloaded = -1;
+});
+playbox.on("metadataAdded", function(hash, path) {
 	add_archive_metadata_queue.push(path);
+});
+playbox.on("listening", function(details) {
+	console.log("LISTENING", details);
+});
+playbox.on("listeningFailed", function(details) {
+	console.log("LISTENING_FAILED", details);
 });
 
 function start() {
@@ -139,6 +168,28 @@ function add_media(p) {
 	})
 }
 
+function query(args) {
+	//console.log(torrent
+}
+
+var _ext2mime = {
+	"html": "text/html",
+	"ico": "image/x-icon",
+	"gif": "image/gif",
+	"jpg": "image/jpeg",
+	"jpg": "image/jpeg",
+	"js": "text/javascript",
+	"json": "application/json",
+	"xml": "text/xml",
+};
+function ext2mime(ext) {
+	if(ext.charAt(0) === '.') {
+		ext = ext.substr(1);
+	}
+	
+	return _ext2mime[ext];
+}
+
 exports.http = function(c, func, args) {
 	var output = {
 		func: func,
@@ -161,7 +212,7 @@ exports.http = function(c, func, args) {
 			break;
 			
 		case 'q':
-			output.ret = playbox.query();
+			output.ret = query(args);
 			break;
 			
 		case 'g':
@@ -172,8 +223,14 @@ exports.http = function(c, func, args) {
 			output.ret = playbox.info(args);
 			break;
 			
+		case '/':
+			c.file("application/xhtml+xml", "./apps/playbox/public/index.html");
+			return;
+			
 		default:
-			output.ret = "invalid function";
+			var mime = ext2mime(path.extname(args));
+			c.file(mime, "./public/"+args);
+			return;
 	}
 	
 	c._headers["Content-Type"] = "application/javascript";

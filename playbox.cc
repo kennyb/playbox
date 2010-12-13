@@ -62,6 +62,8 @@ static Playbox *playbox;
 static AVFormatContext *pFormatCtx;
 
 // events
+static Persistent<String> listening = NODE_PSYMBOL("listening");
+static Persistent<String> listeningFailed = NODE_PSYMBOL("listeningFailed");
 static Persistent<String> metadataAdded = NODE_PSYMBOL("metadataAdded");
 static Persistent<String> archiveUnknown = NODE_PSYMBOL("archiveUnknown");
 static Persistent<String> archivePaused = NODE_PSYMBOL("archivePaused");
@@ -188,16 +190,6 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 			filesystem::create_directory(p);
 		}
 		
-		// -------
-		/*
-		std::string music_dir(user_passwd->pw_dir);
-		music_dir += "/Music";
-		
-		if(stat(music_dir.c_str(), &status) != -1) {
-			// TODO!!!!! automatically add the music directory to the sources list
-			Playbox::add_media(music_dir);
-		}
-		//*/
 	} else {
 		// todo: move most of this into the constructor, and separate the static functions from the methods
 		//return VException("playbox could not find the user's home directory! HUGE FAIL");
@@ -289,7 +281,13 @@ Handle<Value> Playbox::add_archive(const Arguments &args) {
     
 	String::Utf8Value archive_path(args[0]->ToString());
 	std::string path(*archive_path);
-	Playbox::add_media(path);
+	filesystem::path file_path(filesystem::complete(path));
+	filesystem::file_status st = filesystem::status(file_path);
+	std::cout << "regular file: " << filesystem::is_regular_file(st) << std::endl;
+	if(filesystem::is_regular_file(st) /* && is_media file */) {
+		make_torrent(file_path.string());
+	}
+	
 	return Undefined();
 }
 
@@ -429,6 +427,12 @@ Handle<Value> Playbox::update(const Arguments &args) {
 	std::auto_ptr<libtorrent::alert> alert;
 	while((alert = cur_session.pop_alert()).get() != NULL) {
 		int type = (*alert).type();
+		Persistent<String>* symbol;
+		Local<Object> extra = Object::New();
+		Local<Value> args[2];
+		args[1] = extra;
+		std::string hash;
+		
 		switch(type) {
 			case libtorrent::torrent_finished_alert::alert_type:
 			case libtorrent::torrent_deleted_alert::alert_type:
@@ -436,10 +440,6 @@ Handle<Value> Playbox::update(const Arguments &args) {
 			case libtorrent::torrent_resumed_alert::alert_type:
 			case libtorrent::metadata_failed_alert::alert_type:
 			case libtorrent::metadata_received_alert::alert_type:
-				std::string hash;
-				Persistent<String>* symbol;
-				Local<Object> extra = Object::New();
-				
 				if(libtorrent::torrent_finished_alert* p = libtorrent::alert_cast<libtorrent::torrent_finished_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
 					symbol = &archiveComplete;
@@ -463,16 +463,24 @@ Handle<Value> Playbox::update(const Arguments &args) {
 					continue;
 				}
 				
-				Local<Value> args[2];
 				args[0] = Local<Value>::New(String::New(hash.c_str()));
-				args[1] = extra;
 				playbox->Emit(*symbol, 2, args);
 				break;
 			
-			//case libtorrent::listen_failed_alert::alert_type:
-			//case libtorrent::listen_succeeded_alert::alert_type:
-			//	printf("LISTENING\n");
-			//break;
+			case libtorrent::listen_failed_alert::alert_type:
+			case libtorrent::listen_succeeded_alert::alert_type:
+				if(libtorrent::listen_succeeded_alert* p = libtorrent::alert_cast<libtorrent::listen_succeeded_alert>(alert.get())) {
+					symbol = &listening;
+					printf("LISTENING\n");
+				} else if(libtorrent::listen_failed_alert* p = libtorrent::alert_cast<libtorrent::listen_failed_alert>(alert.get())) {
+					symbol = &listeningFailed;
+					printf("LISTENING FAILED\n");
+				}
+				
+				//args[0] = Local<Value>::New(String::New(hash.c_str()));
+				args[0] = extra;
+				playbox->Emit(*symbol, 1, args);
+				break;
 			
 		}
 		
@@ -484,7 +492,7 @@ Handle<Value> Playbox::update(const Arguments &args) {
 
 
 static void print_progress(int i, int num) {
-	usleep(100);
+	//usleep(100);
 	std::cerr << "\r" << (i+1) << "/" << num;
 }
 
@@ -594,7 +602,14 @@ void Playbox::load_media(const std::string torrent_path) {
 		}
 		
 		std::cerr << "loading torrent... " << hash << " " << params.save_path << " " << filesystem::exists(params.save_path) << std::endl;
-		cur_session.add_torrent(params);
+		libtorrent::torrent_handle handle = cur_session.add_torrent(params);
+		
+		hash = lexical_cast<std::string>(handle.info_hash());
+		Local<Value> args[2];
+		args[0] = Local<Value>::New(String::New(hash.c_str()));
+		//args[1] = Local<Value>::New(String::New(torrent_file.c_str()));
+		playbox->Emit(archiveMetadata, 1, args);
+		
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {
@@ -609,34 +624,7 @@ void Playbox::load_media(const std::string torrent_path) {
 
 // this creates a torrent for the file, and then creates a symlink in the directory
 void Playbox::add_media(const std::string path) {
-	using namespace boost;
-	using namespace libtorrent;
 	
-	if(filesystem::is_directory(path)) {
-		std::cout << "adding a directory: " << path << std::endl;
-		//asm("int3");
-		
-		filesystem::directory_iterator end_itr;
-		for(filesystem::directory_iterator itr(path); itr != end_itr; ++itr) {
-			std::string filename = itr->filename();
-			if(filesystem::is_regular_file(itr->status()) && filename.substr(filename.length() - 4) == ".mp3") {
-				make_torrent(itr->string());
-			} else if(filesystem::is_directory(itr->status())) {
-				Playbox::add_media(itr->string());
-			} else {
-				std::cerr << "unknown file: " << itr->string() << std::endl;
-			}
-		}
-		
-		return;
-	} else {
-		filesystem::path file_path(filesystem::complete(path));
-		filesystem::file_status st = filesystem::status(file_path);
-		std::cout << "regular file: " << filesystem::is_regular_file(st) << std::endl;
-		if(filesystem::is_regular_file(st) /* && is_media file */) {
-			make_torrent(file_path.string());
-		}
-	}
 }
 	
 void Playbox::make_torrent(const std::string path) {
