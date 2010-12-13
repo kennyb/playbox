@@ -23,7 +23,7 @@ var http = require("http"),
 //var mongoose = require('./lib/mongoose');
 
 // global objects
-Playbox = require('./libs/playbox').Playbox;
+Playbox = require('./lib/playbox').Playbox;
 Url = require("url");
 QueryString = require("querystring");
 //cookie = require( "./lib/cookie");

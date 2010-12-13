@@ -111,9 +111,9 @@ def build_playbox(bld):
 	playbox.name = "playbox"
 	playbox.target = "playbox"
 	if sys.platform.startswith("darwin"):
-	  playbox.linkflags = ['libs/libtorrent.dylib', 'libs/libavformat.dylib']
+	  playbox.linkflags = ['lib/libtorrent.dylib', 'lib/libavformat.dylib']
 	if sys.platform.startswith("linux"):
-	  playbox.linkflags = ['libs/libtorrent.so', 'libs/libavformat.so']
+	  playbox.linkflags = ['lib/libtorrent.so', 'lib/libavformat.so']
   
 	playbox.source = ["playbox.cc"]
 	playbox.includes = ['libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
@@ -121,22 +121,31 @@ def build_playbox(bld):
 	playbox.cxxflags = ['-Wall']
 
 def install_libs(bld):
-	if not exists('build/libs'):
-		makedirs('build/libs')
+	if not exists('build/lib'):
+		makedirs('build/lib')
 	
-	if exists('build/default/playbox.node') and not lexists('build/libs/playbox.node'):
-		symlink(abspath('build/default/playbox.node'), 'build/libs/playbox.node')
+	if exists('build/default/playbox.node') and not lexists('build/lib/playbox.node'):
+		symlink(abspath('build/default/playbox.node'), 'build/lib/playbox.node')
 	
-	if exists('build/default/libtorrent.dylib') and not lexists('build/libs/libtorrent.dylib'):
-		symlink(abspath('build/default/libtorrent.dylib'), 'build/libs/libtorrent.dylib')
-	elif exists('build/default/libtorrent.so') and not lexists('build/libs/libtorrent.so'):
-		symlink(abspath('build/default/libtorrent.so'), 'build/libs/libtorrent.so')
-		
-	if exists('deps/ffmpeg/libavformat/libavformat.so') and not lexists('build/libs/libavformat.so'):
-		symlink(abspath('deps/ffmpeg/libavformat/libavformat.so'), 'build/libs/libavformat.so')
-	elif exists('deps/ffmpeg/libavformat/libavformat.dylib') and not lexists('build/libs/libavformat.dylib'):
-		symlink(abspath('deps/ffmpeg/libavformat/libavformat.dylib'), 'build/libs/libavformat.dylib')
+	if exists('build/default/libtorrent.dylib') and not lexists('build/lib/libtorrent.dylib'):
+		symlink(abspath('build/default/libtorrent.dylib'), 'build/lib/libtorrent.dylib')
+	elif exists('build/default/libtorrent.so') and not lexists('build/lib/libtorrent.so'):
+		symlink(abspath('build/default/libtorrent.so'), 'build/lib/libtorrent.so')
 	
+	if exists('deps/ffmpeg/libavformat/libavformat.so') and not lexists('build/lib/libavformat.so'):
+		symlink(abspath('deps/ffmpeg/libavformat/libavformat.so'), 'build/lib/libavformat.so')
+	elif exists('deps/ffmpeg/libavformat/libavformat.dylib') and not lexists('build/lib/libavformat.dylib'):
+		symlink(abspath('deps/ffmpeg/libavformat/libavformat.dylib'), 'build/lib/libavformat.dylib')
+	
+	if exists('deps/ffmpeg/libavformat/libavcodec.so') and not lexists('build/lib/libavcodec.so'):
+		symlink(abspath('deps/ffmpeg/libavcodec/libavcodec.so'), 'build/lib/libavcodec.so')
+	elif exists('deps/ffmpeg/libavcodec/libavcodec.dylib') and not lexists('build/lib/libavcodec.dylib'):
+		symlink(abspath('deps/ffmpeg/libavcodec/libavcodec.dylib'), 'build/lib/libavcodec.dylib')
+	
+	if exists('deps/ffmpeg/libavformat/libavutil.so') and not lexists('build/lib/libavutil.so'):
+		symlink(abspath('deps/ffmpeg/libavutil/libavutil.so'), 'build/lib/libavutil.so')
+	elif exists('deps/ffmpeg/libavutil/libavutil.dylib') and not lexists('build/lib/libavutil.dylib'):
+		symlink(abspath('deps/ffmpeg/libavutil/libavutil.dylib'), 'build/lib/libavutil.dylib')
 #def build_id3(bld):
 #	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
 #	id3.name = "id3"
@@ -261,23 +270,33 @@ def shutdown(ctx):
 	if Options.commands['clean']:
 		if exists('playbox.node'): unlink('playbox.node')
 	else:
-		if not exists('build/release/libs'):
-			makedirs('build/release/libs')
+		if not exists('build/release/lib'):
+			makedirs('build/release/lib')
 		
 		# generic libs
-		if exists('build/libs/libtorrent.so') and not lexists('build/release/libs/libtorrent.so'):
-			symlink(abspath('build/libs/libtorrent.so'), 'build/release/libs/libtorrent.so')
-		elif exists('build/libs/libtorrent.dylib') and not lexists('build/release/libs/libtorrent.dylib'):
-			symlink(abspath('build/libs/libtorrent.dylib'), 'build/release/libs/libtorrent.dylib')
+		if exists('build/lib/libtorrent.so') and not lexists('build/release/lib/libtorrent.so'):
+			symlink(abspath('build/lib/libtorrent.so'), 'build/release/lib/libtorrent.so')
+		elif exists('build/lib/libtorrent.dylib') and not lexists('build/release/lib/libtorrent.dylib'):
+			symlink(abspath('build/lib/libtorrent.dylib'), 'build/release/lib/libtorrent.dylib')
 		
-		if exists('build/libs/libavformat.so') and not lexists('build/release/libs/libavformat.so'):
-			symlink(abspath('build/libs/libavformat.so'), 'build/release/libs/libavformat.so')
-		elif exists('build/libs/libavformat.dylib') and not lexists('build/release/libs/libavformat.dylib'):
-			symlink(abspath('build/libs/libavformat.dylib'), 'build/release/libs/libavformat.dylib')
+		if exists('build/lib/libavformat.so') and not lexists('build/release/lib/libavformat.so'):
+			symlink(abspath('build/lib/libavformat.so'), 'build/release/lib/libavformat.so')
+		elif exists('build/lib/libavformat.dylib') and not lexists('build/release/lib/libavformat.dylib'):
+			symlink(abspath('build/lib/libavformat.dylib'), 'build/release/lib/libavformat.dylib')
+		
+		if exists('build/lib/libavcodec.so') and not lexists('build/release/lib/libavcodec.so'):
+			symlink(abspath('build/lib/libavcodec.so'), 'build/release/lib/libavcodec.so')
+		elif exists('build/lib/libavcodec.dylib') and not lexists('build/release/lib/libavcodec.dylib'):
+			symlink(abspath('build/lib/libavcodec.dylib'), 'build/release/lib/libavcodec.dylib')
+		
+		if exists('build/lib/libavutil.so') and not lexists('build/release/lib/libavutil.so'):
+			symlink(abspath('build/lib/libavutil.so'), 'build/release/lib/libavutil.so')
+		elif exists('build/lib/libavutil.dylib') and not lexists('build/release/lib/libavutil.dylib'):
+			symlink(abspath('build/lib/libavutil.dylib'), 'build/release/lib/libavutil.dylib')
 		
 		# node libs
 		if exists('build/default/playbox.node'):
-			copy2('build/default/playbox.node', 'build/release/libs/playbox.node')
+			copy2('build/default/playbox.node', 'build/release/lib/playbox.node')
 		
 		# custom node
 		# todo: if this doesn't exist, then build node
