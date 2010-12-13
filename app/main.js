@@ -554,6 +554,15 @@ fs.readdir("apps", function(err, files) {
 		console.log("loading:", app);
 		apps[app] = require("./apps/"+app+"/exports.js");
 	});
+	
+	for(var i in apps) {
+	var app = apps[i];
+		if(app.init) {
+			app.init({
+				ws_broadcast: server.broadcast
+			});
+		}
+	}
 });
 
 var server = ws.createServer({
@@ -570,6 +579,7 @@ server.addListener("connection", function(conn){
 	//conn.send("** Type `/nick USERNAME` to change your username");
 
 	//conn.broadcast("** "+conn.storage.get("username")+" connected");
+	//console.log("ws", conn.broadcast);
 
 	conn.addListener("message", function(path){
 		// do func lookup
@@ -598,7 +608,7 @@ server.addListener("connection", function(conn){
 		console.log("args", app_args);
 		
 		var app = apps[app_name];
-		if(app !== undefined) {
+		if(app !== undefined && typeof app.websocket === 'function') {
 			var ret = {
 				_conn: conn,
 				_headers: {},
@@ -612,14 +622,16 @@ server.addListener("connection", function(conn){
 				}
 			};
 			
-			app.http(ret, app_func, app_args);
+			app.websocket(ret, app_func, app_args);
 		}
 	});
 });
 
 server.addListener("close", function(conn){
-  server.broadcast("<"+conn.id+"> disconnected");
+	//TODO apps[app_name].websocket_disconnect
+	server.broadcast("<"+conn.id+"> disconnected");
 });
+
 
 
 /*

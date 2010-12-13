@@ -1,0 +1,33 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+	<head>
+		<title>playbox-2</title>
+		<link rel="stylesheet" href="http://static.gatunes.com/css/screen.css?144" type="text/css" media="screen" charset="utf-8" />
+		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js" type="text/javascript" charset="utf-8"></script>
+	</head>
+	<body>
+		<div>playbox-2</div>
+		<script type="text/javascript">
+var conn;
+$(function(){
+
+	console.log("ws", window["WebSocket"]);
+	if(window["WebSocket"]) {
+		conn = new WebSocket("ws://"+document.location.host+"/");
+
+		conn.onmessage = function(evt) {
+			console.log(evt.data);
+		};
+
+		conn.onclose = function() {
+			console.log("** you have been disconnected");
+		};
+
+		conn.onopen = function(){
+			console.log("** you have been connected");
+		}
+	}
+});
+		</script>
+	</body>
+</html>

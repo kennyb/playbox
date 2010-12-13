@@ -32,45 +32,47 @@ var do_update = function() {
 	}
 };
 
+function broadcast_event(evt, data) {
+	data = data || {};
+	
+	server.broadcast(JSON.stringify({
+		app: "playbox",
+		func: "event",
+		args: evt,
+		data: data
+	}));
+}
+
 playbox.on("archiveUnknown", function(hash, e) {
 	console.log("UNKNOWN ARCHIVE");
 	torrents[hash] = {status:"UNKNOWN"};
-});
-playbox.on("archivePaused", function(hash, e) {
-	console.log("PAUSED");
+}).on("archivePaused", function(hash, e) {
 	torrents[hash].active = false;
-});
-playbox.on("archiveResumed", function(hash, e) {
-	console.log("RESUMED");
+	broadcast_event("archivePaused", torrents[hash]);
+}).on("archiveResumed", function(hash, e) {
 	torrents[hash].active = true;
-});
-playbox.on("archiveMetadata", function(hash, e) {
-	console.log("METADATA");
+	broadcast_event("archiveResumed", torrents[hash]);
+}).on("archiveMetadata", function(hash, e) {
 	torrents[hash] = {status:"METADATA", downloaded: -1};
-});
-playbox.on("archiveDownloading", function(hash, e) {
+	broadcast_event("archiveMetadata", torrents[hash]);
+}).on("archiveDownloading", function(hash, e) {
 	torrents[hash].status = "DOWNLOADING";
-	console.log("DOWNLOADING");
-});
-playbox.on("archiveProgress", function(hash, progress) {
-	console.log("PROGRESS");
+	broadcast_event("archiveDownloading", torrents[hash]);
+}).on("archiveProgress", function(hash, progress) {
 	torrents[hash].downloaded = progress;
-});
-playbox.on("archiveComplete", function(hash, e) {
-	console.log("COMPLETE", hash, sys.inspect(e));
-	torrents[hash].status = "DOWNLOADING";
-});
-playbox.on("archiveRemoved", function(hash, e) {
-	console.log("REMOVED");
+	broadcast_event("archiveProgress", torrents[hash]);
+}).on("archiveComplete", function(hash, e) {
+	torrents[hash].status = "OK";
+	broadcast_event("archiveComplete", torrents[hash]);
+}).on("archiveRemoved", function(hash, e) {
 	torrents[hash].downloaded = -1;
-});
-playbox.on("metadataAdded", function(hash, path) {
+	broadcast_event("archiveRemoved", torrents[hash]);
+}).on("metadataAdded", function(hash, path) {
 	add_archive_metadata_queue.push(path);
-});
-playbox.on("listening", function(details) {
+	broadcast_event("metadataAdded", torrents[hash]);
+}).on("listening", function(details) {
 	console.log("LISTENING", details);
-});
-playbox.on("listeningFailed", function(details) {
+}).on("listeningFailed", function(details) {
 	console.log("LISTENING_FAILED", details);
 });
 
@@ -248,6 +250,39 @@ exports.http = function(c, func, args) {
 	c.print(JSON.stringify(output));
 	c.end(output.status);
 };
+
+var websocket_broadcast = function(msg) {
+	console.log("application not initialized with websockets enabled");
+};
+
+exports.init = function(opts) {
+	if(opts.ws_broadcast) {
+		websocket_broadcast = opts.ws_broadcast;
+	}
+}
+
+exports.websocket_connect = function(c) {
+	
+}
+
+exports.websocket_disconnect = function(c) {
+	
+}
+
+exports.websocket_func = function(c, func, args) {
+	//console.log("ws", c._conn.broadcast);
+}
+
+function broadcast_event(evt, data) {
+	data = data || {};
+	
+	websocket_broadcast(JSON.stringify({
+		app: "playbox",
+		func: "event",
+		args: evt,
+		data: data
+	}));
+}
 
 // start it up!
 console.log("init:", init());

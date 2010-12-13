@@ -1,7 +1,5 @@
 current:
 do not rehash existing torrents
-create websocket test
-broadcast application events
 integrate head.js
 integrate video.js 
 integrate ffmpeg and get the metadata correctly
