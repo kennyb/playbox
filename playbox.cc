@@ -15,6 +15,7 @@
 #include <libtorrent/entry.hpp>
 #include <libtorrent/bencode.hpp>
 #include <libtorrent/torrent_info.hpp>
+#include <libtorrent/torrent_handle.hpp>
 #include <libtorrent/file.hpp>
 #include <libtorrent/storage.hpp>
 #include <libtorrent/hasher.hpp>
@@ -62,17 +63,18 @@ static Playbox *playbox;
 static AVFormatContext *pFormatCtx;
 
 // events
-static Persistent<String> listening = NODE_PSYMBOL("listening");
-static Persistent<String> listeningFailed = NODE_PSYMBOL("listeningFailed");
-static Persistent<String> metadataAdded = NODE_PSYMBOL("metadataAdded");
-static Persistent<String> archiveUnknown = NODE_PSYMBOL("archiveUnknown");
-static Persistent<String> archivePaused = NODE_PSYMBOL("archivePaused");
-static Persistent<String> archiveResumed = NODE_PSYMBOL("archiveResumed");
-static Persistent<String> archiveMetadata = NODE_PSYMBOL("archiveMetadata");
-static Persistent<String> archiveDownloading = NODE_PSYMBOL("archiveDownloading");
-static Persistent<String> archiveProgress = NODE_PSYMBOL("archiveProgress");
-static Persistent<String> archiveComplete = NODE_PSYMBOL("archiveComplete");
-static Persistent<String> archiveRemoved = NODE_PSYMBOL("archiveRemoved");
+static Persistent<String> symbol_stateChange = NODE_PSYMBOL("stateChanged");
+static Persistent<String> symbol_listening = NODE_PSYMBOL("listening");
+static Persistent<String> symbol_listeningFailed = NODE_PSYMBOL("listeningFailed");
+static Persistent<String> symbol_metadataAdded = NODE_PSYMBOL("metadataAdded");
+static Persistent<String> symbol_archiveUnknown = NODE_PSYMBOL("archiveUnknown");
+static Persistent<String> symbol_archivePaused = NODE_PSYMBOL("archivePaused");
+static Persistent<String> symbol_archiveResumed = NODE_PSYMBOL("archiveResumed");
+static Persistent<String> symbol_archiveMetadata = NODE_PSYMBOL("archiveMetadata");
+static Persistent<String> symbol_archiveDownloading = NODE_PSYMBOL("archiveDownloading");
+static Persistent<String> symbol_archiveProgress = NODE_PSYMBOL("archiveProgress");
+static Persistent<String> symbol_archiveComplete = NODE_PSYMBOL("archiveComplete");
+static Persistent<String> symbol_archiveRemoved = NODE_PSYMBOL("archiveRemoved");
 
 
 static Handle<Value> VException(const char *msg) {
@@ -173,7 +175,6 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	
 	uid_t uid = getuid();
 	struct passwd* user_passwd = getpwuid(uid);
-	struct stat status;
 	
 	if(user_passwd) {
 		library_path = user_passwd->pw_dir;
@@ -440,27 +441,92 @@ Handle<Value> Playbox::update(const Arguments &args) {
 			case libtorrent::torrent_resumed_alert::alert_type:
 			case libtorrent::metadata_failed_alert::alert_type:
 			case libtorrent::metadata_received_alert::alert_type:
+			case libtorrent::state_changed_alert::alert_type:
 				if(libtorrent::torrent_finished_alert* p = libtorrent::alert_cast<libtorrent::torrent_finished_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
-					symbol = &archiveComplete;
+					symbol = &symbol_archiveComplete;
 				} else if(libtorrent::torrent_deleted_alert* p = libtorrent::alert_cast<libtorrent::torrent_deleted_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
-					symbol = &archiveRemoved;
+					symbol = &symbol_archiveRemoved;
 				} else if(libtorrent::torrent_paused_alert* p = libtorrent::alert_cast<libtorrent::torrent_paused_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
-					symbol = &archivePaused;
+					symbol = &symbol_archivePaused;
 				} else if(libtorrent::torrent_resumed_alert* p = libtorrent::alert_cast<libtorrent::torrent_resumed_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
-					symbol = &archiveResumed;
+					symbol = &symbol_archiveResumed;
 				} else if(libtorrent::metadata_failed_alert* p = libtorrent::alert_cast<libtorrent::metadata_failed_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
-					symbol = &archiveUnknown;
+					symbol = &symbol_archiveUnknown;
 				} else if(libtorrent::metadata_received_alert* p = libtorrent::alert_cast<libtorrent::metadata_received_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
-					symbol = &archiveMetadata;
+					symbol = &symbol_archiveMetadata;
+				} else if(libtorrent::state_changed_alert* p = libtorrent::alert_cast<libtorrent::state_changed_alert>(alert.get())) {
+					std::string prev_state;
+					std::string state;
+					hash = lexical_cast<std::string>(p->handle.info_hash());
+					symbol = &symbol_stateChange;
+					switch(p->prev_state) {
+						case libtorrent::torrent_status::checking_files:
+						case libtorrent::torrent_status::queued_for_checking:
+						case libtorrent::torrent_status::checking_resume_data:
+							prev_state = "CHECKING";
+							break;
+						
+						case libtorrent::torrent_status::downloading_metadata:
+							prev_state = "DOWNLOADING_METADATA";
+							break;
+							
+						case libtorrent::torrent_status::downloading:
+							prev_state = "DOWNLOADING";
+							break;
+							
+						case libtorrent::torrent_status::finished:
+						case libtorrent::torrent_status::seeding:
+							prev_state = "OK";
+							break;
+							
+						case libtorrent::torrent_status::allocating:
+							prev_state = "ALLOCATING";
+							break;
+					}
+					
+					switch(p->state) {
+						case libtorrent::torrent_status::checking_files:
+						case libtorrent::torrent_status::queued_for_checking:
+						case libtorrent::torrent_status::checking_resume_data:
+							state = "CHECKING";
+							break;
+						
+						case libtorrent::torrent_status::downloading_metadata:
+							state = "DOWNLOADING_METADATA";
+							break;
+							
+						case libtorrent::torrent_status::downloading:
+							state = "DOWNLOADING";
+							break;
+							
+						case libtorrent::torrent_status::finished:
+						case libtorrent::torrent_status::seeding:
+							state = "OK";
+							break;
+							
+						case libtorrent::torrent_status::allocating:
+							state = "ALLOCATING";
+							break;
+					}
+					
+					if(prev_state == state) {
+						continue;
+					}
+					
+					extra->Set(String::New("prev_state"), String::New(prev_state.c_str()));
+					extra->Set(String::New("state"), String::New(state.c_str()));
+					
+#ifndef ENABLE_WARNINGS
 				} else {
 					// some sort of error
 					continue;
+#endif
 				}
 				
 				args[0] = Local<Value>::New(String::New(hash.c_str()));
@@ -470,17 +536,25 @@ Handle<Value> Playbox::update(const Arguments &args) {
 			case libtorrent::listen_failed_alert::alert_type:
 			case libtorrent::listen_succeeded_alert::alert_type:
 				if(libtorrent::listen_succeeded_alert* p = libtorrent::alert_cast<libtorrent::listen_succeeded_alert>(alert.get())) {
-					symbol = &listening;
+					symbol = &symbol_listening;
 					printf("LISTENING\n");
 				} else if(libtorrent::listen_failed_alert* p = libtorrent::alert_cast<libtorrent::listen_failed_alert>(alert.get())) {
-					symbol = &listeningFailed;
+					symbol = &symbol_listeningFailed;
 					printf("LISTENING FAILED\n");
+#ifndef ENABLE_WARNINGS
+				} else {
+					// putos warnings de mierda! should never get here
+					continue;
+#endif
 				}
 				
 				//args[0] = Local<Value>::New(String::New(hash.c_str()));
 				args[0] = extra;
 				playbox->Emit(*symbol, 1, args);
 				break;
+				
+			default:
+				continue;
 			
 		}
 		
@@ -511,6 +585,7 @@ void Playbox::load_torrent(const std::string torrent_path) {
 		//======
 		// add_torrent parameters
 		std::string hash;
+		std::string local_file;
 		libtorrent::add_torrent_params params;
 		params.duplicate_is_error = false;
 		params.storage_mode = libtorrent::storage_mode_allocate;
@@ -575,6 +650,7 @@ void Playbox::load_torrent(const std::string torrent_path) {
 			// load up the torrent info into the params
 			//torrent_info* ti = new torrent_info(metadata);
 			std::cout << "save_path: " << params.save_path << std::endl;
+			local_file = params.save_path;
 			torrent_info* ti = new torrent_info(metadata, 0);
 			if(ti) {
 				hash = lexical_cast<std::string>(ti->info_hash());
@@ -584,9 +660,11 @@ void Playbox::load_torrent(const std::string torrent_path) {
 					//std::cout << "renaming to file: " << (ti->name()) << std::endl;
 					const std::string filename(ti->name());
 					ti->rename_file(0, filename);
+					local_file += filename;
 				} else {
 					//std::cout << "renaming to hash: " << hash << std::endl;
 					ti->rename_file(0, hash);
+					local_file += hash;
 				}
 				
 				params.ti = ti;
@@ -607,8 +685,8 @@ void Playbox::load_torrent(const std::string torrent_path) {
 		hash = lexical_cast<std::string>(handle.info_hash());
 		Local<Value> args[2];
 		args[0] = Local<Value>::New(String::New(hash.c_str()));
-		//args[1] = Local<Value>::New(String::New(torrent_file.c_str()));
-		playbox->Emit(archiveMetadata, 1, args);
+		args[1] = Local<Value>::New(String::New(local_file.c_str()));
+		playbox->Emit(symbol_archiveMetadata, 2, args);
 		
 		
 #ifndef BOOST_NO_EXCEPTIONS
@@ -698,7 +776,7 @@ void Playbox::make_torrent(const std::string path) {
 			Local<Value> args[2];
 			args[0] = Local<Value>::New(String::New(hash.c_str()));
 			args[1] = Local<Value>::New(String::New(torrent_file.c_str()));
-			playbox->Emit(metadataAdded, 2, args);
+			playbox->Emit(symbol_metadataAdded, 2, args);
 			//*/
 		}
 		

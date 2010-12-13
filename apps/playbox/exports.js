@@ -26,9 +26,17 @@ var do_update = function() {
 	} else if(add_archive_queue.length) {
 		path = add_archive_queue.shift();
 		console.log("add_archive", path);
-		//process.nextTick(function() {
+		for(var i in torrents) {
+			var t = torrents[i];
+			//console.log("1:"+t.local_file+"\n2:"+path);
+			if(t.local_file === path) {
+				path = null;
+			}
+		}
+		
+		if(path) {
 		//	playbox.add_archive(path);
-		//});
+		}
 	}
 };
 
@@ -43,7 +51,10 @@ function broadcast_event(evt, data) {
 	}));
 }
 
-playbox.on("archiveUnknown", function(hash, e) {
+playbox.on("stateChanged", function(hash, extra) {
+	console.log("changed state "+extra.prev_state+" -> "+extra.state);
+	torrents[hash] = {status:extra.state};
+}).on("archiveUnknown", function(hash, e) {
 	console.log("UNKNOWN ARCHIVE");
 	torrents[hash] = {status:"UNKNOWN"};
 }).on("archivePaused", function(hash, e) {
@@ -52,8 +63,8 @@ playbox.on("archiveUnknown", function(hash, e) {
 }).on("archiveResumed", function(hash, e) {
 	torrents[hash].active = true;
 	broadcast_event("archiveResumed", torrents[hash]);
-}).on("archiveMetadata", function(hash, e) {
-	torrents[hash] = {status:"METADATA", downloaded: -1};
+}).on("archiveMetadata", function(hash, local_file) {
+	torrents[hash] = {status:"METADATA", downloaded: -1, local_file: local_file};
 	broadcast_event("archiveMetadata", torrents[hash]);
 }).on("archiveDownloading", function(hash, e) {
 	torrents[hash].status = "DOWNLOADING";
@@ -63,6 +74,7 @@ playbox.on("archiveUnknown", function(hash, e) {
 	broadcast_event("archiveProgress", torrents[hash]);
 }).on("archiveComplete", function(hash, e) {
 	torrents[hash].status = "OK";
+	torrents[hash].downloadeed = 100;
 	broadcast_event("archiveComplete", torrents[hash]);
 }).on("archiveRemoved", function(hash, e) {
 	torrents[hash].downloaded = -1;
