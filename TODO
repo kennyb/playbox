@@ -1,5 +1,5 @@
 current:
-list archives (query)
+do not rehash existing torrents
 create websocket test
 broadcast application events
 integrate head.js

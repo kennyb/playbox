@@ -26,9 +26,9 @@ var do_update = function() {
 	} else if(add_archive_queue.length) {
 		path = add_archive_queue.shift();
 		console.log("add_archive", path);
-		process.nextTick(function() {
-			playbox.add_archive(path);
-		});
+		//process.nextTick(function() {
+		//	playbox.add_archive(path);
+		//});
 	}
 };
 
@@ -120,7 +120,9 @@ function init() {
 		if(i >= 0) {
 			do {
 				hash = files[i].toString();
-				add_archive_metadata_queue.push(playbox.torrent_path+hash);
+				if(add_archive_metadata_queue.length < 11) {
+					add_archive_metadata_queue.push(playbox.torrent_path+hash);
+				}
 			} while(i--);
 		}
 	});
@@ -169,7 +171,15 @@ function add_media(p) {
 }
 
 function query(args) {
-	//console.log(torrent
+	var ret = args ? {} : torrents;
+	if(args) {
+		/*for(var i in torrents) {
+			var t = torrents[i];
+			
+		}*/
+	}
+	
+	return ret;
 }
 
 var _ext2mime = {
@@ -224,7 +234,8 @@ exports.http = function(c, func, args) {
 			break;
 			
 		case '/':
-			c.file("application/xhtml+xml", "./apps/playbox/public/index.html");
+			//c.file("application/xhtml+xml", "./apps/playbox/public/index.html");
+			c.file("text/html; charset=utf-8", "./apps/playbox/public/index.html");
 			return;
 			
 		default:

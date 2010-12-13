@@ -297,7 +297,7 @@ Handle<Value> Playbox::add_archive_metadata(const Arguments &args) {
     }
     
 	String::Utf8Value archive_path(args[0]->ToString());
-	Playbox::load_media(std::string(*archive_path));
+	Playbox::load_torrent(std::string(*archive_path));
 	return Undefined();
 }
 
@@ -496,7 +496,7 @@ static void print_progress(int i, int num) {
 	std::cerr << "\r" << (i+1) << "/" << num;
 }
 
-void Playbox::load_media(const std::string torrent_path) {
+void Playbox::load_torrent(const std::string torrent_path) {
 	using namespace boost;
 	using namespace libtorrent;
 	
@@ -622,11 +622,6 @@ void Playbox::load_media(const std::string torrent_path) {
 #endif
 }
 
-// this creates a torrent for the file, and then creates a symlink in the directory
-void Playbox::add_media(const std::string path) {
-	
-}
-	
 void Playbox::make_torrent(const std::string path) {
 	using namespace boost;
 	using namespace libtorrent;
@@ -708,11 +703,6 @@ void Playbox::make_torrent(const std::string path) {
 		}
 		
 		//torrents_metadata[hash] = entry(metadata);
-		
-		//======
-		// load the torrent into the music dir
-		//TODO
-		//Playbox::load_media(torrent_file);
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {

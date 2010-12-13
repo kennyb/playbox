@@ -16,7 +16,7 @@ var http = require("http"),
 	buffer = require("buffer"),
 	QueryString = require("querystring");
 
-require.paths.unshift("libs/node-websocket-server");
+require.paths.unshift("lib/node-websocket-server");
 //var jsp = require("./lib/UglifyJS/lib/parse-js");
 //var pro = require("./lib/UglifyJS/lib/process");
 

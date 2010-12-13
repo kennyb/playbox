@@ -124,8 +124,8 @@ def install_libs(bld):
 	if not exists('build/lib'):
 		makedirs('build/lib')
 	
-	if exists('deps/node-websocket-server/lib') and not lexists('build/libs/node-websocket-server'):
-		symlink(abspath('deps/node-websocket-server/lib'), 'build/libs/node-websocket-server')
+	if exists('deps/node-websocket-server/lib') and not lexists('build/lib/node-websocket-server'):
+		symlink(abspath('deps/node-websocket-server/lib'), 'build/lib/node-websocket-server')
 		
 	if exists('build/default/playbox.node') and not lexists('build/lib/playbox.node'):
 		symlink(abspath('build/default/playbox.node'), 'build/lib/playbox.node')
@@ -297,8 +297,8 @@ def shutdown(ctx):
 		elif exists('build/lib/libavutil.dylib') and not lexists('build/release/lib/libavutil.dylib'):
 			symlink(abspath('build/lib/libavutil.dylib'), 'build/release/lib/libavutil.dylib')
 		
-		if exists('build/libs/node-websocket-server') and not lexists('build/release/libs/node-websocket-server'):
-			symlink(abspath('build/libs/node-websocket-server'), 'build/release/libs/node-websocket-server')
+		if exists('build/lib/node-websocket-server') and not lexists('build/release/lib/node-websocket-server'):
+			symlink(abspath('build/lib/node-websocket-server'), 'build/release/lib/node-websocket-server')
 		
 		# node libs
 		if exists('build/default/playbox.node'):
@@ -306,8 +306,8 @@ def shutdown(ctx):
 		
 		# custom node
 		# todo: if this doesn't exist, then build node
-		if exists('node/build/default/node') and not exists('build/release/node'):
-			symlink(abspath('node/build/default/node'), 'build/release/node')
+		if exists('deps/node/build/default/node') and not exists('build/release/node'):
+			symlink(abspath('deps/node/build/default/node'), 'build/release/node')
 		
 		# app
 		if not lexists('build/release/main.js'):

@@ -26,8 +26,7 @@ class Playbox : public EventEmitter {
 	static Handle<Value> add_archive(const Arguments &args);
 	static Handle<Value> add_archive_metadata(const Arguments &args);
 
-	static void add_media(const std::string path);
-	static void load_media(const std::string torrent_path);
+	static void load_torrent(const std::string torrent_path);
 	static void make_torrent(const std::string path);
 	
   private:
