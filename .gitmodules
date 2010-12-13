@@ -19,3 +19,9 @@
 [submodule "deps/node-websocket-server"]
 	path = deps/node-websocket-server
 	url = https://github.com/miksago/node-websocket-server.git
+[submodule "deps/headjs"]
+	path = deps/headjs
+	url = https://github.com/headjs/headjs.git
+[submodule "deps/video-js"]
+	path = deps/video-js
+	url = https://github.com/zencoder/video-js.git
