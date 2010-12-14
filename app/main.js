@@ -104,12 +104,14 @@ Connection = exports.Connection = function(req, res) {
 			} else {
 				switch(app_name) {
 					case "crossdomain.xml":
+						//TODO SOME FORM OF SECURITY!!
 						this._headers["Content-Type"] = "text/xml";
-						this._output_string = "<?xml version=\"1.0\"?>"+
-									"<cross-domain-policy>"+
-										"<site-control permitted-cross-domain-policies=\"all\"/>"+
-										"<allow-access-from domain=\"*\" />"+
-									"</cross-domain-policy>";
+						this._output_string = '<?xml version="1.0"?>'+
+									'<cross-domain-policy>'+
+										'<site-control permitted-cross-domain-policies="all"/>'+
+										'<allow-access-from domain="*"/>'+
+										//'<allow-http-request-headers-from domain="*" headers="*"/>'+
+									'</cross-domain-policy>';
 						this.end();
 						return this;
 						
@@ -118,9 +120,10 @@ Connection = exports.Connection = function(req, res) {
 				}
 			}
 			
-			console.log("app", app_name);
-			console.log("func", app_func);
-			console.log("args", app_args);
+			console.log("http path", path);
+			console.log("http app", app_name);
+			console.log("http func", app_func);
+			console.log("http args", app_args);
 			
 			var app = apps[app_name];
 			if(app !== undefined) {
@@ -575,12 +578,6 @@ var server = ws.createServer({
 server.addListener("connection", function(conn){
 	//conn.storage.set("username", "user_"+conn.id);
 
-	//conn.send("** Connected as: user_"+conn.id);
-	//conn.send("** Type `/nick USERNAME` to change your username");
-
-	//conn.broadcast("** "+conn.storage.get("username")+" connected");
-	//console.log("ws", conn.broadcast);
-
 	conn.addListener("message", function(path){
 		// do func lookup
 		var app_name = path.substr(1),
@@ -603,9 +600,10 @@ server.addListener("connection", function(conn){
 			}
 		}
 		
-		console.log("app", app_name);
-		console.log("func", app_func);
-		console.log("args", app_args);
+		console.log("wsock path", path);
+		console.log("wsock app", app_name);
+		console.log("wsock func", app_func);
+		console.log("wsock args", app_args);
 		
 		var app = apps[app_name];
 		if(app !== undefined && typeof app.http === 'function') {
@@ -647,6 +645,15 @@ console.log(pro.gen_code(ast, false));
 server.listen(1155, function() {
 	console.log("listening on port: " + 1155);
 });
+
+require("net").createServer(function(socket) {
+	socket.write('<?xml version="1.0"?>'+
+				'<cross-domain-policy>'+
+					'<allow-access-from domain="*" to-ports="1111-1155"/>'+
+				'</cross-domain-policy>');
+	socket.end();
+	console.log("sent policy file");
+}).listen(1156);
 
 
 
