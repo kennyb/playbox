@@ -3,6 +3,7 @@ NODE = ./node
 name = all
 
 all:
+	git submodule update --init
 	node-waf build -v || (node-waf configure && node-waf build)
 	cd build/release && CWD=`pwd` && ./node main.js
 

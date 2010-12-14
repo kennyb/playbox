@@ -476,6 +476,7 @@ Handle<Value> Playbox::update(const Arguments &args) {
 							prev_state = "DOWNLOADING_METADATA";
 							break;
 							
+						case libtorrent::torrent_status::allocating:
 						case libtorrent::torrent_status::downloading:
 							prev_state = "DOWNLOADING";
 							break;
@@ -483,10 +484,6 @@ Handle<Value> Playbox::update(const Arguments &args) {
 						case libtorrent::torrent_status::finished:
 						case libtorrent::torrent_status::seeding:
 							prev_state = "OK";
-							break;
-							
-						case libtorrent::torrent_status::allocating:
-							prev_state = "ALLOCATING";
 							break;
 					}
 					
@@ -501,6 +498,7 @@ Handle<Value> Playbox::update(const Arguments &args) {
 							state = "DOWNLOADING_METADATA";
 							break;
 							
+						case libtorrent::torrent_status::allocating:
 						case libtorrent::torrent_status::downloading:
 							state = "DOWNLOADING";
 							break;
@@ -508,10 +506,6 @@ Handle<Value> Playbox::update(const Arguments &args) {
 						case libtorrent::torrent_status::finished:
 						case libtorrent::torrent_status::seeding:
 							state = "OK";
-							break;
-							
-						case libtorrent::torrent_status::allocating:
-							state = "ALLOCATING";
 							break;
 					}
 					

@@ -8,14 +8,20 @@ var playbox = new Playbox(),
 	add_archive_queue = [],
 	add_archive_metadata_queue = [],
 	update_loop = null,
-	torrents = {};
+	torrents = {},
+	status_count = {
+		"METADATA": 0,
+		"DOWNLOADING_METADATA": 0,
+		"CHECKING": 0,
+		"DOWNLOADING": 0,
+		"OK": 0
+	};
 
 var do_update = function() {
 	var path;
-	process.nextTick(function() {
-		playbox.update();
-	});
+	playbox.update();
 	
+	//broadcast_event("update", {truth: true});
 	//TODO: put limits.. no fumes discos duros
 	if(add_archive_metadata_queue.length) {
 		path = add_archive_metadata_queue.shift();
@@ -23,7 +29,7 @@ var do_update = function() {
 		process.nextTick(function() {
 			playbox.add_archive_metadata(path);
 		});
-	} else if(add_archive_queue.length) {
+	} else if(!status_count["CHECKING"] && add_archive_queue.length) {
 		path = add_archive_queue.shift();
 		console.log("add_archive", path);
 		for(var i in torrents) {
@@ -53,9 +59,12 @@ function broadcast_event(evt, data) {
 
 playbox.on("stateChanged", function(hash, extra) {
 	console.log("changed state "+extra.prev_state+" -> "+extra.state);
-	torrents[hash] = {status:extra.state};
+	torrents[hash].status = extra.state;
+	status_count[extra.state]++;
+	status_count[extra.prev_state]--;
 }).on("archiveUnknown", function(hash, e) {
 	console.log("UNKNOWN ARCHIVE");
+	status_count[torrents[hash].status]--;
 	torrents[hash] = {status:"UNKNOWN"};
 }).on("archivePaused", function(hash, e) {
 	torrents[hash].active = false;
@@ -64,24 +73,25 @@ playbox.on("stateChanged", function(hash, extra) {
 	torrents[hash].active = true;
 	broadcast_event("archiveResumed", torrents[hash]);
 }).on("archiveMetadata", function(hash, local_file) {
+	status_count["CHECKING"]++;
 	torrents[hash] = {status:"METADATA", downloaded: -1, local_file: local_file};
 	broadcast_event("archiveMetadata", torrents[hash]);
 }).on("archiveDownloading", function(hash, e) {
-	torrents[hash].status = "DOWNLOADING";
 	broadcast_event("archiveDownloading", torrents[hash]);
 }).on("archiveProgress", function(hash, progress) {
 	torrents[hash].downloaded = progress;
 	broadcast_event("archiveProgress", torrents[hash]);
 }).on("archiveComplete", function(hash, e) {
-	torrents[hash].status = "OK";
 	torrents[hash].downloadeed = 100;
 	broadcast_event("archiveComplete", torrents[hash]);
 }).on("archiveRemoved", function(hash, e) {
+	status_count[torrents[hash].status]--;
+	torrents[hash].status = "METADATA";
 	torrents[hash].downloaded = -1;
+	torrents[hash].active = false;
 	broadcast_event("archiveRemoved", torrents[hash]);
 }).on("metadataAdded", function(hash, path) {
 	add_archive_metadata_queue.push(path);
-	broadcast_event("metadataAdded", torrents[hash]);
 }).on("listening", function(details) {
 	console.log("LISTENING", details);
 }).on("listeningFailed", function(details) {
@@ -224,7 +234,10 @@ exports.http = function(c, func, args) {
 	
 	switch(func) {
 		case '?':
-			output.ret = update_loop > 0 ? true : false;
+			output.ret = {
+				online: update_loop !== null ? true : false,
+				archives: status_count
+			};
 			break;
 		
 		case '-':

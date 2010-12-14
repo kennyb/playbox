@@ -608,7 +608,7 @@ server.addListener("connection", function(conn){
 		console.log("args", app_args);
 		
 		var app = apps[app_name];
-		if(app !== undefined && typeof app.websocket === 'function') {
+		if(app !== undefined && typeof app.http === 'function') {
 			var ret = {
 				_conn: conn,
 				_headers: {},
@@ -622,7 +622,7 @@ server.addListener("connection", function(conn){
 				}
 			};
 			
-			app.websocket(ret, app_func, app_args);
+			app.http(ret, app_func, app_args);
 		}
 	});
 });

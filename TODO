@@ -1,7 +1,8 @@
 current:
 do not rehash existing torrents
 integrate head.js
-integrate video.js 
+integrate video.js
+integrate less.js
 integrate ffmpeg and get the metadata correctly
 save metadata into the js correctly
 query the metadata
@@ -9,6 +10,7 @@ query the metadata
 
 later:
 abstract the torrent api out to the js a little more, or figure out how to thread it
+make a browserplus plugin?
 
 implement the playbox js interface
 ----------------------------------
