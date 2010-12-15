@@ -51,7 +51,7 @@ using namespace node;
 using namespace boost;
 
 // static function declarations
-static Local<Value> extract_metadata(const libtorrent::sha1_hash hash, const libtorrent::lazy_entry& metadata);
+static Local<Value> extract_metadata(const std::string hash, const std::string local_file, libtorrent::lazy_entry& metadata);
 static std::string xml_special_chars(std::string str);
 
 // static vars
@@ -314,74 +314,86 @@ Handle<Value> Playbox::settings(const Arguments &args) {
 }
 */
 
-static Local<Value> extract_metadata(const libtorrent::sha1_hash sha1_hash, const libtorrent::lazy_entry& metadata) {
+static Local<Value> extract_metadata(const std::string hash, const std::string local_file, libtorrent::lazy_entry& metadata) {
 	std::string title;
 	std::string status;
 	std::string value;
-	std::string hash(lexical_cast<std::string>(sha1_hash));
 	
 	Local<Object> result = Object::New();
 	result->Set(String::New("id"), String::New(hash.c_str()));
+	result->Set(String::New("local_file"), String::New(local_file.c_str()));
+	
+	if(av_open_input_file(&pFormatCtx, local_file.c_str(), NULL, 0, NULL)) {
+		std::cerr << "metadata unable to be parsed" << std::endl;
+	} else {
+		if (av_find_stream_info(pFormatCtx) < 0) {
+			std::cerr << "metadata unable to be parsed" << std::endl;
+		}
+	}
 	
 	std::cout << "hash: " << hash << std::endl;
-	//libtorrent::torrent_handle h_torrent = cur_session.find_torrent(sha1_hash);
-	/*if(h_torrent.is_valid()) {
-		status = "valid";
-		
-		libtorrent::torrent_status status = h_torrent.status();
-		filesystem::path path(h_torrent.save_path());
-		std::cout << hash << std::endl;
-		//std::cout << "status: " << (int)status.state << " " << libtorrent::torrent_status::finished << std::endl;
-		//std::cout << "paused: " << cur_session.is_paused() << " " << h_torrent.is_paused() << std::endl;
-		//std::cout << "progress: " << status.progress_ppm << std::endl;
-		//std::cout << "complete: " << status.num_complete << " " << status.num_complete << " " << status.total_done << std::endl;
-		//std::cout << "error: " << status.error << std::endl;
-		
-		const libtorrent::torrent_info& ti = h_torrent.get_torrent_info();
-		const libtorrent::file_entry file = ti.file_at(0);
-		//std::cout << "path: " << path << file.path << " " << filesystem::exists(path.string() + "/" + file.path.string()) << std::endl;
-		//if(h_torrent.is_paused()) {
-			// only for when streaming
-				//h_torrent.set_sequential_download(true);
-			//h_torrent.force_recheck();
-			//h_torrent.super_seeding(true);
-			//h_torrent.resume();
-		//}
-	} else {
-		std::cout << "invalid torrent: " << hash << std::endl;
-		status = "invalid";
-	}*/
 	
-	// print out the torrent status ..
-	// 0-100 - file is downloading and that's the current percentage
-	// LOOKUP - torrent has is trying to be located
-	// OK - file exists and all parts are good
-	// MISSING - file is missing entirely
-	result->Set(String::New("status"), String::New(status.c_str()));
-	
+	// time
 	value = metadata.dict_find_string_value("media_time");
-	if(value.length()) {
+	if(!value.length() && pFormatCtx->duration > 0) {
+		std::cout << "duration: " << (pFormatCtx->duration / AV_TIME_BASE) << std::endl;
+		value = boost::lexical_cast<std::string>(pFormatCtx->duration / AV_TIME_BASE);
+	} if(value.length()) {
 		result->Set(String::New("time"), String::New(value.c_str()));
 	}
 	
+	// track
+	value = metadata.dict_find_string_value("media_track");
+	if(!value.length() && pFormatCtx->track > 0) {
+		std::cout << "track: " << pFormatCtx->track << std::endl;
+		value = boost::lexical_cast<std::string>(pFormatCtx->track);
+	} if(value.length()) {
+		result->Set(String::New("track"), String::New(value.c_str()));
+	}
+	
+	// year
 	value = metadata.dict_find_string_value("media_year");
-	if(value.length()) {
+	if(!value.length() && pFormatCtx->year > 0) {
+		std::cout << "year: " << pFormatCtx->year << std::endl;
+		value = boost::lexical_cast<std::string>(pFormatCtx->year);
+	} if(value.length()) {
 		result->Set(String::New("year"), String::New(value.c_str()));
 	}
 	
+	// genre
+	value = metadata.dict_find_string_value("media_genre");
+	if(!value.length() && strlen(pFormatCtx->genre) > 0) {
+		std::cout << "genre: " << pFormatCtx->genre << std::endl;
+		value = std::string(pFormatCtx->genre);
+	} if(value.length()) {
+		result->Set(String::New("genre"), String::New(value.c_str()));
+	}
+	
+	// album
 	value = metadata.dict_find_string_value("media_album");
-	if(value.length()) {
+	if(!value.length() && strlen(pFormatCtx->album) > 0) {
+		std::cout << "album: " << pFormatCtx->album << std::endl;
+		value = std::string(pFormatCtx->album);
+	} if(value.length()) {
 		result->Set(String::New("album"), String::New(value.c_str()));
 	}
 	
-	value = metadata.dict_find_string_value("media_artist");
-	if(value.length()) {
-		result->Set(String::New("artist"), String::New(value.c_str()));
+	// author
+	value = metadata.dict_find_string_value("media_author");
+	if(!value.length() && strlen(pFormatCtx->author) > 0) {
+		std::cout << "author: " << pFormatCtx->author << std::endl;
+		value = std::string(pFormatCtx->author);
+	} if(value.length()) {
+		result->Set(String::New("author"), String::New(value.c_str()));
 		title += value;
 	}
 	
+	// title
 	value = metadata.dict_find_string_value("media_title");
-	if(value.length()) {
+	if(!value.length() && strlen(pFormatCtx->title) > 0) {
+		std::cout << "title: " << pFormatCtx->title << std::endl;
+		value = std::string(pFormatCtx->title);
+	} if(value.length()) {
 		result->Set(String::New("title"), String::New(value.c_str()));
 		if(title.length()) {
 			title += " - ";
@@ -570,7 +582,7 @@ void Playbox::load_torrent(const std::string torrent_path) {
 	
 	libtorrent::file_storage fs;
 	libtorrent::file_pool fp;
-	
+	Local<Value> js_metadata = Local<Value>::New(Undefined());
 	filesystem::path torrent_file(torrent_path);
 	
 #ifndef BOOST_NO_EXCEPTIONS
@@ -648,7 +660,6 @@ void Playbox::load_torrent(const std::string torrent_path) {
 			torrent_info* ti = new torrent_info(metadata, 0);
 			if(ti) {
 				hash = lexical_cast<std::string>(ti->info_hash());
-				extract_metadata(ti->info_hash(), metadata);
 			
 				if(use_local_file) {
 					//std::cout << "renaming to file: " << (ti->name()) << std::endl;
@@ -661,6 +672,7 @@ void Playbox::load_torrent(const std::string torrent_path) {
 					local_file += hash;
 				}
 				
+				js_metadata = extract_metadata(hash, local_file, metadata);
 				params.ti = ti;
 			}
 			
@@ -679,7 +691,7 @@ void Playbox::load_torrent(const std::string torrent_path) {
 		hash = lexical_cast<std::string>(handle.info_hash());
 		Local<Value> args[2];
 		args[0] = Local<Value>::New(String::New(hash.c_str()));
-		args[1] = Local<Value>::New(String::New(local_file.c_str()));
+		args[1] = js_metadata;
 		playbox->Emit(symbol_archiveMetadata, 2, args);
 		
 		
@@ -731,11 +743,6 @@ void Playbox::make_torrent(const std::string path) {
 		//======
 		// add the real file path to the torrent (to know that it's not in the library)
 		metadata["media_path"] = entry(path);
-		
-		if(av_open_input_file(&pFormatCtx, path.c_str(), NULL, 0, NULL)) {
-			// failed
-			std::cout << "metadata unable to be parsed" << std::endl;
-		}
 		
 		// output the metadata to a buffer
 		std::vector<char> buffer;
