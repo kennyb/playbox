@@ -9,7 +9,7 @@ all:
 
 
 prepare:
-	git submodule update --init
+	git submodule update --init --recursive
 	
 	if [ ! -d deps/ffmpeg/libswscale ]; \
 	then \

@@ -49,7 +49,7 @@ def configure(conf):
 		conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
 		conf.env.append_value('LINKFLAGS', ['-Wl,-bind_at_load'])
 	elif sys.platform.startswith("linux"):
-		conf.env.append_value('LINKFLAGS', ['-Wl,--gc-section'])
+		conf.env.append_value('LINKFLAGS', ['-Wl,--gc-sections'])
 	
 	conf.check(lib="iconv",
 						includes=['/opt/local/include', '/usr/include', '/usr/local/include'],
