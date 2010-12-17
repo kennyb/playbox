@@ -32,6 +32,7 @@ var do_update = function() {
 	} else if(!status_count["CHECKING"] && add_archive_queue.length) {
 		path = add_archive_queue.shift();
 		console.log("add_archive", path);
+		var c = 0;
 		for(var i in torrents) {
 			var t = torrents[i];
 			//console.log("1:"+t.local_file+"\n2:"+path);
@@ -40,8 +41,10 @@ var do_update = function() {
 			}
 		}
 		
-		if(path) {
-		//	playbox.add_archive(path);
+		console.log("i: "+c);
+		
+		if(c < 11 && path) {
+			playbox.add_archive(path);
 		}
 	}
 };

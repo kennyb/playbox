@@ -297,6 +297,17 @@ def shutdown(ctx):
 		elif exists('build/lib/libavutil.dylib') and not lexists('build/release/lib/libavutil.dylib'):
 			symlink(abspath('build/lib/libavutil.dylib'), 'build/release/lib/libavutil.dylib')
 		
+		if exists('deps/ffmpeg/ffprobe') and not lexists('build/release/ffprobe'):
+			symlink(abspath('deps/ffmpeg/ffprobe'), 'build/release/ffprobe')
+		if exists('deps/ffmpeg/libavdevice/libavdevice.so') and not lexists('build/release/lib/libavdevice.so'):
+			symlink(abspath('deps/ffmpeg/libavdevice/libavdevice.so'), 'build/release/lib/libavdevice.so')
+		elif exists('deps/ffmpeg/libavdevice/libavdevice.dylib') and not lexists('build/release/lib/libavdevice.dylib'):
+			symlink(abspath('deps/ffmpeg/libavdevice/libavdevice.dylib'), 'build/release/lib/libavdevice.dylib')
+		if exists('deps/ffmpeg/libswscale/libswscale.so') and not lexists('build/release/lib/libswscale.so'):
+			symlink(abspath('deps/ffmpeg/libswscale/libswscale.so'), 'build/release/lib/libswscale.so')
+		elif exists('deps/ffmpeg/libswscale/libswscale.dylib') and not lexists('build/release/lib/libswscale.dylib'):
+			symlink(abspath('deps/ffmpeg/libswscale/libswscale.dylib'), 'build/release/lib/libswscale.dylib')
+		
 		if exists('build/lib/node-websocket-server') and not lexists('build/release/lib/node-websocket-server'):
 			symlink(abspath('build/lib/node-websocket-server'), 'build/release/lib/node-websocket-server')
 		

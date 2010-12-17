@@ -60,7 +60,6 @@ static std::string library_path;
 static std::string torrent_path;
 //static std::map<std::string, libtorrent::lazy_entry> torrents_metadata;
 static Playbox *playbox;
-static AVFormatContext *pFormatCtx;
 
 // events
 static Persistent<String> symbol_stateChange = NODE_PSYMBOL("stateChanged");
@@ -90,6 +89,7 @@ static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& 
 	return String::New(torrent_path.c_str());
 }
 
+// unused at the moment...
 class Archive : public EventEmitter {
   public:
 	static void Initialize(v8::Handle<v8::Object> target) {
@@ -166,6 +166,7 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 	
 	// avformat
 	av_register_all();
+	avcodec_register_all();
 	
 	// ----------------
 	
@@ -319,14 +320,56 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	std::string status;
 	std::string value;
 	
+	int err;
+	const char* filename = (local_file).c_str();
 	Local<Object> result = Object::New();
 	result->Set(String::New("id"), String::New(hash.c_str()));
 	result->Set(String::New("local_file"), String::New(local_file.c_str()));
 	
-	if(av_open_input_file(&pFormatCtx, local_file.c_str(), NULL, 0, NULL)) {
-		std::cerr << "metadata unable to be parsed" << std::endl;
+	AVFormatContext *fmt_ctx;// = avformat_alloc_context();
+	
+	std::cerr << "extract_metadata " << local_file << std::endl;
+	if(!filesystem::exists(local_file)) {
+		std::cerr << "file does not exist" << std::endl;
+	} else if(filesystem::file_size(local_file) > 20*1024*1024) {
+		std::cerr << "file to large" << std::endl;
+	} else if((err = av_open_input_file(&fmt_ctx, filename, NULL, 1024*1024*1024, NULL)) < 0) {
+		switch(err) {
+			case AVERROR_INVALIDDATA:
+			std::cerr << " [W] invalid metadata (" << err << ") " << std::endl;
+			break;
+			
+			case AVERROR_IO:
+			std::cerr << " [W] metadata io error (" << err << ") " << std::endl;
+			break;
+			
+			case AVERROR_NOENT:
+			std::cerr << " [W] NOENT: file does not exist (" << err << ") " << std::endl;
+			break;
+			
+			case AVERROR_NOFMT:
+			std::cerr << " [W] metadata no format information (" << err << ") " << std::endl;
+			break;
+			
+			case AVERROR_NOMEM:
+			std::cerr << " [W] metadata extraction ran out of memory (" << err << ") " << std::endl;
+			break;
+			
+			case AVERROR_NOTSUPP:
+			std::cerr << " [W] metadata information not supported (" << err << ") " << std::endl;
+			break;
+			
+			case AVERROR_NUMEXPECTED:
+			std::cerr << " [W] metadata NUMEXPECTED (" << err << ") " << std::endl;
+			break;
+			
+			default:
+			std::cerr << " [W] metadata error UNKNOWN (" << err << ") " << std::endl;
+			break;
+		}
+		//print_error()
 	} else {
-		if (av_find_stream_info(pFormatCtx) < 0) {
+		if((err = av_find_stream_info(fmt_ctx)) < 0) {
 			std::cerr << "metadata unable to be parsed" << std::endl;
 		}
 	}
@@ -335,54 +378,54 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	
 	// time
 	value = metadata.dict_find_string_value("media_time");
-	if(!value.length() && pFormatCtx->duration > 0) {
-		std::cout << "duration: " << (pFormatCtx->duration / AV_TIME_BASE) << std::endl;
-		value = boost::lexical_cast<std::string>(pFormatCtx->duration / AV_TIME_BASE);
+	if(!value.length() && fmt_ctx && fmt_ctx->duration > 0) {
+		std::cout << "duration: " << (fmt_ctx->duration / AV_TIME_BASE) << std::endl;
+		value = boost::lexical_cast<std::string>(fmt_ctx->duration / AV_TIME_BASE);
 	} if(value.length()) {
 		result->Set(String::New("time"), String::New(value.c_str()));
 	}
 	
 	// track
 	value = metadata.dict_find_string_value("media_track");
-	if(!value.length() && pFormatCtx->track > 0) {
-		std::cout << "track: " << pFormatCtx->track << std::endl;
-		value = boost::lexical_cast<std::string>(pFormatCtx->track);
+	if(!value.length() && fmt_ctx && fmt_ctx->track > 0) {
+		std::cout << "track: " << fmt_ctx->track << std::endl;
+		value = boost::lexical_cast<std::string>(fmt_ctx->track);
 	} if(value.length()) {
 		result->Set(String::New("track"), String::New(value.c_str()));
 	}
 	
 	// year
 	value = metadata.dict_find_string_value("media_year");
-	if(!value.length() && pFormatCtx->year > 0) {
-		std::cout << "year: " << pFormatCtx->year << std::endl;
-		value = boost::lexical_cast<std::string>(pFormatCtx->year);
+	if(!value.length() && fmt_ctx && fmt_ctx->year > 0) {
+		std::cout << "year: " << fmt_ctx->year << std::endl;
+		value = boost::lexical_cast<std::string>(fmt_ctx->year);
 	} if(value.length()) {
 		result->Set(String::New("year"), String::New(value.c_str()));
 	}
 	
 	// genre
 	value = metadata.dict_find_string_value("media_genre");
-	if(!value.length() && strlen(pFormatCtx->genre) > 0) {
-		std::cout << "genre: " << pFormatCtx->genre << std::endl;
-		value = std::string(pFormatCtx->genre);
+	if(!value.length() && fmt_ctx && strlen(fmt_ctx->genre) > 0) {
+		std::cout << "genre: " << fmt_ctx->genre << std::endl;
+		value = std::string(fmt_ctx->genre);
 	} if(value.length()) {
 		result->Set(String::New("genre"), String::New(value.c_str()));
 	}
 	
 	// album
 	value = metadata.dict_find_string_value("media_album");
-	if(!value.length() && strlen(pFormatCtx->album) > 0) {
-		std::cout << "album: " << pFormatCtx->album << std::endl;
-		value = std::string(pFormatCtx->album);
+	if(!value.length() && fmt_ctx && strlen(fmt_ctx->album) > 0) {
+		std::cout << "album: " << fmt_ctx->album << std::endl;
+		value = std::string(fmt_ctx->album);
 	} if(value.length()) {
 		result->Set(String::New("album"), String::New(value.c_str()));
 	}
 	
 	// author
 	value = metadata.dict_find_string_value("media_author");
-	if(!value.length() && strlen(pFormatCtx->author) > 0) {
-		std::cout << "author: " << pFormatCtx->author << std::endl;
-		value = std::string(pFormatCtx->author);
+	if(!value.length() && fmt_ctx && strlen(fmt_ctx->author) > 0) {
+		std::cout << "author: " << fmt_ctx->author << std::endl;
+		value = std::string(fmt_ctx->author);
 	} if(value.length()) {
 		result->Set(String::New("author"), String::New(value.c_str()));
 		title += value;
@@ -390,9 +433,9 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	
 	// title
 	value = metadata.dict_find_string_value("media_title");
-	if(!value.length() && strlen(pFormatCtx->title) > 0) {
-		std::cout << "title: " << pFormatCtx->title << std::endl;
-		value = std::string(pFormatCtx->title);
+	if(!value.length() && fmt_ctx && strlen(fmt_ctx->title) > 0) {
+		std::cout << "title: " << fmt_ctx->title << std::endl;
+		value = std::string(fmt_ctx->title);
 	} if(value.length()) {
 		result->Set(String::New("title"), String::New(value.c_str()));
 		if(title.length()) {
@@ -636,7 +679,7 @@ void Playbox::load_torrent(const std::string torrent_path) {
 					/*&& is a valid media file */) {
 					filesystem::path media_path_path(media_path);
 					std::string library_sym(media_path + "/" + hash);
-					params.save_path = filesystem::path(media_path_path.branch_path().string() + "/").string();
+					params.save_path = filesystem::path(media_path_path.branch_path().string()).string();
 					use_local_file = true;
 					if(!filesystem::exists(library_sym) && symlink(media_path.c_str(), library_sym.c_str()) != 0) {
 						std::cout << "symlink could not be created" << std::endl;
@@ -656,7 +699,7 @@ void Playbox::load_torrent(const std::string torrent_path) {
 			// load up the torrent info into the params
 			//torrent_info* ti = new torrent_info(metadata);
 			std::cout << "save_path: " << params.save_path << std::endl;
-			local_file = params.save_path;
+			local_file = params.save_path + "/";
 			torrent_info* ti = new torrent_info(metadata, 0);
 			if(ti) {
 				hash = lexical_cast<std::string>(ti->info_hash());
