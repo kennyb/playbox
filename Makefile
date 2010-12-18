@@ -10,35 +10,6 @@ all:
 	fi
 	node-waf build -v
 	
-	echo "correcting lib paths..."
-	install_name_tool -change /Users/kennybentley/Projects/playbox/build/default/libtorrent.dylib ./lib/libtorrent.dylib build/release/lib/playbox.node
-	
-	
-	# this is total caca...
-	# puedes hacer algo un poco mas wapo aqui con otool -L
-	cp /opt/local/lib/libssl.1.0.0.dylib build/release/lib/libssl.dylib
-	cp /opt/local/lib/libcrypto.1.0.0.dylib build/release/lib/libcrypto.dylib
-	cp /opt/local/lib/libz.1.dylib build/release/lib/libz.dylib
-	cp /opt/local/lib/libboost_thread-mt.dylib build/release/lib/libboost_thread-mt.dylib
-	cp /opt/local/lib/libboost_system-mt.dylib build/release/lib/libboost_system-mt.dylib
-	cp /opt/local/lib/libboost_filesystem-mt.dylib build/release/lib/libboost_filesystem-mt.dylib
-	
-	
-	install_name_tool -change /opt/local/lib/libssl.1.0.0.dylib ./lib/libssl.dylib build/release/node
-	install_name_tool -change /opt/local/lib/libcrypto.1.0.0.dylib ./lib/libcrypto.dylib build/release/node
-	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/node
-	
-	install_name_tool -change /opt/local/lib/libcrypto.1.0.0.dylib ./lib/libcrypto.dylib build/release/lib/libssl.dylib
-	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/lib/libssl.dylib
-	
-	install_name_tool -change /opt/local/lib/libssl.1.0.0.dylib ./lib/libssl.dylib build/release/lib/libcrypto.dylib
-	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/lib/libcrypto.dylib
-	
-	install_name_tool -change /opt/local/lib/libboost_thread-mt.dylib ./lib/libboost_thread-mt.dylib build/release/lib/libtorrent.dylib
-	install_name_tool -change /opt/local/lib/libboost_system-mt.dylib ./lib/libboost_system-mt.dylib build/release/lib/libtorrent.dylib
-	install_name_tool -change /opt/local/lib/libboost_filesystem-mt.dylib ./lib/libboost_filesystem-mt.dylib build/release/lib/libtorrent.dylib
-	install_name_tool -change /opt/local/lib/libboost_system-mt.dylib ./lib/libboost_system-mt.dylib build/release/lib/libboost_filesystem-mt.dylib
-	
 	cd build/release && CWD=`pwd` && ./node main.js
 
 prepare:
@@ -76,3 +47,30 @@ prepare:
 debug: build
 	node-waf build -v
 	cd build/release && CWD=`pwd` && gdb -args ./node main.js
+
+release_mac:
+	# this is total caca...
+	# puedes hacer algo un poco mas wapo aqui con otool -L
+	cp /opt/local/lib/libssl.1.0.0.dylib build/release/lib/libssl.dylib
+	cp /opt/local/lib/libcrypto.1.0.0.dylib build/release/lib/libcrypto.dylib
+	cp /opt/local/lib/libz.1.dylib build/release/lib/libz.dylib
+	cp /opt/local/lib/libboost_thread-mt.dylib build/release/lib/libboost_thread-mt.dylib
+	cp /opt/local/lib/libboost_system-mt.dylib build/release/lib/libboost_system-mt.dylib
+	cp /opt/local/lib/libboost_filesystem-mt.dylib build/release/lib/libboost_filesystem-mt.dylib
+	
+	install_name_tool -change /Users/kennybentley/Projects/playbox/build/default/libtorrent.dylib ./lib/libtorrent.dylib build/release/lib/playbox.node
+	
+	install_name_tool -change /opt/local/lib/libssl.1.0.0.dylib ./lib/libssl.dylib build/release/node
+	install_name_tool -change /opt/local/lib/libcrypto.1.0.0.dylib ./lib/libcrypto.dylib build/release/node
+	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/node
+	
+	install_name_tool -change /opt/local/lib/libcrypto.1.0.0.dylib ./lib/libcrypto.dylib build/release/lib/libssl.dylib
+	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/lib/libssl.dylib
+	
+	install_name_tool -change /opt/local/lib/libssl.1.0.0.dylib ./lib/libssl.dylib build/release/lib/libcrypto.dylib
+	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/lib/libcrypto.dylib
+	
+	install_name_tool -change /opt/local/lib/libboost_thread-mt.dylib ./lib/libboost_thread-mt.dylib build/release/lib/libtorrent.dylib
+	install_name_tool -change /opt/local/lib/libboost_system-mt.dylib ./lib/libboost_system-mt.dylib build/release/lib/libtorrent.dylib
+	install_name_tool -change /opt/local/lib/libboost_filesystem-mt.dylib ./lib/libboost_filesystem-mt.dylib build/release/lib/libtorrent.dylib
+	install_name_tool -change /opt/local/lib/libboost_system-mt.dylib ./lib/libboost_system-mt.dylib build/release/lib/libboost_filesystem-mt.dylib

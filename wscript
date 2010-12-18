@@ -111,9 +111,9 @@ def build_playbox(bld):
 	playbox.name = "playbox"
 	playbox.target = "playbox"
 	if sys.platform.startswith("darwin"):
-	  playbox.linkflags = ['./lib/libavformat.dylib', './lib/libtorrent.dylib']
+		playbox.linkflags = ['./lib/libavformat.dylib', './lib/libtorrent.dylib']
 	if sys.platform.startswith("linux"):
-	  playbox.linkflags = ['./lib/libtorrent.so', './lib/libavformat.so']
+		playbox.linkflags = ['./lib/libtorrent.so', './lib/libavformat.so']
   
 	playbox.source = ["playbox.cc"]
 	playbox.includes = ['libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
@@ -324,7 +324,7 @@ def shutdown(ctx):
 		
 		# app
 		if not lexists('build/release/main.js'):
-		  symlink(abspath('app/main.js'), 'build/release/main.js')
+			symlink(abspath('app/main.js'), 'build/release/main.js')
 		
 		# default apps
 		if not exists('build/release/apps'):
