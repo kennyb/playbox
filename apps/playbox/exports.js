@@ -29,7 +29,6 @@ var do_update = function() {
 		playbox.add_archive_metadata(path);
 	} else if(!status_count["CHECKING"] && add_archive_queue.length) {
 		path = add_archive_queue.shift();
-		console.log("add_archive", path);
 		var c = 0;
 		for(var i in torrents) {
 			c++;
@@ -40,9 +39,8 @@ var do_update = function() {
 			}
 		}
 		
-		console.log("c: "+c);
-		
 		if(c < 11 && path) {
+			console.log("add_archive", path);
 			playbox.add_archive(path);
 		}
 	}
@@ -198,10 +196,17 @@ function add_media(p) {
 
 function query(args) {
 	var ret = args ? {} : torrents;
+	console.log("args", args);
 	if(args) {
+		var argslower = args.toLowerCase()
 		for(var i in torrents) {
 			var t = torrents[i];
-			
+			if(t.metadata && (
+				t.metadata.name.toLowerCase().indexOf(argslower) !== -1 ||
+				t.metadata.local_file.toLowerCase().indexOf(argslower) !== -1
+				)) {
+				ret[i] = t;
+			}
 		}
 	}
 	

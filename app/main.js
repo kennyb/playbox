@@ -72,7 +72,7 @@ Connection = exports.Connection = function(req, res) {
 	var static_file_url, static_file;
 	if(req.method === "GET") {
 		this._funcs_done = true;
-		var path = this._url.pathname;
+		var path = QueryString.unescape(this._url.pathname);
 		if(path === '/') {
 			//static_file_url = "/index.html";
 			//this._headers["Cache-Control"] = "no-cache, must-revalidate";
