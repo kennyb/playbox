@@ -1,16 +1,22 @@
 current:
-do not rehash existing torrents (importante puto!)
+figure out why itunes metadata is so fucked
+query function has basic commands to query the metadata
+make sure the playbox is the can serve an image as a an album cover
+
+
+middle:
 integrate head.js
 integrate video.js
 integrate less.js
-query the metadata
-
-middle:
+integrate unhosted
+try and grab the album art for the artist
 add disk stats into the '?' function
 add torrent stats to the progress event
 
+
 after:
 abstract the torrent api out to the js a little more, or figure out how to thread it
+try and grab the album art for the artist
 make a browserplus plugin?
 
 

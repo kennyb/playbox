@@ -456,7 +456,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	
 	av_close_input_file(fmt_ctx);
 	
-	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : "unknown").c_str()));
+	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : filesystem::path(local_file).stem()).c_str()));
 	return result;
 }
 

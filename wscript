@@ -107,13 +107,13 @@ def build(bld):
 	build_playbox(bld)
 	
 def build_playbox(bld):
-	playbox = bld.new_task_gen("cxx", "shlib", "node_addon", install_path=None, use="torrent")
+	playbox = bld.new_task_gen("cxx", "shlib", "node_addon", install_path=None)
 	playbox.name = "playbox"
 	playbox.target = "playbox"
 	if sys.platform.startswith("darwin"):
-	  playbox.linkflags = ['lib/libtorrent.dylib', 'lib/libavformat.dylib']
+	  playbox.linkflags = ['./lib/libavformat.dylib', './lib/libtorrent.dylib']
 	if sys.platform.startswith("linux"):
-	  playbox.linkflags = ['lib/libtorrent.so', 'lib/libavformat.so']
+	  playbox.linkflags = ['./lib/libtorrent.so', './lib/libavformat.so']
   
 	playbox.source = ["playbox.cc"]
 	playbox.includes = ['libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
@@ -127,28 +127,29 @@ def install_libs(bld):
 	if exists('deps/node-websocket-server/lib') and not lexists('build/lib/node-websocket-server'):
 		symlink(abspath('deps/node-websocket-server/lib'), 'build/lib/node-websocket-server')
 		
-	if exists('build/default/playbox.node') and not lexists('build/lib/playbox.node'):
-		symlink(abspath('build/default/playbox.node'), 'build/lib/playbox.node')
+	if exists('build/default/playbox.node'):
+		copy2(abspath('build/default/playbox.node'), 'build/lib/playbox.node')
 	
-	if exists('build/default/libtorrent.dylib') and not lexists('build/lib/libtorrent.dylib'):
-		symlink(abspath('build/default/libtorrent.dylib'), 'build/lib/libtorrent.dylib')
-	elif exists('build/default/libtorrent.so') and not lexists('build/lib/libtorrent.so'):
-		symlink(abspath('build/default/libtorrent.so'), 'build/lib/libtorrent.so')
+	if exists('build/default/libtorrent.dylib'):
+		copy2(abspath('build/default/libtorrent.dylib'), 'build/lib/libtorrent.dylib')
+	elif exists('build/default/libtorrent.so'):
+		copy2(abspath('build/default/libtorrent.so'), 'build/lib/libtorrent.so')
 	
-	if exists('deps/ffmpeg/libavformat/libavformat.so') and not lexists('build/lib/libavformat.so'):
-		symlink(abspath('deps/ffmpeg/libavformat/libavformat.so'), 'build/lib/libavformat.so')
-	elif exists('deps/ffmpeg/libavformat/libavformat.dylib') and not lexists('build/lib/libavformat.dylib'):
-		symlink(abspath('deps/ffmpeg/libavformat/libavformat.dylib'), 'build/lib/libavformat.dylib')
+	if exists('deps/ffmpeg/libavformat/libavformat.so'):
+		copy2(abspath('deps/ffmpeg/libavformat/libavformat.so'), 'build/lib/libavformat.so')
+	elif exists('deps/ffmpeg/libavformat/libavformat.dylib'):
+		copy2(abspath('deps/ffmpeg/libavformat/libavformat.dylib'), 'build/lib/libavformat.dylib')
 	
-	if exists('deps/ffmpeg/libavformat/libavcodec.so') and not lexists('build/lib/libavcodec.so'):
-		symlink(abspath('deps/ffmpeg/libavcodec/libavcodec.so'), 'build/lib/libavcodec.so')
-	elif exists('deps/ffmpeg/libavcodec/libavcodec.dylib') and not lexists('build/lib/libavcodec.dylib'):
-		symlink(abspath('deps/ffmpeg/libavcodec/libavcodec.dylib'), 'build/lib/libavcodec.dylib')
+	if exists('deps/ffmpeg/libavformat/libavcodec.so'):
+		copy2(abspath('deps/ffmpeg/libavcodec/libavcodec.so'), 'build/lib/libavcodec.so')
+	elif exists('deps/ffmpeg/libavcodec/libavcodec.dylib'):
+		copy2(abspath('deps/ffmpeg/libavcodec/libavcodec.dylib'), 'build/lib/libavcodec.dylib')
 	
-	if exists('deps/ffmpeg/libavformat/libavutil.so') and not lexists('build/lib/libavutil.so'):
-		symlink(abspath('deps/ffmpeg/libavutil/libavutil.so'), 'build/lib/libavutil.so')
-	elif exists('deps/ffmpeg/libavutil/libavutil.dylib') and not lexists('build/lib/libavutil.dylib'):
-		symlink(abspath('deps/ffmpeg/libavutil/libavutil.dylib'), 'build/lib/libavutil.dylib')
+	if exists('deps/ffmpeg/libavformat/libavutil.so'):
+		copy2(abspath('deps/ffmpeg/libavutil/libavutil.so'), 'build/lib/libavutil.so')
+	elif exists('deps/ffmpeg/libavutil/libavutil.dylib'):
+		copy2(abspath('deps/ffmpeg/libavutil/libavutil.dylib'), 'build/lib/libavutil.dylib')
+
 #def build_id3(bld):
 #	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
 #	id3.name = "id3"
@@ -170,7 +171,7 @@ def build_libtorrent(bld):
 	libtorrent.cxxflags = ["-I../libtorrent/include"]
 	libtorrent.cflags = ["-I../libtorrent/include", "-fPIC", "-fvisibility=hidden"]
 	libtorrent.includes = ['libtorrent/include', '/opt/local/include']
-	libtorrent.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM BOOST_DATE_TIME BOOST_IOSTREAMS PTHREAD'
+	libtorrent.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM PTHREAD'
 	libtorrent.libpath = ['/usr/lib', '/usr/local/lib', '/opt/local/lib']
 	libtorrent.defines = [
 		"NDEBUG",
@@ -277,26 +278,27 @@ def shutdown(ctx):
 			makedirs('build/release/lib')
 		
 		# generic libs
-		if exists('build/lib/libtorrent.so') and not lexists('build/release/lib/libtorrent.so'):
-			symlink(abspath('build/lib/libtorrent.so'), 'build/release/lib/libtorrent.so')
-		elif exists('build/lib/libtorrent.dylib') and not lexists('build/release/lib/libtorrent.dylib'):
-			symlink(abspath('build/lib/libtorrent.dylib'), 'build/release/lib/libtorrent.dylib')
+		if exists('build/lib/libtorrent.so'):
+			copy2(abspath('build/lib/libtorrent.so'), 'build/release/lib/libtorrent.so')
+		elif exists('build/lib/libtorrent.dylib'):
+			copy2(abspath('build/lib/libtorrent.dylib'), 'build/release/lib/libtorrent.dylib')
 		
-		if exists('build/lib/libavformat.so') and not lexists('build/release/lib/libavformat.so'):
-			symlink(abspath('build/lib/libavformat.so'), 'build/release/lib/libavformat.so')
-		elif exists('build/lib/libavformat.dylib') and not lexists('build/release/lib/libavformat.dylib'):
-			symlink(abspath('build/lib/libavformat.dylib'), 'build/release/lib/libavformat.dylib')
+		if exists('build/lib/libavformat.so'):
+			copy2(abspath('build/lib/libavformat.so'), 'build/release/lib/libavformat.so')
+		elif exists('build/lib/libavformat.dylib'):
+			copy2(abspath('build/lib/libavformat.dylib'), 'build/release/lib/libavformat.dylib')
 		
-		if exists('build/lib/libavcodec.so') and not lexists('build/release/lib/libavcodec.so'):
-			symlink(abspath('build/lib/libavcodec.so'), 'build/release/lib/libavcodec.so')
-		elif exists('build/lib/libavcodec.dylib') and not lexists('build/release/lib/libavcodec.dylib'):
-			symlink(abspath('build/lib/libavcodec.dylib'), 'build/release/lib/libavcodec.dylib')
+		if exists('build/lib/libavcodec.so'):
+			copy2(abspath('build/lib/libavcodec.so'), 'build/release/lib/libavcodec.so')
+		elif exists('build/lib/libavcodec.dylib'):
+			copy2(abspath('build/lib/libavcodec.dylib'), 'build/release/lib/libavcodec.dylib')
 		
-		if exists('build/lib/libavutil.so') and not lexists('build/release/lib/libavutil.so'):
-			symlink(abspath('build/lib/libavutil.so'), 'build/release/lib/libavutil.so')
-		elif exists('build/lib/libavutil.dylib') and not lexists('build/release/lib/libavutil.dylib'):
-			symlink(abspath('build/lib/libavutil.dylib'), 'build/release/lib/libavutil.dylib')
+		if exists('build/lib/libavutil.so'):
+			copy2(abspath('build/lib/libavutil.so'), 'build/release/lib/libavutil.so')
+		elif exists('build/lib/libavutil.dylib'):
+			copy2(abspath('build/lib/libavutil.dylib'), 'build/release/lib/libavutil.dylib')
 		
+		#debug ffprobe
 		if exists('deps/ffmpeg/ffprobe') and not lexists('build/release/ffprobe'):
 			symlink(abspath('deps/ffmpeg/ffprobe'), 'build/release/ffprobe')
 		if exists('deps/ffmpeg/libavdevice/libavdevice.so') and not lexists('build/release/lib/libavdevice.so'):
@@ -318,7 +320,7 @@ def shutdown(ctx):
 		# custom node
 		# todo: if this doesn't exist, then build node
 		if exists('deps/node/build/default/node') and not exists('build/release/node'):
-			symlink(abspath('deps/node/build/default/node'), 'build/release/node')
+			copy2(abspath('deps/node/build/default/node'), 'build/release/node')
 		
 		# app
 		if not lexists('build/release/main.js'):
