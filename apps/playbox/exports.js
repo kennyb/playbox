@@ -26,14 +26,13 @@ var do_update = function() {
 	if(add_archive_metadata_queue.length) {
 		path = add_archive_metadata_queue.shift();
 		console.log("add_archive_metadata", path);
-		process.nextTick(function() {
-			playbox.add_archive_metadata(path);
-		});
+		playbox.add_archive_metadata(path);
 	} else if(!status_count["CHECKING"] && add_archive_queue.length) {
 		path = add_archive_queue.shift();
 		console.log("add_archive", path);
 		var c = 0;
 		for(var i in torrents) {
+			c++;
 			var t = torrents[i];
 			//console.log("1:"+t.local_file+"\n2:"+path);
 			if(t.local_file === path) {
@@ -41,7 +40,7 @@ var do_update = function() {
 			}
 		}
 		
-		console.log("i: "+c);
+		console.log("c: "+c);
 		
 		if(c < 11 && path) {
 			playbox.add_archive(path);
@@ -85,7 +84,7 @@ playbox.on("stateChanged", function(hash, extra) {
 	torrents[hash].downloaded = progress;
 	broadcast_event("archiveProgress", torrents[hash]);
 }).on("archiveComplete", function(hash, e) {
-	torrents[hash].downloadeed = 100;
+	torrents[hash].downloaded = 100;
 	broadcast_event("archiveComplete", torrents[hash]);
 }).on("archiveRemoved", function(hash, e) {
 	status_count[torrents[hash].status]--;
@@ -147,9 +146,9 @@ function init() {
 		if(i >= 0) {
 			do {
 				hash = files[i].toString();
-				if(add_archive_metadata_queue.length < 11) {
+				//if(add_archive_metadata_queue.length < 11) {
 					add_archive_metadata_queue.push(playbox.torrent_path+hash);
-				}
+				//}
 			} while(i--);
 		}
 	});
@@ -200,10 +199,10 @@ function add_media(p) {
 function query(args) {
 	var ret = args ? {} : torrents;
 	if(args) {
-		/*for(var i in torrents) {
+		for(var i in torrents) {
 			var t = torrents[i];
 			
-		}*/
+		}
 	}
 	
 	return ret;

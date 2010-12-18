@@ -334,14 +334,15 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	result->Set(String::New("id"), String::New(hash.c_str()));
 	result->Set(String::New("local_file"), String::New(local_file.c_str()));
 	
-	AVFormatContext *fmt_ctx;// = avformat_alloc_context();
+	AVFormatContext *fmt_ctx = avformat_alloc_context();
+	AVInputFormat *iformat = NULL;
 	
 	std::cerr << "extract_metadata " << local_file << std::endl;
 	if(!filesystem::exists(local_file)) {
 		std::cerr << "file does not exist" << std::endl;
-	} else if(filesystem::file_size(local_file) > 20*1024*1024) {
-		std::cerr << "file to large" << std::endl;
-	} else if((err = av_open_input_file(&fmt_ctx, filename, NULL, 1024*1024*1024, NULL)) < 0) {
+	//} else if(filesystem::file_size(local_file) > 20*1024*1024) {
+	//	std::cerr << "file to large" << std::endl;
+	} else if((err = av_open_input_file(&fmt_ctx, filename, iformat, 4096, NULL)) < 0) {
 		switch(err) {
 			case AVERROR_INVALIDDATA:
 			std::cerr << " [W] invalid metadata (" << err << ") " << std::endl;
@@ -376,11 +377,11 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 			break;
 		}
 		//print_error()
-	} else {
-		if((err = av_find_stream_info(fmt_ctx)) < 0) {
-			std::cerr << "metadata unable to be parsed" << std::endl;
-		}
+	} else if((err = av_find_stream_info(fmt_ctx)) < 0) {
+		std::cerr << "stream could not be found" << std::endl;
 	}
+	
+	av_metadata_conv(fmt_ctx, NULL, fmt_ctx->iformat->metadata_conv);
 	
 	std::cout << "hash: " << hash << std::endl;
 	
@@ -452,6 +453,8 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 		
 		title += value;
 	}
+	
+	av_close_input_file(fmt_ctx);
 	
 	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : "unknown").c_str()));
 	return result;
