@@ -10,7 +10,8 @@
 using namespace v8;
 using namespace node;
 
-class Playbox : public EventEmitter {
+class Playbox : public EventEmitter
+{
   public:    
     Playbox() : EventEmitter() {}
     ~Playbox() {}
@@ -33,5 +34,17 @@ class Playbox : public EventEmitter {
     static Handle<Value> New(const Arguments &args);
 	//static int save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata);
 };
+
+//TODO: improve me, this was something I copied from the internet
+// what I really want is a utf-8 compatible trim which gobbles all whitespace and everything below 0x20 (space)
+inline std::string trim(const std::string& src, const std::string& c = " \r\n")
+{
+	int p2 = src.find_last_not_of(c);
+	if (p2 == std::string::npos) return std::string();
+	int p1 = src.find_first_not_of(c);
+	if (p1 == std::string::npos) p1 = 0;
+	return src.substr(p1, (p2-p1)+1);
+}
+
 
 #endif  // PLAYBOX_H_

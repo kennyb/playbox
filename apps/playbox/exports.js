@@ -75,9 +75,9 @@ playbox.on("stateChanged", function(hash, extra) {
 }).on("archiveResumed", function(hash, e) {
 	torrents[hash].active = true;
 	broadcast_event("archiveResumed", torrents[hash]);
-}).on("archiveMetadata", function(hash, local_file) {
+}).on("archiveMetadata", function(hash, metadata) {
 	status_count["CHECKING"]++;
-	torrents[hash] = {status:"METADATA", downloaded: -1, local_file: local_file};
+	torrents[hash] = {status:"METADATA", downloaded: -1, metadata: metadata};
 	broadcast_event("archiveMetadata", torrents[hash]);
 }).on("archiveDownloading", function(hash, e) {
 	broadcast_event("archiveDownloading", torrents[hash]);

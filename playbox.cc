@@ -130,7 +130,8 @@ class Archive : public EventEmitter {
 	static Persistent<String> symbol_paused;
 };
 
-void Playbox::Initialize(v8::Handle<v8::Object> target) {
+void Playbox::Initialize(v8::Handle<v8::Object> target)
+{
 	// Grab the scope of the call from Node
 	HandleScope scope;
 	// Define a new function template
@@ -199,7 +200,8 @@ void Playbox::Initialize(v8::Handle<v8::Object> target) {
 }
 
 // Create a new instance of BSON and assing it the existing context
-Handle<Value> Playbox::New(const Arguments &args) {
+Handle<Value> Playbox::New(const Arguments &args)
+{
 	HandleScope scope;
 	
 	//Playbox *playbox = new Playbox();
@@ -261,13 +263,15 @@ Handle<Value> Playbox::start(const Arguments &args) {
 	return True();
 }
 
-Handle<Value> Playbox::stop(const Arguments &args) {
+Handle<Value> Playbox::stop(const Arguments &args)
+{
 	// stop listening
 	//cur_session.pause();
 	return Undefined();
 }
 
-Handle<Value> Playbox::archive(const Arguments &args) {
+Handle<Value> Playbox::archive(const Arguments &args)
+{
 	HandleScope scope;
 	
 	Local<Object> result = Object::New();
@@ -276,7 +280,8 @@ Handle<Value> Playbox::archive(const Arguments &args) {
 	return scope.Close(result);
 }
 
-Handle<Value> Playbox::add_archive(const Arguments &args) {
+Handle<Value> Playbox::add_archive(const Arguments &args)
+{
 	if(args.Length() != 1 || !args[0]->IsString()) {
 		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
     }
@@ -293,7 +298,8 @@ Handle<Value> Playbox::add_archive(const Arguments &args) {
 	return Undefined();
 }
 
-Handle<Value> Playbox::add_archive_metadata(const Arguments &args) {
+Handle<Value> Playbox::add_archive_metadata(const Arguments &args)
+{
 	if(args.Length() == 0 || !args[0]->IsString()) {
 		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
     }
@@ -304,7 +310,8 @@ Handle<Value> Playbox::add_archive_metadata(const Arguments &args) {
 }
 
 /*
-Handle<Value> Playbox::settings(const Arguments &args) {
+Handle<Value> Playbox::settings(const Arguments &args)
+{
 	HandleScope scope;
 	
 	Local<Object> result = Object::New();
@@ -315,7 +322,8 @@ Handle<Value> Playbox::settings(const Arguments &args) {
 }
 */
 
-static Local<Value> extract_metadata(const std::string hash, const std::string local_file, libtorrent::lazy_entry& metadata) {
+static Local<Value> extract_metadata(const std::string hash, const std::string local_file, libtorrent::lazy_entry& metadata)
+{
 	std::string title;
 	std::string status;
 	std::string value;
@@ -407,7 +415,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	value = metadata.dict_find_string_value("media_genre");
 	if(!value.length() && fmt_ctx && strlen(fmt_ctx->genre) > 0) {
 		std::cout << "genre: " << fmt_ctx->genre << std::endl;
-		value = std::string(fmt_ctx->genre);
+		value = trim(std::string(fmt_ctx->genre));
 	} if(value.length()) {
 		result->Set(String::New("genre"), String::New(value.c_str()));
 	}
@@ -416,7 +424,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	value = metadata.dict_find_string_value("media_album");
 	if(!value.length() && fmt_ctx && strlen(fmt_ctx->album) > 0) {
 		std::cout << "album: " << fmt_ctx->album << std::endl;
-		value = std::string(fmt_ctx->album);
+		value = trim(std::string(fmt_ctx->album));
 	} if(value.length()) {
 		result->Set(String::New("album"), String::New(value.c_str()));
 	}
@@ -425,7 +433,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	value = metadata.dict_find_string_value("media_author");
 	if(!value.length() && fmt_ctx && strlen(fmt_ctx->author) > 0) {
 		std::cout << "author: " << fmt_ctx->author << std::endl;
-		value = std::string(fmt_ctx->author);
+		value = trim(std::string(fmt_ctx->author));
 	} if(value.length()) {
 		result->Set(String::New("author"), String::New(value.c_str()));
 		title += value;
@@ -435,7 +443,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	value = metadata.dict_find_string_value("media_title");
 	if(!value.length() && fmt_ctx && strlen(fmt_ctx->title) > 0) {
 		std::cout << "title: " << fmt_ctx->title << std::endl;
-		value = std::string(fmt_ctx->title);
+		value = trim(std::string(fmt_ctx->title));
 	} if(value.length()) {
 		result->Set(String::New("title"), String::New(value.c_str()));
 		if(title.length()) {
@@ -450,7 +458,8 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 }
 
 
-static std::string xml_special_chars(std::string str) {
+static std::string xml_special_chars(std::string str)
+{
 	std::string::iterator it_end = str.end();
 	size_t i = 0;
 	for(std::string::iterator it = str.begin(); it < it_end; ++it, i++) {
@@ -476,10 +485,10 @@ static std::string xml_special_chars(std::string str) {
 	return str;
 }
 
-
 // make a function called "load_torrent" which looks in the .torrents/ dir
 // if it is not in the cache, grab it from the fs, else look on DHT
-Handle<Value> Playbox::update(const Arguments &args) {
+Handle<Value> Playbox::update(const Arguments &args)
+{
 	std::auto_ptr<libtorrent::alert> alert;
 	while((alert = cur_session.pop_alert()).get() != NULL) {
 		int type = (*alert).type();
@@ -614,12 +623,14 @@ Handle<Value> Playbox::update(const Arguments &args) {
 }
 
 
-static void print_progress(int i, int num) {
+static void print_progress(int i, int num)
+{
 	//usleep(100);
 	std::cerr << "\r" << (i+1) << "/" << num;
 }
 
-void Playbox::load_torrent(const std::string torrent_path) {
+void Playbox::load_torrent(const std::string torrent_path)
+{
 	using namespace boost;
 	using namespace libtorrent;
 	
@@ -749,7 +760,8 @@ void Playbox::load_torrent(const std::string torrent_path) {
 #endif
 }
 
-void Playbox::make_torrent(const std::string path) {
+void Playbox::make_torrent(const std::string path)
+{
 	using namespace boost;
 	using namespace libtorrent;
 	
@@ -838,7 +850,8 @@ void Playbox::make_torrent(const std::string path) {
 }
 
 // Exporting function
-extern "C" void init(Handle<Object> target) {
+extern "C" void init(Handle<Object> target)
+{
 	HandleScope scope;
 	Playbox::Initialize(target);
 	//Long::Initialize(target);

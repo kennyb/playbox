@@ -28,6 +28,7 @@ prepare:
 	--enable-runtime-cpudetect \
 	--disable-everything \
 	--disable-network \
+	--disable-x11grab \
 	--arch=x86_64 \
 	--enable-decoder=mp3,mpeg4,vorbis,ape,flac,aac \
 	--enable-parser=mpegaudio,aac,ac3,h261,h262,h263 \

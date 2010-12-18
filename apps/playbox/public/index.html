@@ -16,7 +16,7 @@ $(function(){
 		conn = new WebSocket("ws://"+document.location.host+"/");
 
 		conn.onmessage = function(evt) {
-			console.log(evt.data);
+			console.log(JSON.parse(evt.data));
 		};
 
 		conn.onclose = function() {
