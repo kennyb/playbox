@@ -551,6 +551,9 @@ Handle<Value> Playbox::update(const Arguments &args)
 						case libtorrent::torrent_status::finished:
 						case libtorrent::torrent_status::seeding:
 							prev_state = "OK";
+							p->handle.super_seeding(true);
+							p->handle.force_dht_announce();
+							printf("super seeding %d\n", p->handle.super_seeding());
 							break;
 					}
 					
