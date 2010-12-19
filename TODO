@@ -1,6 +1,6 @@
 current:
 figure out why itunes metadata is so fucked
-query function has basic commands to query the metadata
+make a simple database to store configuration values
 make sure the playbox is the can serve an image as a an album cover
 
 

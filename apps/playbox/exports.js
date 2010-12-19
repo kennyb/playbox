@@ -120,23 +120,6 @@ function init() {
 	console.log(" library_path: "+playbox.library_path);
 	console.log(" torrent_path: "+playbox.torrent_path);
 	
-	// dir scan of the library
-	/*
-	fs.readdir(playbox.library_path, function(err, files) {
-		if(err) throw err;
-		var i = files.length-1;
-		if(i >= 0) {
-			do {
-				hash = files[i].toString();
-				if(hash.length === 40) {
-					torrents[hash] = {status:"LOOKUP"};
-					//add_archive_queue.push(playbox.library_path + "/" + hash);
-				}
-			} while(i--);
-		}
-	});
-	*/
-	
 	// dir scan of the torrents
 	fs.readdir(playbox.torrent_path, function(err, files) {
 		if(err) throw err;
@@ -264,7 +247,14 @@ exports.http = function(c, func, args) {
 			return;
 			
 		case 'i':
-			output.ret = playbox.info(args);
+			var t = torrents[args];
+			if(!t) {
+				t = torrents[args] = {status:"LOOKUP"};
+				add_archive_metadata_queue.push(args);
+			}
+			
+			output.ret = t;
+			//output.ret = playbox.archive(args);
 			break;
 			
 		case '/':
