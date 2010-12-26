@@ -124,9 +124,6 @@ def install_libs(bld):
 	if not exists('build/lib'):
 		makedirs('build/lib')
 	
-	if exists('deps/node-websocket-server/lib') and not lexists('build/lib/node-websocket-server'):
-		symlink(abspath('deps/node-websocket-server/lib'), 'build/lib/node-websocket-server')
-		
 	if exists('build/default/playbox.node'):
 		copy2(abspath('build/default/playbox.node'), 'build/lib/playbox.node')
 	
@@ -310,8 +307,14 @@ def shutdown(ctx):
 		elif exists('deps/ffmpeg/libswscale/libswscale.dylib') and not lexists('build/release/lib/libswscale.dylib'):
 			symlink(abspath('deps/ffmpeg/libswscale/libswscale.dylib'), 'build/release/lib/libswscale.dylib')
 		
-		if exists('build/lib/node-websocket-server') and not lexists('build/release/lib/node-websocket-server'):
-			symlink(abspath('build/lib/node-websocket-server'), 'build/release/lib/node-websocket-server')
+		if exists('deps/node-websocket-server/lib') and not lexists('build/release/lib/node-websocket-server'):
+			symlink(abspath('deps/node-websocket-server/lib'), 'build/release/lib/node-websocket-server')
+	
+		if exists('deps/node-id3/lib/id3') and not lexists('build/release/lib/node-id3'):
+			symlink(abspath('deps/node-id3/lib'), 'build/release/lib/node-id3')
+			
+		if exists('deps/node-strtok/lib') and not lexists('build/release/lib/node-strtok'):
+			symlink(abspath('deps/node-strtok/lib'), 'build/release/lib/node-strtok')
 		
 		# node libs
 		if exists('build/default/playbox.node'):

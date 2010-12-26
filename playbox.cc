@@ -25,6 +25,8 @@
 #include <libtorrent/alert_types.hpp>
 #include <libtorrent/extensions/metadata_transfer.hpp>
 #include <libtorrent/extensions/ut_metadata.hpp>
+#include <libtorrent/extensions/smart_ban.hpp>
+#include <libtorrent/extensions/ut_pex.hpp>
 
 #include <boost/filesystem/operations.hpp>
 #include <boost/filesystem/path.hpp>
@@ -231,23 +233,26 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		}
 		
 		printf("starting, listening: %d\n", cur_session.is_listening());
+		cur_session.set_alert_mask(libtorrent::alert::all_categories);
 		cur_session.listen_on(std::make_pair(port1, port2));
-		cur_session.add_dht_router(std::make_pair("router.bitorrent.com", 6881));
-		//cur_session.add_dht_node(std::make_pair("192.168.1.37", 6881));
-		cur_session.start_dht();
 		cur_session.start_upnp();
 		cur_session.start_natpmp();
 		cur_session.start_lsd();
+		cur_session.start_dht();
+		cur_session.add_dht_router(std::make_pair("router.bitorrent.com", 6881));
+		cur_session.add_dht_node(std::make_pair("192.168.1.34", 6881));
 		cur_session.add_extension(&libtorrent::create_metadata_plugin);
-		cur_session.add_extension(&libtorrent::create_ut_metadata_plugin);
-		//cur_session.set_alert_mask(libtorrent::alert::all_categories);
-		cur_session.set_alert_mask(libtorrent::alert::error_notification |
+		//cur_session.add_extension(&libtorrent::create_ut_metadata_plugin);
+		cur_session.add_extension(&libtorrent::create_ut_pex_plugin);
+		cur_session.add_extension(&libtorrent::create_smart_ban_plugin);
+		/*cur_session.set_alert_mask(libtorrent::alert::error_notification |
 									libtorrent::alert::storage_notification |
 									libtorrent::alert::status_notification |
 									libtorrent::alert::progress_notification |
 									libtorrent::alert::performance_warning |
-									libtorrent::alert::dht_notification);
-	
+									libtorrent::alert::dht_notification);*/
+		
+		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch(std::exception& e) {
 		std::cerr << e.what() << "\n";
@@ -316,7 +321,7 @@ Handle<Value> Playbox::settings(const Arguments &args)
 	
 	Local<Object> result = Object::New();
 	result->Set(String::New("library_path"), String::New(library_path.c_str()));
-	result->Set(String::New("torrent_path"), String::New(torrent_path.c_str()));
+	result->Set(String::New("torrent_path"tpe), String::New(torrent_path.c_str()));
 	
 	return scope.Close(result);
 }
@@ -342,7 +347,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 		std::cerr << "file does not exist" << std::endl;
 	//} else if(filesystem::file_size(local_file) > 20*1024*1024) {
 	//	std::cerr << "file to large" << std::endl;
-	} else if((err = av_open_input_file(&fmt_ctx, filename, iformat, 4096, NULL)) < 0) {
+	}/* else if(false && (err = av_open_input_file(&fmt_ctx, filename, iformat, 4096, NULL)) < 0) {
 		switch(err) {
 			case AVERROR_INVALIDDATA:
 			std::cerr << " [W] invalid metadata (" << err << ") " << std::endl;
@@ -379,12 +384,14 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 		//print_error()
 	} else if((err = av_find_stream_info(fmt_ctx)) < 0) {
 		std::cerr << "stream could not be found" << std::endl;
-	}
+	} */
 	
-	av_metadata_conv(fmt_ctx, NULL, fmt_ctx->iformat->metadata_conv);
+	//av_metadata_conv(fmt_ctx, NULL, fmt_ctx->iformat->metadata_conv);
+	
 	
 	std::cout << "hash: " << hash << std::endl;
 	
+	/*
 	// time
 	value = metadata.dict_find_string_value("media_time");
 	if(!value.length() && fmt_ctx && fmt_ctx->duration > 0) {
@@ -455,6 +462,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	}
 	
 	av_close_input_file(fmt_ctx);
+	*/
 	
 	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : filesystem::path(local_file).stem()).c_str()));
 	return result;
@@ -566,6 +574,7 @@ Handle<Value> Playbox::update(const Arguments &args)
 						
 						case libtorrent::torrent_status::downloading_metadata:
 							state = "DOWNLOADING_METADATA";
+							//p->handle.set_
 							break;
 							
 						case libtorrent::torrent_status::allocating:
@@ -618,11 +627,12 @@ Handle<Value> Playbox::update(const Arguments &args)
 				break;
 				
 			default:
+				//std::cout << "alert: " << (*alert).type() << ": " << (*alert).message() << std::endl;
 				continue;
 			
 		}
 		
-		//std::cout << "alert: " << (*alert).type() << ": " << (*alert).message() << std::endl;
+		std::cout << "g:alert: " << (*alert).type() << ": " << (*alert).message() << std::endl;
 	}
 	
 	return Undefined();
@@ -781,9 +791,15 @@ void Playbox::make_torrent(const std::string path)
 		//======
 		// build the file list
 		filesystem::path full_path = filesystem::complete(path);
-		uintmax_t size = filesystem::file_size(media_path);
 		std::time_t mtime = filesystem::last_write_time(full_path);
-		fs.add_file(full_path.filename(), size, 0, mtime);
+		
+		if(false) {
+			
+			
+		} else {
+			uintmax_t size = filesystem::file_size(media_path);
+			fs.add_file(full_path.filename(), size, 0, mtime);
+		}
 		
 		//======
 		// begin hash generation
@@ -841,8 +857,6 @@ void Playbox::make_torrent(const std::string path)
 			playbox->Emit(symbol_metadataAdded, 2, args);
 			//*/
 		}
-		
-		//torrents_metadata[hash] = entry(metadata);
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {

@@ -16,7 +16,9 @@ var http = require("http"),
 	buffer = require("buffer"),
 	QueryString = require("querystring");
 
-require.paths.unshift("lib/node-websocket-server");
+require.paths.unshift("lib");
+require.paths.unshift("../../lib");
+require.paths.unshift("lib/node-strtok");
 //var jsp = require("./lib/UglifyJS/lib/parse-js");
 //var pro = require("./lib/UglifyJS/lib/process");
 
@@ -25,7 +27,7 @@ require.paths.unshift("lib/node-websocket-server");
 
 // global objects
 Playbox = require('./lib/playbox').Playbox;
-ws = require("ws/server");
+ws = require("node-websocket-server/ws/server");
 Url = require("url");
 QueryString = require("querystring");
 //cookie = require( "./lib/cookie");

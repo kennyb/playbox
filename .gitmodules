@@ -25,3 +25,9 @@
 [submodule "deps/video-js"]
 	path = deps/video-js
 	url = https://github.com/zencoder/video-js.git
+[submodule "deps/node-id3"]
+	path = deps/node-id3
+	url = https://github.com/Tim-Smart/node-id3.git
+[submodule "deps/node-strtok"]
+	path = deps/node-strtok
+	url = https://github.com/pgriess/node-strtok.git
