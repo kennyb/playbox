@@ -325,9 +325,11 @@ def shutdown(ctx):
 		if exists('deps/node/build/default/node') and not exists('build/release/node'):
 			copy2(abspath('deps/node/build/default/node'), 'build/release/node')
 		
-		# app
+		# do symlinks
 		if not lexists('build/release/main.js'):
 			symlink(abspath('app/main.js'), 'build/release/main.js')
+		if not lexists('build/release/lib/edb.js'):
+			symlink(abspath('app/edb.js'), 'build/release/lib/edb.js')
 		
 		# default apps
 		if not exists('build/release/apps'):

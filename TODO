@@ -1,9 +1,13 @@
 current:
-figure out why itunes metadata is so fucked
 make a simple database to store configuration values
+save songs into the library without metadata and hash them
+configuration panel
+library cache system
 make sure the playbox is the can serve an image as a an album cover
 http://chromium.googlecode.com/svn/trunk/samples/audio/specification/specification.html
 
+whenever:
+log functions (and remove all those horrible console.logs) (and maybe make a git hook to reject commits)
 
 middle:
 integrate head.js
@@ -13,6 +17,7 @@ integrate unhosted
 try and grab the album art for the artist
 add disk stats into the '?' function
 add torrent stats to the progress event
+add requiem to allow DRM mp3's to be played in the playbox
 
 
 after:

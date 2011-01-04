@@ -182,14 +182,14 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	
 	if(user_passwd) {
 		library_path = user_passwd->pw_dir;
-		library_path += "/Library";
+		library_path += "/Library/";
 		filesystem::create_directory(filesystem::path(::library_path));
 		
-		library_path += "/playbox";
+		library_path += "playbox/";
 		filesystem::create_directory(filesystem::path(::library_path));
 		// now, chroot to the dir
 		
-		::torrent_path = std::string(::library_path).append("/.torrents/");
+		::torrent_path = std::string(::library_path).append(".torrents/");
 		filesystem::path p(torrent_path);
 		if(!filesystem::exists(p)) {
 			filesystem::create_directory(p);

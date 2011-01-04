@@ -4,9 +4,8 @@ var sys = require("sys"),
 	path = require('path'),
 	buffer = require('buffer'),
 	ID3File = require("node-id3"),
-	Mixin = require("node-websocket-server/lang/mixin");
-
-console.log(Mixin);
+	Mixin = require("node-websocket-server/lang/mixin"),
+	Edb = require("edb");
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
@@ -168,6 +167,15 @@ function init() {
 			});
 		}
 	}
+	
+	Edb.init(playbox.library_path + ".edb", function() {
+		console.log("Edb initialized");
+		Edb.set("lala", [1,2,3,4], function() {
+			Edb.get("lala", function(key, value) {
+				console.log("lala ==", sys.inspect(value));
+			});
+		});
+	});
 	
 	// start the updates
 	update_loop = setInterval(do_update, 100);
@@ -376,11 +384,11 @@ exports.init = function(opts) {
 }
 
 exports.websocket_connect = function(c) {
-	
+	console.log("websocket connect");
 }
 
 exports.websocket_disconnect = function(c) {
-	
+	console.log("websocket disconnect");
 }
 
 exports.websocket_func = function(c, func, args) {
@@ -403,3 +411,5 @@ console.log("init:", init());
 
 // debug shit
 console.log("starting:", start());
+
+
