@@ -33,6 +33,7 @@ prepare:
 		--arch=x86_64 \
 		--enable-decoder=mp3,mpeg4,vorbis,ape,flac,aac \
 		--enable-parser=mpegaudio,mpegvideo,mpeg4video,aac \
+		--enable-demuxer=mp3,aac,ogg,ape,flac,wav \
 		--enable-protocol=file \
 		--enable-postproc \
 		--enable-avfilter \

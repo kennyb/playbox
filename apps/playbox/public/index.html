@@ -3,13 +3,12 @@
 	<head>
 		<title>playbox-2</title>
 		<link rel="stylesheet" href="http://static.gatunes.com/css/screen.css?144" type="text/css" media="screen" charset="utf-8" />
-		<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.2/jquery.min.js" type="text/javascript" charset="utf-8"></script>
 	</head>
 	<body>
 		<div>playbox-2</div>
 		<script type="text/javascript">
 var conn;
-$(function(){
+(function(){
 
 	console.log("ws", window["WebSocket"]);
 	if(window["WebSocket"]) {
@@ -27,7 +26,7 @@ $(function(){
 			console.log("** you have been connected");
 		}
 	}
-});
+}());
 		</script>
 	</body>
 </html>

@@ -302,7 +302,7 @@ var _ext2mime = {
 	"jpg": "image/jpeg",
 	"jpg": "image/jpeg",
 	"js": "text/javascript",
-	"json": "application/json",
+	"json": "application/x-json",
 	"xml": "text/xml",
 };
 function ext2mime(ext) {
@@ -368,7 +368,7 @@ exports.http = function(c, func, args) {
 			return;
 	}
 	
-	c._headers["Content-Type"] = "application/javascript";
+	c._headers["Content-Type"] = _ext2mime["js"] + '; charset=utf-8';
 	c.print(JSON.stringify(output));
 	c.end(output.status);
 };
