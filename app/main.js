@@ -118,7 +118,7 @@ Connection = exports.Connection = function(req, res) {
 						return this;
 						
 					case "favicon.ico":
-						console.log("fixme");
+						console.log("fixme", sys.inspect(req));
 				}
 			}
 			
@@ -577,10 +577,14 @@ var server = ws.createServer({
 });
 
 // Handle WebSocket Requests
-server.addListener("connection", function(conn){
+server.addListener("connection", function(conn) {
 	//conn.storage.set("username", "user_"+conn.id);
 
-	conn.addListener("message", function(path){
+	conn.addListener("message", function(path) {
+		if(path.charAt(0) !== "/") {
+			path = "/"+path;
+		}
+		
 		// do func lookup
 		var app_name = path.substr(1),
 			app_func = "/",
