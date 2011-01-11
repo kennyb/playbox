@@ -46,7 +46,7 @@ var do_update = function() {
 			
 			if(c < 2 && path) {
 				//console.log("add_archive", path);
-				//playbox.add_archive(path);
+				playbox.add_archive(path);
 			}
 		}
 	} else {
@@ -82,7 +82,7 @@ playbox.on("stateChanged", function(hash, extra) {
 	broadcast_event("archiveResumed", torrents[hash]);
 }).on("archiveMetadata", function(hash, metadata) {
 	if(metadata.local_file) {
-		get_metadata(metadata.local_file, function(tags) {
+		get_metadata(metadata.local_file, playbox.library_path + hash, function(tags) {
 			torrents[hash].metadata = Mixin(tags, torrents[hash].metadata);
 			broadcast_event("archiveMetadata", torrents[hash]);
 		});
@@ -184,7 +184,7 @@ function init() {
 function add_media(p) {
 	fs.stat(p, function(err, st) {
 		if(err) throw err;
-		if(st.isFile() && path.extname(p) === ".mp3") {
+		if(st.isFile() && path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
 			add_archive_queue.push(p);
 		} else if(st.isDirectory()) {
 			fs.readdir(p, function(err, files) {
@@ -219,79 +219,126 @@ function query(args) {
 	return ret;
 }
 
-function get_metadata(path, got_metadata_callback, copy_to_library) {
-	var chunkSize = 64 * 1024;
-	var bufSize   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
-	var bufPos    = 0;
-	var buf = new Buffer(bufSize);
-	console.log("getting metadata");
-	fs.createReadStream(
-		path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunkSize}
-	).addListener("data", function(chunk) {
-			var bufNextPos = bufPos + chunk.length;
-			if(bufNextPos == bufSize) {
-				buf.write(chunk,'binary',bufPos);
-				res.write(buf);
-				bufPos = 0;
-			} else if(bufPos < bufSize) {
-				buf.write(chunk,'binary',bufPos);
-				bufPos = bufNextPos;
+function get_metadata(file_path, library_path, got_metadata_callback) {
+	fs.stat(file_path, function(err, st) {
+		if(err) throw err;
+		var chunk_size = 64 * 1024;
+		var buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
+		var buf_pos    = 0;
+		var buf = new Buffer(buf_size);
+		
+		var orig_size = st.size;
+		var remaining = orig_size;
+		var offset = 0;
+		var got_meta = false;
+		var sr = fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
+			sw;
+		
+		var write_func = function() {
+			if(remaining !== -1) {
+				buf_pos = 0;
+				if(remaining < buf.length) {
+					sw.write(buf.slice(offset, remaining));
+					sw.flush();
+					sw.end();
+					remaining = -1;
+					//sw.emit('done');
+				} else {
+					remaining -= buf.length;
+					if(offset === 0) {
+						sw.write(buf);
+					} else {
+						sw.write(buf.slice(offset));
+						offset = 0;
+					}
+					
+					sr.resume();
+				}
 			}
 		}
-	).addListener("close",function() {
-		var id3 = new ID3File(buf);
-		var tags = {};
 		
-		if(id3.parse()) {
-			var t = id3.getTags();
-			t["TALB"] && (tags["album"] = t["TALB"].data);
-    		t["TAL"] && (tags["album"] = t["TAL"].data);
-    		t["TCOM"] && (tags["composer"] = t["TCOM"].data);
-    		t["TCON"] && (tags["genre"] = t["TCON"].data);
-    		t["TCO"] && (tags["genre"] = t["TCO"].data);
-    		t["TCOP"] && (tags["copyright"] = t["TCOP"].data);
-    		t["TDRL"] && (tags["date"] = t["TDRL"].data);
-    		t["TDRC"] && (tags["date"] = t["TDRC"].data);
-    		t["TENC"] && (tags["encoded_by"] = t["TENC"].data);
-    		t["TEN"] && (tags["encoded_by"] = t["TEN"].data);
-    		t["TIT2"] && (tags["title"] = t["TIT2"].data);
-    		t["TT2"] && (tags["title"] = t["TT2"].data);
-    		t["TLAN"] && (tags["language"] = t["TLAN"].data);
-    		t["TPE1"] && (tags["artist"] = t["TPE1"].data);
-    		t["TP1"] && (tags["artist"] = t["TP1"].data);
-    		t["TPE2"] && (tags["album_artist"] = t["TPE2"].data);
-    		t["TP2"] && (tags["album_artist"] = t["TP2"].data);
-    		t["TPE3"] && (tags["performer"] = t["TPE3"].data);
-    		t["TP3"] && (tags["performer"] = t["TP3"].data);
-    		t["TPOS"] && (tags["disc"] = t["TPOS"].data);
-    		t["TPUB"] && (tags["publisher"] = t["TPUB"].data);
-    		t["TRCK"] && (tags["track"] = t["TRCK"].data);
-    		t["TRK"] && (tags["track"] = t["TRK"].data);
-    		t["TSOA"] && (tags["album-sort"] = t["TSOA"].data);
-    		t["TSOP"] && (tags["artist-sort"] = t["TSOP"].data);
-    		t["TSOT"] && (tags["title-sort"] = t["TSOT"].data);
+		var get_meta = function() {
+			var id3 = new ID3File(buf);
+			var tags = {};
+
+			if(id3.parse()) {
+				var t = id3.getTags();
+				
+				t["TALB"] && (tags["album"] = t["TALB"].data);
+	    		t["TAL"] && (tags["album"] = t["TAL"].data);
+	    		t["TCOM"] && (tags["composer"] = t["TCOM"].data);
+	    		t["TCON"] && (tags["genre"] = t["TCON"].data);
+	    		t["TCO"] && (tags["genre"] = t["TCO"].data);
+	    		t["TCOP"] && (tags["copyright"] = t["TCOP"].data);
+	    		t["TDRL"] && (tags["date"] = t["TDRL"].data);
+	    		t["TDRC"] && (tags["date"] = t["TDRC"].data);
+	    		t["TENC"] && (tags["encoded_by"] = t["TENC"].data);
+	    		t["TEN"] && (tags["encoded_by"] = t["TEN"].data);
+	    		t["TIT2"] && (tags["title"] = t["TIT2"].data);
+	    		t["TT2"] && (tags["title"] = t["TT2"].data);
+	    		t["TLAN"] && (tags["language"] = t["TLAN"].data);
+	    		t["TPE1"] && (tags["artist"] = t["TPE1"].data);
+	    		t["TP1"] && (tags["artist"] = t["TP1"].data);
+	    		t["TPE2"] && (tags["album_artist"] = t["TPE2"].data);
+	    		t["TP2"] && (tags["album_artist"] = t["TP2"].data);
+	    		t["TPE3"] && (tags["performer"] = t["TPE3"].data);
+	    		t["TP3"] && (tags["performer"] = t["TP3"].data);
+	    		t["TPOS"] && (tags["disc"] = t["TPOS"].data);
+	    		t["TPUB"] && (tags["publisher"] = t["TPUB"].data);
+	    		t["TRCK"] && (tags["track"] = t["TRCK"].data);
+	    		t["TRK"] && (tags["track"] = t["TRK"].data);
+	    		t["TSOA"] && (tags["album-sort"] = t["TSOA"].data);
+	    		t["TSOP"] && (tags["artist-sort"] = t["TSOP"].data);
+	    		t["TSOT"] && (tags["title-sort"] = t["TSOT"].data);
+				
+				got_meta = true;
+				console.log(sys.inspect(tags));
+				
+				if(library_path) {
+					sw = fs.createWriteStream(library_path+".tmp.mp3", {flags: 'w+', mode: 0644});
+					sw.write("ID3\2\0\0\0\0\0");
+					offset = t.id3.size;
+
+					sw.on('drain', function() {
+						write_func();
+					}).on('close', function() {
+						got_metadata_callback(tags);
+						// import the library torrent
+						
+						//
+					});
+				} else {
+					got_metadata_callback(tags);
+				}
+			}
 		}
 		
-		got_metadata_callback(tags);
-		
-		
-		
-		/*
-		 * LATER, probably in a different function called copy_to_library
-		 *
-		 * if(copy_to_libary) 
-		fs.createWriteStream(
-			playbox.library_path + hash, {flags: 'w', encoding: 'binary', mode: 0666, bufferSize: chunkSize }
-		).addListener('drain', function(
-		*/
-		
-		//if(bufPos != 0) {
-			//res.write(buf.slice(0,bufPos));
-			//res.end();
-		//} else {
-			//res.close();
-		//}
-		
+		sr.on("data", function(chunk) {
+			var bufNextPos = buf_pos + chunk.length;
+			buf.write(chunk,'binary',buf_pos);
+			if(bufNextPos >= buf_size) {
+				if(got_meta === false) {
+					// right now, there's a huge bug, if the metadata is larger than the buffer, so for now... I'm just skipping it
+					get_meta();
+					got_meta = true;
+				}
+				
+				sr.pause();
+				buf_pos = 0;
+				write_func();
+			} else if(buf_pos < buf_size) {
+				buf_pos = bufNextPos;
+			} else {
+				// now, write
+				//console.log("still going", chunk.length);
+			}
+		}).on("end", function(chunk) {
+			sr.destroy();
+			buf_pos = 0;
+			write_func();
+		}).addListener("close",function() {
+			// something of closing here
+		});
 	});
 }
 
@@ -350,7 +397,7 @@ exports.http = function(c, func, args) {
 			if(!t) {
 				t = torrents[args] = {status:"LOOKUP"};
 				//add_archive_metadata_queue.push(args);
-				playbox.add_archive_metadata(args);
+				//playbox.add_archive_metadata(args);
 			}
 			
 			output.ret = t;

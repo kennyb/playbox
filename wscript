@@ -319,7 +319,7 @@ def shutdown(ctx):
 			symlink(abspath('deps/node-websocket-server/lib'), 'build/release/lib/node-websocket-server')
 	
 		if exists('deps/node-id3/lib/id3') and not lexists('build/release/lib/node-id3'):
-			symlink(abspath('deps/node-id3/lib'), 'build/release/lib/node-id3')
+			symlink(abspath('deps/node-id3/lib/id3'), 'build/release/lib/node-id3')
 			
 		if exists('deps/node-strtok/lib') and not lexists('build/release/lib/node-strtok'):
 			symlink(abspath('deps/node-strtok/lib'), 'build/release/lib/node-strtok')
