@@ -53,7 +53,6 @@ using namespace node;
 using namespace boost;
 
 // static function declarations
-static Local<Value> extract_metadata(const std::string hash, const std::string local_file, libtorrent::lazy_entry& metadata);
 static std::string xml_special_chars(std::string str);
 
 // static vars
@@ -158,6 +157,9 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	
 	// adds a physical torrent file into the library
 	NODE_SET_PROTOTYPE_METHOD(t, "add_archive_metadata", add_archive_metadata);
+	
+	// returns all information about an archive (how the program discovers it)
+	NODE_SET_PROTOTYPE_METHOD(t, "get_archive_metadata", get_archive_metadata);
 	
 	// run an update pass
 	NODE_SET_PROTOTYPE_METHOD(t, "update", update);
@@ -314,21 +316,15 @@ Handle<Value> Playbox::add_archive_metadata(const Arguments &args)
 	return Undefined();
 }
 
-/*
-Handle<Value> Playbox::settings(const Arguments &args)
+Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
 {
-	HandleScope scope;
+	if(args.Length() == 0 || !args[0]->IsString()) {
+		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
+    }
+    
+	String::Utf8Value archive_path(args[0]->ToString());
+	std::string local_file(*archive_path);
 	
-	Local<Object> result = Object::New();
-	result->Set(String::New("library_path"), String::New(library_path.c_str()));
-	result->Set(String::New("torrent_path"tpe), String::New(torrent_path.c_str()));
-	
-	return scope.Close(result);
-}
-*/
-
-static Local<Value> extract_metadata(const std::string hash, const std::string local_file, libtorrent::lazy_entry& metadata)
-{
 	std::string title;
 	std::string status;
 	std::string value;
@@ -336,8 +332,6 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 	int err;
 	const char* filename = (local_file).c_str();
 	Local<Object> result = Object::New();
-	result->Set(String::New("id"), String::New(hash.c_str()));
-	result->Set(String::New("local_file"), String::New(local_file.c_str()));
 	
 	AVFormatContext *fmt_ctx = avformat_alloc_context();
 	AVInputFormat *iformat = NULL;
@@ -347,7 +341,7 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 		std::cerr << "file does not exist" << std::endl;
 	//} else if(filesystem::file_size(local_file) > 20*1024*1024) {
 	//	std::cerr << "file to large" << std::endl;
-	}/* else if(false && (err = av_open_input_file(&fmt_ctx, filename, iformat, 4096, NULL)) < 0) {
+	} else if((err = av_open_input_file(&fmt_ctx, filename, iformat, 4096, NULL)) < 0) {
 		switch(err) {
 			case AVERROR_INVALIDDATA:
 			std::cerr << " [W] invalid metadata (" << err << ") " << std::endl;
@@ -384,89 +378,107 @@ static Local<Value> extract_metadata(const std::string hash, const std::string l
 		//print_error()
 	} else if((err = av_find_stream_info(fmt_ctx)) < 0) {
 		std::cerr << "stream could not be found" << std::endl;
-	} */
+	}
 	
 	//av_metadata_conv(fmt_ctx, NULL, fmt_ctx->iformat->metadata_conv);
-	
-	
-	std::cout << "hash: " << hash << std::endl;
-	
-	/*
-	// time
-	value = metadata.dict_find_string_value("media_time");
-	if(!value.length() && fmt_ctx && fmt_ctx->duration > 0) {
-		std::cout << "duration: " << (fmt_ctx->duration / AV_TIME_BASE) << std::endl;
-		value = boost::lexical_cast<std::string>(fmt_ctx->duration / AV_TIME_BASE);
-	} if(value.length()) {
-		result->Set(String::New("time"), String::New(value.c_str()));
-	}
-	
-	// track
-	value = metadata.dict_find_string_value("media_track");
-	if(!value.length() && fmt_ctx && fmt_ctx->track > 0) {
-		std::cout << "track: " << fmt_ctx->track << std::endl;
-		value = boost::lexical_cast<std::string>(fmt_ctx->track);
-	} if(value.length()) {
-		result->Set(String::New("track"), String::New(value.c_str()));
-	}
-	
-	// year
-	value = metadata.dict_find_string_value("media_year");
-	if(!value.length() && fmt_ctx && fmt_ctx->year > 0) {
-		std::cout << "year: " << fmt_ctx->year << std::endl;
-		value = boost::lexical_cast<std::string>(fmt_ctx->year);
-	} if(value.length()) {
-		result->Set(String::New("year"), String::New(value.c_str()));
-	}
-	
-	// genre
-	value = metadata.dict_find_string_value("media_genre");
-	if(!value.length() && fmt_ctx && strlen(fmt_ctx->genre) > 0) {
-		std::cout << "genre: " << fmt_ctx->genre << std::endl;
-		value = trim(std::string(fmt_ctx->genre));
-	} if(value.length()) {
-		result->Set(String::New("genre"), String::New(value.c_str()));
-	}
-	
-	// album
-	value = metadata.dict_find_string_value("media_album");
-	if(!value.length() && fmt_ctx && strlen(fmt_ctx->album) > 0) {
-		std::cout << "album: " << fmt_ctx->album << std::endl;
-		value = trim(std::string(fmt_ctx->album));
-	} if(value.length()) {
-		result->Set(String::New("album"), String::New(value.c_str()));
-	}
-	
-	// author
-	value = metadata.dict_find_string_value("media_author");
-	if(!value.length() && fmt_ctx && strlen(fmt_ctx->author) > 0) {
-		std::cout << "author: " << fmt_ctx->author << std::endl;
-		value = trim(std::string(fmt_ctx->author));
-	} if(value.length()) {
-		result->Set(String::New("author"), String::New(value.c_str()));
-		title += value;
-	}
-	
-	// title
-	value = metadata.dict_find_string_value("media_title");
-	if(!value.length() && fmt_ctx && strlen(fmt_ctx->title) > 0) {
-		std::cout << "title: " << fmt_ctx->title << std::endl;
-		value = trim(std::string(fmt_ctx->title));
-	} if(value.length()) {
-		result->Set(String::New("title"), String::New(value.c_str()));
-		if(title.length()) {
-			title += " - ";
-		}
+	AVStream *stream = fmt_ctx->streams[0];
+	AVCodecContext *dec_ctx;
+	AVCodec *dec;
+	if((dec_ctx = stream->codec)) {
+		switch (dec_ctx->codec_type) {
+			case AVMEDIA_TYPE_VIDEO:
+				value = "video";
+				result->Set(String::New("width"), Integer::New(dec_ctx->width));
+				result->Set(String::New("height"), Integer::New(dec_ctx->height));
+				break;
 		
-		title += value;
+			case AVMEDIA_TYPE_AUDIO:
+				value = "audio";
+				result->Set(String::New("bitrate"), Integer::New(av_get_bits_per_sample(dec_ctx->codec_id)));
+				result->Set(String::New("channels"), Integer::New(dec_ctx->channels));
+				result->Set(String::New("sample_rate"), Integer::New(dec_ctx->sample_rate));
+				result->Set(String::New("codec"), String::New((dec = dec_ctx->codec) ? dec->name : "unknown"));
+				break;
+		
+			default:
+				value = "unknown";
+		}
+	
+		result->Set(String::New("type"), String::New(value.c_str()));
+	
+		// time
+		if(fmt_ctx->duration > 0) {
+			std::cout << "duration: " << (fmt_ctx->duration / AV_TIME_BASE) << std::endl;
+			result->Set(String::New("time"), Number::New(fmt_ctx->duration / AV_TIME_BASE));
+		}
+	
+		// track
+		if(fmt_ctx->track > 0) {
+			std::cout << "track: " << fmt_ctx->track << std::endl;
+			result->Set(String::New("track"), Integer::New(fmt_ctx->track));
+		}
+	
+		// year
+		if(fmt_ctx->year > 0) {
+			std::cout << "year: " << fmt_ctx->year << std::endl;
+			result->Set(String::New("year"), Integer::New(fmt_ctx->year));
+		}
+	
+		// genre
+		if(strlen(fmt_ctx->genre) > 0) {
+			std::cout << "genre: " << fmt_ctx->genre << std::endl;
+			value = trim(std::string(fmt_ctx->genre));
+			result->Set(String::New("genre"), String::New(value.c_str()));
+		}
+	
+		// album
+		if(strlen(fmt_ctx->album) > 0) {
+			std::cout << "album: " << fmt_ctx->album << std::endl;
+			value = trim(std::string(fmt_ctx->album));
+			result->Set(String::New("album"), String::New(value.c_str()));
+		}
+	
+		// author
+		if(strlen(fmt_ctx->author) > 0) {
+			std::cout << "author: " << fmt_ctx->author << std::endl;
+			value = trim(std::string(fmt_ctx->author));
+			result->Set(String::New("author"), String::New(value.c_str()));
+			title += value;
+		}
+	
+		// title
+		if(strlen(fmt_ctx->title) > 0) {
+			std::cout << "title: " << fmt_ctx->title << std::endl;
+			value = trim(std::string(fmt_ctx->title));
+			result->Set(String::New("title"), String::New(value.c_str()));
+			if(title.length()) {
+				title += " - ";
+			}
+		
+			title += value;
+		}
+	} else {
+		
 	}
 	
 	av_close_input_file(fmt_ctx);
-	*/
 	
 	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : filesystem::path(local_file).stem()).c_str()));
 	return result;
 }
+
+/*
+Handle<Value> Playbox::settings(const Arguments &args)
+{
+	HandleScope scope;
+	
+	Local<Object> result = Object::New();
+	result->Set(String::New("library_path"), String::New(library_path.c_str()));
+	result->Set(String::New("torrent_path"tpe), String::New(torrent_path.c_str()));
+	
+	return scope.Close(result);
+}
+*/
 
 
 static std::string xml_special_chars(std::string str)
@@ -742,7 +754,7 @@ void Playbox::load_torrent(const std::string torrent_path)
 					local_file += hash;
 				}
 				
-				js_metadata = extract_metadata(hash, local_file, metadata);
+				//js_metadata = extract_metadata(hash, local_file, metadata);
 				params.ti = ti;
 			}
 			

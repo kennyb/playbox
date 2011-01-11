@@ -31,7 +31,7 @@ var do_update = function() {
 		if(add_archive_metadata_queue.length && status_count["CHECKING"] < 2) {
 			path = add_archive_metadata_queue.shift();
 			//console.log("add_archive_metadata", path);
-			playbox.add_archive_metadata(path);
+			//playbox.add_archive_metadata(path);
 		} else if(add_archive_queue.length) {
 			path = add_archive_queue.shift();
 			var c = 0;
@@ -45,8 +45,12 @@ var do_update = function() {
 			}
 			
 			if(c < 2 && path) {
-				//console.log("add_archive", path);
-				playbox.add_archive(path);
+				console.log("get_archive_metadata", path);
+				var m = playbox.get_archive_metadata(path);
+				console.log(sys.inspect(m));
+				if(m !== false) {
+					playbox.add_archive(path);
+				}
 			}
 		}
 	} else {
@@ -65,6 +69,19 @@ function broadcast_event(evt, data) {
 	}));
 }
 
+/*
+add_archive
+------
+get metadata with ffmpeg
+if(is a mp3) {
+	copy to the library without the metadata
+	make the torrent hashes from the library file
+	save the torrent file
+	save the metadata into edb
+}
+*/
+
+
 playbox.on("stateChanged", function(hash, extra) {
 	console.log(hash, "changed state "+extra.prev_state+" -> "+extra.state);
 	torrents[hash].status = extra.state;
@@ -81,12 +98,13 @@ playbox.on("stateChanged", function(hash, extra) {
 	torrents[hash].active = true;
 	broadcast_event("archiveResumed", torrents[hash]);
 }).on("archiveMetadata", function(hash, metadata) {
-	if(metadata.local_file) {
+	/*if(metadata.local_file) {
 		get_metadata(metadata.local_file, playbox.library_path + hash, function(tags) {
 			torrents[hash].metadata = Mixin(tags, torrents[hash].metadata);
 			broadcast_event("archiveMetadata", torrents[hash]);
 		});
 	}
+	*/
 	
 	status_count["CHECKING"]++;
 	torrents[hash] = {status:"METADATA", downloaded: -1, metadata: metadata};
@@ -263,6 +281,7 @@ function get_metadata(file_path, library_path, got_metadata_callback) {
 
 			if(id3.parse()) {
 				var t = id3.getTags();
+				got_meta = true;
 				
 				t["TALB"] && (tags["album"] = t["TALB"].data);
 	    		t["TAL"] && (tags["album"] = t["TAL"].data);
@@ -291,21 +310,16 @@ function get_metadata(file_path, library_path, got_metadata_callback) {
 	    		t["TSOP"] && (tags["artist-sort"] = t["TSOP"].data);
 	    		t["TSOT"] && (tags["title-sort"] = t["TSOT"].data);
 				
-				got_meta = true;
 				console.log(sys.inspect(tags));
-				
 				if(library_path) {
 					sw = fs.createWriteStream(library_path+".tmp.mp3", {flags: 'w+', mode: 0644});
-					sw.write("ID3\2\0\0\0\0\0");
+					sw.write("ID3\x02\0\0\0\0\0");
 					offset = t.id3.size;
 
 					sw.on('drain', function() {
 						write_func();
 					}).on('close', function() {
 						got_metadata_callback(tags);
-						// import the library torrent
-						
-						//
 					});
 				} else {
 					got_metadata_callback(tags);

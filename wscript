@@ -295,7 +295,7 @@ def shutdown(ctx):
 		elif exists('build/lib/libavutil.dylib'):
 			copy2(abspath('build/lib/libavutil.dylib'), 'build/release/lib/libavutil.dylib')
 		
-		#debug ffprobe
+		# ffprobe & libs (not necessary)
 		if exists('deps/ffmpeg/ffprobe') and not lexists('build/release/ffprobe'):
 			symlink(abspath('deps/ffmpeg/ffprobe'), 'build/release/ffprobe')
 		if exists('deps/ffmpeg/libavdevice/libavdevice.so') and not lexists('build/release/lib/libavdevice.so'):
@@ -315,6 +315,7 @@ def shutdown(ctx):
 		elif exists('deps/ffmpeg/libpostproc/libpostproc.dylib') and not lexists('build/release/lib/libpostproc.dylib'):
 			symlink(abspath('deps/ffmpeg/libpostproc/libpostproc.dylib'), 'build/release/lib/libpostproc.dylib')
 		
+		# node libs
 		if exists('deps/node-websocket-server/lib') and not lexists('build/release/lib/node-websocket-server'):
 			symlink(abspath('deps/node-websocket-server/lib'), 'build/release/lib/node-websocket-server')
 	
@@ -327,6 +328,9 @@ def shutdown(ctx):
 		# node libs
 		if exists('build/default/playbox.node'):
 			copy2('build/default/playbox.node', 'build/release/lib/playbox.node')
+		
+		if exists('deps/node-iconv/iconv.node'):
+			copy2('deps/node-iconv/iconv.node', 'build/release/lib/iconv.node')
 		
 		# custom node
 		# todo: if this doesn't exist, then build node
