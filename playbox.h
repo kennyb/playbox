@@ -5,7 +5,8 @@
 #include <node_object_wrap.h>
 #include <v8.h>
 
-#include <libtorrent/entry.hpp>
+//#include <libtorrent/entry.hpp>
+#include <boost/filesystem/path.hpp>
 
 using namespace v8;
 using namespace node;
@@ -29,7 +30,7 @@ class Playbox : public EventEmitter
 	static Handle<Value> get_archive_metadata(const Arguments &args);
 
 	static void load_torrent(const std::string torrent_path);
-	static void make_torrent(const std::string path);
+	static void make_torrent(const boost::filesystem::path path, const boost::filesystem::path orig_path);
 	
   private:
     static Handle<Value> New(const Arguments &args);

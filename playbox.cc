@@ -57,8 +57,9 @@ static std::string xml_special_chars(std::string str);
 
 // static vars
 static libtorrent::session cur_session;
-static std::string library_path;
-static std::string torrent_path;
+static std::string library_dir;
+static std::string torrents_dir;
+static std::string tmp_path;
 //static std::map<std::string, libtorrent::lazy_entry> torrents_metadata;
 static Playbox *playbox;
 
@@ -82,12 +83,16 @@ static Handle<Value> VException(const char *msg) {
 	return ThrowException(Exception::Error(String::New(msg)));
 };
 
-static Handle<Value> __library_path(Local<String> property, const AccessorInfo& info) {
-	return String::New(library_path.c_str());
+static Handle<Value> __library_dir(Local<String> property, const AccessorInfo& info) {
+	return String::New(library_dir.c_str());
 }
 
-static Handle<Value> __torrent_path(Local<String> property, const AccessorInfo& info) {
-	return String::New(torrent_path.c_str());
+static Handle<Value> __torrents_dir(Local<String> property, const AccessorInfo& info) {
+	return String::New(torrents_dir.c_str());
+}
+
+static Handle<Value> __tmp_path(Local<String> property, const AccessorInfo& info) {
+	return String::New(tmp_path.c_str());
 }
 
 // unused at the moment...
@@ -164,8 +169,9 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	// run an update pass
 	NODE_SET_PROTOTYPE_METHOD(t, "update", update);
 	
-	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("library_path"), __library_path);
-	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrent_path"), __torrent_path);
+	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("library_dir"), __library_dir);
+	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrents_dir"), __torrents_dir);
+	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("tmp_path"), __tmp_path);
 	
 	target->Set(String::NewSymbol("Playbox"), t->GetFunction());
 	
@@ -183,16 +189,22 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	struct passwd* user_passwd = getpwuid(uid);
 	
 	if(user_passwd) {
-		library_path = user_passwd->pw_dir;
-		library_path += "/Library/";
-		filesystem::create_directory(filesystem::path(::library_path));
+		library_dir = user_passwd->pw_dir;
+		library_dir += "/Library/";
+		filesystem::create_directory(filesystem::path(::library_dir));
 		
-		library_path += "playbox/";
-		filesystem::create_directory(filesystem::path(::library_path));
+		library_dir += "playbox/";
+		filesystem::create_directory(filesystem::path(::library_dir));
 		// now, chroot to the dir
 		
-		::torrent_path = std::string(::library_path).append(".torrents/");
-		filesystem::path p(torrent_path);
+		::torrents_dir = std::string(::library_dir).append(".torrents/");
+		filesystem::path p(::torrents_dir);
+		if(!filesystem::exists(p)) {
+			filesystem::create_directory(p);
+		}
+		
+		::tmp_path = std::string(::library_dir).append(".tmp/");
+		p = filesystem::path(::tmp_path);
 		if(!filesystem::exists(p)) {
 			filesystem::create_directory(p);
 		}
@@ -289,18 +301,19 @@ Handle<Value> Playbox::archive(const Arguments &args)
 
 Handle<Value> Playbox::add_archive(const Arguments &args)
 {
-	if(args.Length() != 1 || !args[0]->IsString()) {
-		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
+	if(args.Length() != 2 || !args[0]->IsString() || !args[1]->IsString()) {
+		return ThrowException(Exception::Error(String::New("Must provide a file path and a real path as strings")));
     }
     
 	String::Utf8Value archive_path(args[0]->ToString());
 	std::string path(*archive_path);
 	filesystem::path file_path(filesystem::complete(path));
-	filesystem::file_status st = filesystem::status(file_path);
-	std::cout << "regular file: " << filesystem::is_regular_file(st) << std::endl;
-	if(filesystem::is_regular_file(st) /* && is_media file */) {
-		make_torrent(file_path.string());
-	}
+	
+	String::Utf8Value archive_real_path(args[1]->ToString());
+	std::string real_path(*archive_real_path);
+	filesystem::path real_file_path(filesystem::complete(real_path));
+	
+	make_torrent(file_path, real_file_path);
 	
 	return Undefined();
 }
@@ -381,10 +394,12 @@ Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
 	}
 	
 	//av_metadata_conv(fmt_ctx, NULL, fmt_ctx->iformat->metadata_conv);
+	
 	AVStream *stream = fmt_ctx->streams[0];
 	AVCodecContext *dec_ctx;
-	AVCodec *dec;
+	//AVCodec *dec;
 	if((dec_ctx = stream->codec)) {
+		result->Set(String::New("type"), String::New(fmt_ctx->iformat->name));
 		switch (dec_ctx->codec_type) {
 			case AVMEDIA_TYPE_VIDEO:
 				value = "video";
@@ -394,10 +409,10 @@ Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
 		
 			case AVMEDIA_TYPE_AUDIO:
 				value = "audio";
-				result->Set(String::New("bitrate"), Integer::New(av_get_bits_per_sample(dec_ctx->codec_id)));
+				result->Set(String::New("bitrate"), Integer::New(dec_ctx->bit_rate));
 				result->Set(String::New("channels"), Integer::New(dec_ctx->channels));
 				result->Set(String::New("sample_rate"), Integer::New(dec_ctx->sample_rate));
-				result->Set(String::New("codec"), String::New((dec = dec_ctx->codec) ? dec->name : "unknown"));
+				//result->Set(String::New("codec"), String::New((dec = dec_ctx->codec) != NULL ? dec->name : "unknown"));
 				break;
 		
 			default:
@@ -411,51 +426,10 @@ Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
 			std::cout << "duration: " << (fmt_ctx->duration / AV_TIME_BASE) << std::endl;
 			result->Set(String::New("time"), Number::New(fmt_ctx->duration / AV_TIME_BASE));
 		}
-	
-		// track
-		if(fmt_ctx->track > 0) {
-			std::cout << "track: " << fmt_ctx->track << std::endl;
-			result->Set(String::New("track"), Integer::New(fmt_ctx->track));
-		}
-	
-		// year
-		if(fmt_ctx->year > 0) {
-			std::cout << "year: " << fmt_ctx->year << std::endl;
-			result->Set(String::New("year"), Integer::New(fmt_ctx->year));
-		}
-	
-		// genre
-		if(strlen(fmt_ctx->genre) > 0) {
-			std::cout << "genre: " << fmt_ctx->genre << std::endl;
-			value = trim(std::string(fmt_ctx->genre));
-			result->Set(String::New("genre"), String::New(value.c_str()));
-		}
-	
-		// album
-		if(strlen(fmt_ctx->album) > 0) {
-			std::cout << "album: " << fmt_ctx->album << std::endl;
-			value = trim(std::string(fmt_ctx->album));
-			result->Set(String::New("album"), String::New(value.c_str()));
-		}
-	
-		// author
-		if(strlen(fmt_ctx->author) > 0) {
-			std::cout << "author: " << fmt_ctx->author << std::endl;
-			value = trim(std::string(fmt_ctx->author));
-			result->Set(String::New("author"), String::New(value.c_str()));
-			title += value;
-		}
-	
-		// title
-		if(strlen(fmt_ctx->title) > 0) {
-			std::cout << "title: " << fmt_ctx->title << std::endl;
-			value = trim(std::string(fmt_ctx->title));
-			result->Set(String::New("title"), String::New(value.c_str()));
-			if(title.length()) {
-				title += " - ";
-			}
 		
-			title += value;
+		AVMetadataTag *tag = NULL;
+		while((tag = av_metadata_get(fmt_ctx->metadata, "", tag, AV_METADATA_IGNORE_SUFFIX))) {
+			result->Set(String::New(tag->key), String::New(tag->value));
 		}
 	} else {
 		
@@ -466,19 +440,6 @@ Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
 	result->Set(String::New("name"), String::New(xml_special_chars(title.length() ? title : filesystem::path(local_file).stem()).c_str()));
 	return result;
 }
-
-/*
-Handle<Value> Playbox::settings(const Arguments &args)
-{
-	HandleScope scope;
-	
-	Local<Object> result = Object::New();
-	result->Set(String::New("library_path"), String::New(library_path.c_str()));
-	result->Set(String::New("torrent_path"tpe), String::New(torrent_path.c_str()));
-	
-	return scope.Close(result);
-}
-*/
 
 
 static std::string xml_special_chars(std::string str)
@@ -657,7 +618,7 @@ static void print_progress(int i, int num)
 	std::cerr << "\r" << (i+1) << "/" << num;
 }
 
-void Playbox::load_torrent(const std::string torrent_path)
+void Playbox::load_torrent(const std::string path)
 {
 	using namespace boost;
 	using namespace libtorrent;
@@ -665,7 +626,7 @@ void Playbox::load_torrent(const std::string torrent_path)
 	libtorrent::file_storage fs;
 	libtorrent::file_pool fp;
 	Local<Value> js_metadata = Local<Value>::New(Undefined());
-	filesystem::path torrent_file(torrent_path);
+	filesystem::path torrent_path(path);
 	
 #ifndef BOOST_NO_EXCEPTIONS
 	try {
@@ -677,18 +638,18 @@ void Playbox::load_torrent(const std::string torrent_path)
 		libtorrent::add_torrent_params params;
 		params.duplicate_is_error = false;
 		params.storage_mode = libtorrent::storage_mode_allocate;
-		params.save_path = library_path;
+		params.save_path = library_dir;
 		
-		if(torrent_path.size() == 40
-				&& torrent_path.find('/') == std::string::npos
-				&& torrent_file.extension() != ".torrent") {
+		if(path.size() == 40
+				&& path.find('/') == std::string::npos
+				&& torrent_path.extension() != ".torrent") {
 			// this is a hash, not a file
-			params.info_hash = lexical_cast<sha1_hash>(torrent_path);
-			hash = torrent_path;
+			params.info_hash = lexical_cast<sha1_hash>(path);
+			hash = path;
 		} else {
 			//======
 			// check the file size, not to blow out the memory (2MB)
-			int size = filesystem::file_size(torrent_path);
+			int size = filesystem::file_size(path);
 			if(size > 2 * 1024 * 1024) {
 				std::cerr << "file too big! (" << size << "), aborting" << std::endl;
 				return;
@@ -697,7 +658,7 @@ void Playbox::load_torrent(const std::string torrent_path)
 			//======
 			// stream the file in, and decode it			
 			std::vector<char> buf(size);
-			std::ifstream(torrent_path.c_str(), std::ios_base::binary).read(&buf[0], size);
+			std::ifstream(path.c_str(), std::ios_base::binary).read(&buf[0], size);
 			//entry metadata = bdecode(&buf[0], &buf[0] + buf.size());
 			lazy_entry metadata;
 			boost::system::error_code ec;
@@ -731,7 +692,7 @@ void Playbox::load_torrent(const std::string torrent_path)
 			}
 			
 			if(!use_local_file) {
-				params.save_path = library_path;
+				params.save_path = library_dir;
 			}
 			
 			//======
@@ -788,7 +749,7 @@ void Playbox::load_torrent(const std::string torrent_path)
 #endif
 }
 
-void Playbox::make_torrent(const std::string path)
+void Playbox::make_torrent(const boost::filesystem::path path, const boost::filesystem::path real_path)
 {
 	using namespace boost;
 	using namespace libtorrent;
@@ -802,28 +763,27 @@ void Playbox::make_torrent(const std::string path)
 #endif
 		//======
 		// build the file list
-		filesystem::path full_path = filesystem::complete(path);
-		std::time_t mtime = filesystem::last_write_time(full_path);
-		
-		if(false) {
-			
-			
-		} else {
-			uintmax_t size = filesystem::file_size(media_path);
-			fs.add_file(full_path.filename(), size, 0, mtime);
-		}
+		std::time_t mtime = filesystem::last_write_time(path);
+		uintmax_t size = filesystem::file_size(media_path);
+		fs.add_file(path.filename(), size, 0, mtime);
+		fs.set_name(real_path.filename());
 		
 		//======
 		// begin hash generation
 		create_torrent torrent(fs, 16 * 1024, -1, 1 /*+ 2*/ + 8 /* optimize + merkle + symlink */); // should be 11, removed merkle
+		libtorrent::file_storage cur_fs(torrent.files());
+		//cur_fs.rename_file(0, path.filename());
+		std::cout << "rename " << path.filename() << std::endl;
 		torrent.set_creator("playbox-2.0");
 		torrent.set_comment("torrent created by playbox-2.0");
 		
 		//======
 		// compute the hashes
-		std::cout << "set_piece_hashes(" << torrent.num_pieces() << ") " << full_path.string() << std::endl;
-		libtorrent::set_piece_hashes(torrent, full_path.branch_path().string(), boost::bind(&print_progress, _1, torrent.num_pieces()));
+		std::cout << "set_piece_hashes(" << torrent.num_pieces() << ") " << path.string() << std::endl;
+		libtorrent::set_piece_hashes(torrent, path.branch_path().string(), boost::bind(&print_progress, _1, torrent.num_pieces()));
 		std::cerr << std::endl;
+		//std::cout << "rename " << real_path.filename() << std::endl;
+		//cur_fs.rename_file(0, std::string(real_path.filename()));
 		
 		//======
 		// generate the torrent & file hashes
@@ -831,7 +791,7 @@ void Playbox::make_torrent(const std::string path)
 		
 		//======
 		// add the real file path to the torrent (to know that it's not in the library)
-		metadata["media_path"] = entry(path);
+		metadata["media_path"] = entry(std::string(path.filename()));
 		
 		// output the metadata to a buffer
 		std::vector<char> buffer;
@@ -840,21 +800,22 @@ void Playbox::make_torrent(const std::string path)
 		buffer.clear();
 		
 		//======
-		// generate the filename based on the info hash
-		std::string torrent_file(torrent_path);
-		std::string hash(lexical_cast<std::string>(ti.info_hash()));
-		torrent_file.append(hash);
-		torrent_file.append(".torrent");
-		
-		//======
 		// add a symlink in the library to the real file
-		std::string file_path(library_path + '/' + hash);
-		if(!filesystem::exists(file_path)) {
-			if(symlink(path.c_str(), file_path.c_str()) != 0) {
+		std::string hash(lexical_cast<std::string>(ti.info_hash()));
+		std::string library_file(library_dir + '/' + hash);
+		if(!filesystem::exists(library_file)) {
+			std::string str_real_path(real_path.string());
+			if(symlink(library_file.c_str(), str_real_path.c_str()) != 0) {
 				perror("symlink(MusicDirectory)");
 				return;
 			}
 		}
+		
+		//======
+		// generate the filename based on the info hash
+		std::string torrent_file(::torrents_dir);
+		torrent_file.append(hash);
+		torrent_file.append(".torrent");
 		
 		//======
 		// output the buffer to a file

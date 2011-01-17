@@ -14,6 +14,7 @@ var playbox = new Playbox(),
 	torrents = {},
 	last_activity = 0,
 	status_count = {
+		"PARSING": 0,
 		"METADATA": 0,
 		"DOWNLOADING_METADATA": 0,
 		"CHECKING": 0,
@@ -28,9 +29,8 @@ var do_update = function() {
 	//broadcast_event("update", {truth: true});
 	//TODO: put limits.. no fumes discos duros
 	if(!status_count["CHECKING"]) {
-		if(add_archive_metadata_queue.length && status_count["CHECKING"] < 2) {
+		if(false && add_archive_metadata_queue.length && status_count["CHECKING"] < 2) {
 			path = add_archive_metadata_queue.shift();
-			//console.log("add_archive_metadata", path);
 			//playbox.add_archive_metadata(path);
 		} else if(add_archive_queue.length) {
 			path = add_archive_queue.shift();
@@ -38,18 +38,25 @@ var do_update = function() {
 			for(var i in torrents) {
 				c++;
 				var t = torrents[i];
-				//console.log("1:"+t.local_file+"\n2:"+path);
 				if(t.local_file === path) {
 					path = null;
 				}
 			}
 			
-			if(c < 2 && path) {
+			if(status_count["PARSING"] < 2 && path) {
 				console.log("get_archive_metadata", path);
 				var m = playbox.get_archive_metadata(path);
 				console.log(sys.inspect(m));
 				if(m !== false) {
-					playbox.add_archive(path);
+					status_count["PARSING"]++;
+					strip_metadata(path, function(stripped_archive_path) {
+						setTimeout(function() {
+							status_count["PARSING"]--;
+							//console.log("add archive", stripped_archive_path);
+							playbox.add_archive(stripped_archive_path, path);
+							fs.unlink(stripped_archive_path);
+						}, 10);
+					});
 				}
 			}
 		}
@@ -99,7 +106,7 @@ playbox.on("stateChanged", function(hash, extra) {
 	broadcast_event("archiveResumed", torrents[hash]);
 }).on("archiveMetadata", function(hash, metadata) {
 	/*if(metadata.local_file) {
-		get_metadata(metadata.local_file, playbox.library_path + hash, function(tags) {
+		get_metadata(metadata.local_file, playbox.library_dir + hash, function(tags) {
 			torrents[hash].metadata = Mixin(tags, torrents[hash].metadata);
 			broadcast_event("archiveMetadata", torrents[hash]);
 		});
@@ -150,43 +157,43 @@ function stop() {
 
 function init() {
 	console.log("Initializing playbox-2");
-	console.log(" library_path: "+playbox.library_path);
-	console.log(" torrent_path: "+playbox.torrent_path);
+	console.log(" library_dir: "+playbox.library_dir);
+	console.log(" torrents_dir: "+playbox.torrents_dir);
 	
 	// dir scan of the torrents
-	fs.readdir(playbox.torrent_path, function(err, files) {
+	fs.readdir(playbox.torrents_dir, function(err, files) {
 		if(err) throw err;
 		var i = files.length-1;
 		if(i >= 0) {
 			do {
 				hash = files[i].toString();
 				//if(add_archive_metadata_queue.length < 11) {
-					add_archive_metadata_queue.push(playbox.torrent_path+hash);
+					add_archive_metadata_queue.push(playbox.torrents_dir+hash);
 				//}
 			} while(i--);
 		}
 	});
 	
-	var music_dir = playbox.library_path.substr(0, playbox.library_path.indexOf("/Library"))+"/Music";
+	var music_dir = playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music";
 	add_media(music_dir);
 	fs.stat(music_dir), function(err, st) {
 		if(st.isFile()) {
 			add_archive_queue.push(music_dir);
 		} else {
-			fs.readdir(playbox.torrent_path, function(err, files) {
+			fs.readdir(playbox.torrents_dir, function(err, files) {
 				if(err) throw err;
 				var i = files.length-1;
 				if(i >= 0) {
 					do {
 						hash = files[i].toString();
-						add_archive_metadata_queue.push(playbox.torrent_path+hash);
+						add_archive_metadata_queue.push(playbox.torrents_dir+hash);
 					} while(i--);
 				}
 			});
 		}
 	}
 	
-	Edb.init(playbox.library_path + ".edb", function() {
+	Edb.init(playbox.library_dir + ".edb", function() {
 		console.log("Edb initialized");
 		Edb.set("lala", [1,2,3,4], function() {
 			Edb.get("lala", function(key, value) {
@@ -237,107 +244,97 @@ function query(args) {
 	return ret;
 }
 
-function get_metadata(file_path, library_path, got_metadata_callback) {
+var tmp_offset = 0;
+function strip_metadata(file_path, callback) {
+	//TODO: circular buffer, and obeying speed limits
+	console.log("strip_metadata", file_path)
 	fs.stat(file_path, function(err, st) {
 		if(err) throw err;
 		var chunk_size = 64 * 1024;
 		var buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
 		var buf_pos    = 0;
 		var buf = new Buffer(buf_size);
+		var dest_path = playbox.tmp_path+"strip."+(tmp_offset++);
 		
 		var orig_size = st.size;
 		var remaining = orig_size;
 		var offset = 0;
 		var got_meta = false;
 		var sr = fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
-			sw;
+			sw = fs.createWriteStream(dest_path+".mp3", {flags: 'w+', mode: 0644});
 		
 		var write_func = function() {
-			if(remaining !== -1) {
-				buf_pos = 0;
-				if(remaining < buf.length) {
+			buf_pos = 0;
+			if(remaining < buf.length) {
+				if(remaining > 0) {
+					//console.log("sw.write(slice)", offset, remaining);
 					sw.write(buf.slice(offset, remaining));
-					sw.flush();
-					sw.end();
-					remaining = -1;
-					//sw.emit('done');
+				}
+				
+				remaining = -1;
+			} else {
+				remaining -= buf.length;
+				if(offset === 0) {
+					//console.log("sw.write(buf)");
+					sw.write(buf);
 				} else {
-					remaining -= buf.length;
-					if(offset === 0) {
-						sw.write(buf);
-					} else {
-						sw.write(buf.slice(offset));
-						offset = 0;
-					}
-					
-					sr.resume();
+					//console.log("sw.write(slice)");
+					sw.write(buf.slice(offset));
+					offset = 0;
 				}
 			}
 		}
 		
 		var get_meta = function() {
+			//TODO: do a test to see if the buffer has an ID3 tag at the beginning.
+			// if it doesn't, add it (so that ffmpeg will try and determine the duration)
 			var id3 = new ID3File(buf);
-			var tags = {};
-
 			if(id3.parse()) {
 				var t = id3.getTags();
 				got_meta = true;
 				
-				t["TALB"] && (tags["album"] = t["TALB"].data);
-	    		t["TAL"] && (tags["album"] = t["TAL"].data);
-	    		t["TCOM"] && (tags["composer"] = t["TCOM"].data);
-	    		t["TCON"] && (tags["genre"] = t["TCON"].data);
-	    		t["TCO"] && (tags["genre"] = t["TCO"].data);
-	    		t["TCOP"] && (tags["copyright"] = t["TCOP"].data);
-	    		t["TDRL"] && (tags["date"] = t["TDRL"].data);
-	    		t["TDRC"] && (tags["date"] = t["TDRC"].data);
-	    		t["TENC"] && (tags["encoded_by"] = t["TENC"].data);
-	    		t["TEN"] && (tags["encoded_by"] = t["TEN"].data);
-	    		t["TIT2"] && (tags["title"] = t["TIT2"].data);
-	    		t["TT2"] && (tags["title"] = t["TT2"].data);
-	    		t["TLAN"] && (tags["language"] = t["TLAN"].data);
-	    		t["TPE1"] && (tags["artist"] = t["TPE1"].data);
-	    		t["TP1"] && (tags["artist"] = t["TP1"].data);
-	    		t["TPE2"] && (tags["album_artist"] = t["TPE2"].data);
-	    		t["TP2"] && (tags["album_artist"] = t["TP2"].data);
-	    		t["TPE3"] && (tags["performer"] = t["TPE3"].data);
-	    		t["TP3"] && (tags["performer"] = t["TP3"].data);
-	    		t["TPOS"] && (tags["disc"] = t["TPOS"].data);
-	    		t["TPUB"] && (tags["publisher"] = t["TPUB"].data);
-	    		t["TRCK"] && (tags["track"] = t["TRCK"].data);
-	    		t["TRK"] && (tags["track"] = t["TRK"].data);
-	    		t["TSOA"] && (tags["album-sort"] = t["TSOA"].data);
-	    		t["TSOP"] && (tags["artist-sort"] = t["TSOP"].data);
-	    		t["TSOT"] && (tags["title-sort"] = t["TSOT"].data);
-				
-				console.log(sys.inspect(tags));
-				if(library_path) {
-					sw = fs.createWriteStream(library_path+".tmp.mp3", {flags: 'w+', mode: 0644});
-					sw.write("ID3\x02\0\0\0\0\0");
+				if(t.id3 && t.id3.size) {
 					offset = t.id3.size;
-
-					sw.on('drain', function() {
-						write_func();
-					}).on('close', function() {
-						got_metadata_callback(tags);
-					});
-				} else {
-					got_metadata_callback(tags);
+					//console.log("sw.write(ID3)");
+					sw.write("ID3\x02\0\0\0\0\0");
 				}
 			}
 		}
 		
+		sw.on('drain', function() {
+			//console.log("sw.drain", remaining)
+			if(remaining === -1) {
+				//console.log("sw.end");
+				sw.end();
+				//throw new Error("ll")
+			} else {
+				//console.log("sr.resume");
+				sr.resume();
+			}
+		}).on('close', function() {
+			//console.log("sw.close", file_path);
+			callback(dest_path+".mp3");
+		});
+		
 		sr.on("data", function(chunk) {
+			// TODO: when reading this in, the whole file should be read, and then just simply call the function, "setPieceHashes"
+			// or whatever it's called... to also control the speed the file is read (preventing blocking)
 			var bufNextPos = buf_pos + chunk.length;
 			buf.write(chunk,'binary',buf_pos);
 			if(bufNextPos >= buf_size) {
+				////console.log("sr.pause", remaining)
+				if(remaining > 0) {
+					//console.log("sr.pause");
+					sr.pause();
+				}
+				
 				if(got_meta === false) {
 					// right now, there's a huge bug, if the metadata is larger than the buffer, so for now... I'm just skipping it
+					// I will need to continually increase the size of the buffer, until I am able to retrieve the metadata.
 					get_meta();
 					got_meta = true;
 				}
 				
-				sr.pause();
 				buf_pos = 0;
 				write_func();
 			} else if(buf_pos < buf_size) {
@@ -347,10 +344,10 @@ function get_metadata(file_path, library_path, got_metadata_callback) {
 				//console.log("still going", chunk.length);
 			}
 		}).on("end", function(chunk) {
-			sr.destroy();
 			buf_pos = 0;
 			write_func();
-		}).addListener("close",function() {
+		}).addListener("close", function() {
+			//console.log("sr.close");
 			// something of closing here
 		});
 	});
@@ -403,7 +400,7 @@ exports.http = function(c, func, args) {
 			break;
 			
 		case 'g':
-			c.file("audio/mp3", playbox.library_path+"/"+args);
+			c.file("audio/mp3", playbox.library_dir+"/"+args);
 			return;
 			
 		case 'i':
@@ -424,7 +421,7 @@ exports.http = function(c, func, args) {
 			return;
 			
 		default:
-			var mime = ext2mime(path.extname(args));
+			var mime = ext2mime(path.extname(args)) | "text/plain";
 			c.file(mime, "./public/"+args);
 			return;
 	}

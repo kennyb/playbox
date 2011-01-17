@@ -1,6 +1,5 @@
 current:
 save songs into the library without metadata and hash them
-library cache system
 convert the torrents over to json format and save them as json files... later, load everything from json
 make sure the playbox can serve an image as a an album cover
 http://chromium.googlecode.com/svn/trunk/samples/audio/specification/specification.html
@@ -14,6 +13,7 @@ integrate head.js
 integrate video.js
 integrate less.js
 integrate unhosted
+library cache system
 try and grab the album art for the artist
 add disk stats into the '?' function
 add torrent stats to the progress event
