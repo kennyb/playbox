@@ -29,9 +29,9 @@ var do_update = function() {
 	//broadcast_event("update", {truth: true});
 	//TODO: put limits.. no fumes discos duros
 	if(!status_count["CHECKING"]) {
-		if(false && add_archive_metadata_queue.length && status_count["CHECKING"] < 2) {
+		if(add_archive_metadata_queue.length && status_count["CHECKING"] < 2) {
 			path = add_archive_metadata_queue.shift();
-			//playbox.add_archive_metadata(path);
+			playbox.add_archive_metadata(path);
 		} else if(add_archive_queue.length) {
 			path = add_archive_queue.shift();
 			var c = 0;
@@ -52,7 +52,6 @@ var do_update = function() {
 					strip_metadata(path, function(stripped_archive_path) {
 						setTimeout(function() {
 							status_count["PARSING"]--;
-							//console.log("add archive", stripped_archive_path);
 							playbox.add_archive(stripped_archive_path, path);
 							fs.unlink(stripped_archive_path);
 						}, 10);
@@ -267,7 +266,6 @@ function strip_metadata(file_path, callback) {
 			buf_pos = 0;
 			if(remaining < buf.length) {
 				if(remaining > 0) {
-					//console.log("sw.write(slice)", offset, remaining);
 					sw.write(buf.slice(offset, remaining));
 				}
 				
@@ -275,10 +273,8 @@ function strip_metadata(file_path, callback) {
 			} else {
 				remaining -= buf.length;
 				if(offset === 0) {
-					//console.log("sw.write(buf)");
 					sw.write(buf);
 				} else {
-					//console.log("sw.write(slice)");
 					sw.write(buf.slice(offset));
 					offset = 0;
 				}
@@ -295,24 +291,18 @@ function strip_metadata(file_path, callback) {
 				
 				if(t.id3 && t.id3.size) {
 					offset = t.id3.size;
-					//console.log("sw.write(ID3)");
 					sw.write("ID3\x02\0\0\0\0\0");
 				}
 			}
 		}
 		
 		sw.on('drain', function() {
-			//console.log("sw.drain", remaining)
 			if(remaining === -1) {
-				//console.log("sw.end");
 				sw.end();
-				//throw new Error("ll")
 			} else {
-				//console.log("sr.resume");
 				sr.resume();
 			}
 		}).on('close', function() {
-			//console.log("sw.close", file_path);
 			callback(dest_path+".mp3");
 		});
 		
@@ -322,9 +312,7 @@ function strip_metadata(file_path, callback) {
 			var bufNextPos = buf_pos + chunk.length;
 			buf.write(chunk,'binary',buf_pos);
 			if(bufNextPos >= buf_size) {
-				////console.log("sr.pause", remaining)
 				if(remaining > 0) {
-					//console.log("sr.pause");
 					sr.pause();
 				}
 				
@@ -347,7 +335,6 @@ function strip_metadata(file_path, callback) {
 			buf_pos = 0;
 			write_func();
 		}).addListener("close", function() {
-			//console.log("sr.close");
 			// something of closing here
 		});
 	});

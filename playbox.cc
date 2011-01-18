@@ -272,7 +272,7 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		std::cerr << e.what() << "\n";
 		std::string const *stack = boost::get_error_info<stack_error_info>(e);
 		if(stack) {                    
-			std::cout << stack << std::endl;
+			std::cerr << stack << std::endl;
 		}
 		
 		return False();
@@ -349,9 +349,8 @@ Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
 	AVFormatContext *fmt_ctx = avformat_alloc_context();
 	AVInputFormat *iformat = NULL;
 	
-	std::cerr << "extract_metadata " << local_file << std::endl;
 	if(!filesystem::exists(local_file)) {
-		std::cerr << "file does not exist" << std::endl;
+		std::cerr << " [!] file does not exist" << std::endl;
 	//} else if(filesystem::file_size(local_file) > 20*1024*1024) {
 	//	std::cerr << "file to large" << std::endl;
 	} else if((err = av_open_input_file(&fmt_ctx, filename, iformat, 4096, NULL)) < 0) {
@@ -423,13 +422,16 @@ Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
 	
 		// time
 		if(fmt_ctx->duration > 0) {
-			std::cout << "duration: " << (fmt_ctx->duration / AV_TIME_BASE) << std::endl;
 			result->Set(String::New("time"), Number::New(fmt_ctx->duration / AV_TIME_BASE));
 		}
 		
 		AVMetadataTag *tag = NULL;
 		while((tag = av_metadata_get(fmt_ctx->metadata, "", tag, AV_METADATA_IGNORE_SUFFIX))) {
-			result->Set(String::New(tag->key), String::New(tag->value));
+			std::string key(tag->key);
+			std::string val(tag->value);
+			if((val = trim(val)).length() > 0) {
+				result->Set(String::NewSymbol(trim(key).c_str()), String::New(tag->value));
+			}
 		}
 	} else {
 		
@@ -671,9 +673,8 @@ void Playbox::load_torrent(const std::string path)
 			
 			//======
 			// check to see if the media_path exists
-			std::string media_path(metadata.dict_find_string_value("media_path"));
-			//libtorrent::entry const* media_path_entry = metadata.find_key("media_path");
 			bool use_local_file = false;
+			std::string media_path(metadata.dict_find_string_value("media_path"));
 			if(media_path.length()) {
 				if(filesystem::exists(media_path)
 					/*&& is a valid media file */) {
@@ -682,13 +683,13 @@ void Playbox::load_torrent(const std::string path)
 					params.save_path = filesystem::path(media_path_path.branch_path().string()).string();
 					use_local_file = true;
 					if(!filesystem::exists(library_sym) && symlink(media_path.c_str(), library_sym.c_str()) != 0) {
-						std::cout << "symlink could not be created" << std::endl;
+						std::cerr << "symlink could not be created" << std::endl;
 					}
 				} else {
-					std::cout << "media path does not exist" << std::endl;
+					std::cerr << "media path does not exist: " << media_path << std::endl;
 				}
 			} else {
-				std::cout << "media path not found " << metadata.type() << std::endl;
+				std::cerr << "media path not found " << metadata.type() << std::endl;
 			}
 			
 			if(!use_local_file) {
@@ -698,19 +699,16 @@ void Playbox::load_torrent(const std::string path)
 			//======
 			// load up the torrent info into the params
 			//torrent_info* ti = new torrent_info(metadata);
-			std::cout << "save_path: " << params.save_path << std::endl;
 			local_file = params.save_path + "/";
 			torrent_info* ti = new torrent_info(metadata, 0);
 			if(ti) {
 				hash = lexical_cast<std::string>(ti->info_hash());
 			
 				if(use_local_file) {
-					//std::cout << "renaming to file: " << (ti->name()) << std::endl;
 					const std::string filename(ti->name());
 					ti->rename_file(0, filename);
 					local_file += filename;
 				} else {
-					//std::cout << "renaming to hash: " << hash << std::endl;
 					ti->rename_file(0, hash);
 					local_file += hash;
 				}
@@ -740,10 +738,10 @@ void Playbox::load_torrent(const std::string path)
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {
-		std::cout << e.what() << "\n";
+		std::cerr << e.what() << "\n";
 		std::string const *stack = boost::get_error_info<stack_error_info>(e);
 		if(stack) {                    
-			std::cout << stack << std::endl;
+			std::cerr << stack << std::endl;
 		}
 	}
 #endif
@@ -773,16 +771,13 @@ void Playbox::make_torrent(const boost::filesystem::path path, const boost::file
 		create_torrent torrent(fs, 16 * 1024, -1, 1 /*+ 2*/ + 8 /* optimize + merkle + symlink */); // should be 11, removed merkle
 		libtorrent::file_storage cur_fs(torrent.files());
 		//cur_fs.rename_file(0, path.filename());
-		std::cout << "rename " << path.filename() << std::endl;
 		torrent.set_creator("playbox-2.0");
 		torrent.set_comment("torrent created by playbox-2.0");
 		
 		//======
 		// compute the hashes
-		std::cout << "set_piece_hashes(" << torrent.num_pieces() << ") " << path.string() << std::endl;
 		libtorrent::set_piece_hashes(torrent, path.branch_path().string(), boost::bind(&print_progress, _1, torrent.num_pieces()));
 		std::cerr << std::endl;
-		//std::cout << "rename " << real_path.filename() << std::endl;
 		//cur_fs.rename_file(0, std::string(real_path.filename()));
 		
 		//======
@@ -791,7 +786,7 @@ void Playbox::make_torrent(const boost::filesystem::path path, const boost::file
 		
 		//======
 		// add the real file path to the torrent (to know that it's not in the library)
-		metadata["media_path"] = entry(std::string(path.filename()));
+		//metadata["media_path"] = entry(std::string(path.filename()));
 		
 		// output the metadata to a buffer
 		std::vector<char> buffer;
@@ -802,10 +797,10 @@ void Playbox::make_torrent(const boost::filesystem::path path, const boost::file
 		//======
 		// add a symlink in the library to the real file
 		std::string hash(lexical_cast<std::string>(ti.info_hash()));
-		std::string library_file(library_dir + '/' + hash);
+		std::string library_file(library_dir + hash);
 		if(!filesystem::exists(library_file)) {
 			std::string str_real_path(real_path.string());
-			if(symlink(library_file.c_str(), str_real_path.c_str()) != 0) {
+			if(symlink(str_real_path.c_str(), library_file.c_str()) != 0) {
 				perror("symlink(MusicDirectory)");
 				return;
 			}
@@ -836,7 +831,7 @@ void Playbox::make_torrent(const boost::filesystem::path path, const boost::file
 		std::cerr << e.what() << "\n";
 		std::string const *stack = boost::get_error_info<stack_error_info>(e);
 		if(stack) {                    
-			std::cout << stack << std::endl;
+			std::cerr << stack << std::endl;
 		}
 	}
 #endif
