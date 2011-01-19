@@ -44,17 +44,20 @@ var do_update = function() {
 			}
 			
 			if(status_count["PARSING"] < 2 && path) {
-				console.log("get_archive_metadata", path);
-				var m = playbox.get_archive_metadata(path);
-				console.log(sys.inspect(m));
-				if(m !== false) {
+				var meta = playbox.get_archive_metadata(path);
+				
+				if(meta !== false) {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path) {
-						setTimeout(function() {
-							status_count["PARSING"]--;
-							playbox.add_archive(stripped_archive_path, path);
-							fs.unlink(stripped_archive_path);
-						}, 10);
+						status_count["PARSING"]--;
+						var hash = playbox.add_archive(stripped_archive_path, path);
+						Edb.set("lala", [1,2,3,4], function() {
+							Edb.get("lala", function(key, value) {
+								console.log("lala ==", sys.inspect(value));
+							});
+						});
+						
+						fs.unlink(stripped_archive_path);
 					});
 				}
 			}
@@ -194,11 +197,6 @@ function init() {
 	
 	Edb.init(playbox.library_dir + ".edb", function() {
 		console.log("Edb initialized");
-		Edb.set("lala", [1,2,3,4], function() {
-			Edb.get("lala", function(key, value) {
-				console.log("lala ==", sys.inspect(value));
-			});
-		});
 	});
 	
 	// start the updates
