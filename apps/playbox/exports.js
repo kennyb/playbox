@@ -50,7 +50,14 @@ var do_update = function() {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path) {
 						status_count["PARSING"]--;
-						var hash = playbox.add_archive(stripped_archive_path, path);
+						var torrent = meta.torrent = playbox.hash_archive(stripped_archive_path);
+						// instead of returning just the hash, return the whole torrent in js format
+						// write a loading of e
+						meta.hash = hash;
+						meta.torrent = playbox.torrent_path + hash + ".torrent";
+						
+						// after it's finished, it'll call the event "metadataAdded"
+						// the event will contain local_file path + torrent path
 						Edb.set("lala", [1,2,3,4], function() {
 							Edb.get("lala", function(key, value) {
 								console.log("lala ==", sys.inspect(value));
