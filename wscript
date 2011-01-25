@@ -325,6 +325,9 @@ def shutdown(ctx):
 		if exists('deps/node-strtok/lib') and not lexists('build/release/lib/node-strtok'):
 			symlink(abspath('deps/node-strtok/lib'), 'build/release/lib/node-strtok')
 		
+		if exists('deps/sha1_stream/sha1_stream.js') and not lexists('build/release/lib/sha1_stream.js'):
+			symlink(abspath('deps/sha1_stream/sha1_stream.js'), 'build/release/lib/sha1_stream.js')
+		
 		# node libs
 		if exists('build/default/playbox.node'):
 			copy2('build/default/playbox.node', 'build/release/lib/playbox.node')

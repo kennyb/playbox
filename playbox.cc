@@ -157,8 +157,11 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	// returns an object with the archive status
 	NODE_SET_PROTOTYPE_METHOD(t, "archive", archive);
 	
-	// adds a physical archive into the library
-	NODE_SET_PROTOTYPE_METHOD(t, "hash_arcive", hash_archive);
+	// returns the torrent of the archive (to be used for downloading / uploading)
+	NODE_SET_PROTOTYPE_METHOD(t, "make_archive_torrent", make_archive_torrent);
+	
+	// adds a archive into the library
+	NODE_SET_PROTOTYPE_METHOD(t, "load_torrent", load_torrent);
 	
 	// adds a physical torrent file into the library
 	NODE_SET_PROTOTYPE_METHOD(t, "add_archive_metadata", add_archive_metadata);
@@ -299,16 +302,52 @@ Handle<Value> Playbox::archive(const Arguments &args)
 	return scope.Close(result);
 }
 
+static Handle<Value> entry_to_json(libtorrent::entry e) {
+	using namespace boost;
+	using namespace libtorrent;
+	
+	switch(e.type()) {
+		case entry::int_t: {
+			return Integer::New(e.integer());
+		} case entry::string_t: {
+			return String::New(e.string().c_str());
+			
+		} case entry::list_t: {
+			entry::list_type& l = e.list();
+			Local<Array> arr = Array::New(l.size());
+			
+			uint32_t idx = 0;
+			for(entry::list_type::const_iterator i = l.begin(); i != l.end(); ++i) {
+				arr->Set(idx++, entry_to_json(*i));
+			}
+			
+			return arr;
+			
+		} case entry::dictionary_t: {
+			entry::dictionary_type& dict = e.dict();
+			Local<Object> obj = Object::New();
+			for(entry::dictionary_type::const_iterator i = dict.begin(); i != dict.end(); ++i) {
+				obj->Set(String::NewSymbol((*i).first.c_str()), entry_to_json((*i).second));
+			}
+			
+			return obj;
+			
+		} default: break;
+	}
+	
+	return Undefined();
+}
+
 static void print_progress(int i, int num)
 {
 	//usleep(100);
 	std::cout << "\r" << (i+1) << "/" << num;
 }
 
-Handle<Value> Playbox::hash_archive(const Arguments &args)
+Handle<Value> Playbox::make_archive_torrent(const Arguments &args)
 {
-	if(args.Length() != 2 || !args[0]->IsString() || !args[1]->IsString()) {
-		return ThrowException(Exception::Error(String::New("Must provide a file path and a real path as strings")));
+	if(args.Length() != 1 || !args[0]->IsString()) {
+		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
     }
     
 	String::Utf8Value archive_path(args[0]->ToString());
@@ -357,6 +396,11 @@ Handle<Value> Playbox::hash_archive(const Arguments &args)
 		// add the real file path to the torrent (to know that it's not in the library)
 		//metadata["media_path"] = entry(std::string(path.filename()));
 		
+		//dictionary_type& dict = metadata.dict();
+		
+		Handle<Value> meta = entry_to_json(metadata);
+		return meta;
+		/*
 		// output the metadata to a buffer
 		std::vector<char> buffer;
 		bencode(std::back_inserter(buffer), metadata);
@@ -387,13 +431,12 @@ Handle<Value> Playbox::hash_archive(const Arguments &args)
 			filesystem::ofstream out(filesystem::path(torrent_file), std::ios_base::binary);
 			bencode(std::ostream_iterator<char>(out), metadata);
 			
-			///*
-			Local<Value> args[2];
-			args[0] = Local<Value>::New(String::New(hash.c_str()));
-			args[1] = Local<Value>::New(String::New(torrent_file.c_str()));
-			playbox->Emit(symbol_metadataAdded, 2, args);
-			//*/
+			//Local<Value> args[2];
+			//args[0] = Local<Value>::New(String::New(hash.c_str()));
+			//args[1] = Local<Value>::New(String::New(torrent_file.c_str()));
+			//playbox->Emit(symbol_metadataAdded, 2, args);
 		}
+		*/
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {
@@ -408,10 +451,15 @@ Handle<Value> Playbox::hash_archive(const Arguments &args)
 	return Undefined();
 }
 
+Handle<Value> Playbox::load_torrent(const Arguments &args)
+{
+	return ThrowException(Exception::Error(String::NewSymbol("not yet implemented")));
+}
+
 Handle<Value> Playbox::add_archive_metadata(const Arguments &args)
 {
 	if(args.Length() == 0 || !args[0]->IsString()) {
-		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
+		return ThrowException(Exception::Error(String::NewSymbol("Must provide a file path as a string")));
     }
     
 	String::Utf8Value archive_path(args[0]->ToString());

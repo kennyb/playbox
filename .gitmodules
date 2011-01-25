@@ -31,3 +31,12 @@
 [submodule "deps/node-strtok"]
 	path = deps/node-strtok
 	url = https://github.com/pgriess/node-strtok.git
+[submodule "deps/sha_stream.js"]
+	path = deps/sha_stream.js
+	url = http://github.com/kennyb/sha1_stream.js.git
+[submodule "deps/sha_stream"]
+	path = deps/sha_stream
+	url = http://github.com/kennyb/sha1_stream.git
+[submodule "deps/sha1_stream"]
+	path = deps/sha1_stream
+	url = http://github.com/kennyb/sha1_stream.git

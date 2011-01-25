@@ -1,6 +1,8 @@
 current:
-save the metadata into the edb
-grab the metadata from edb
+create the corresponding part hashes while stripping the content as well (how does one do this???)
+
+
+
 check to see if the file is a regular file load the torrent and start it, else start it paused
 save songs into the library without metadata and hash them
 convert the torrents over to json format and save them as json files... later, load everything from json
@@ -10,6 +12,8 @@ http://chromium.googlecode.com/svn/trunk/samples/audio/specification/specificati
 whenever:
 configuration panel
 log functions (and remove all those horrible console.logs) (and maybe make a git hook to reject commits)
+convert and integrate edb to be vertex.js
+read up on symbol exports at blog.flameeyes.eu
 
 middle:
 integrate head.js

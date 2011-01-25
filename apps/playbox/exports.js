@@ -5,7 +5,8 @@ var sys = require("sys"),
 	buffer = require('buffer'),
 	ID3File = require("node-id3"),
 	Mixin = require("node-websocket-server/lang/mixin"),
-	Edb = require("edb");
+	Edb = require("edb"),
+	crypto = require("crypto");
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
@@ -48,20 +49,25 @@ var do_update = function() {
 				
 				if(meta !== false) {
 					status_count["PARSING"]++;
-					strip_metadata(path, function(stripped_archive_path) {
+					strip_metadata(path, function(stripped_archive_path, playbox_hash) {
 						status_count["PARSING"]--;
-						var torrent = meta.torrent = playbox.hash_archive(stripped_archive_path);
+						var torrent = meta.torrent = playbox.make_archive_torrent(stripped_archive_path);
 						// instead of returning just the hash, return the whole torrent in js format
 						// write a loading of e
-						meta.hash = hash;
-						meta.torrent = playbox.torrent_path + hash + ".torrent";
+						//meta.hash = hash;
+						meta.id = torrent.comment = playbox_hash;
+						meta.path = path;
+						meta.torrent = torrent;
+						//console.log(sys.inspect(meta));
+						
+						//TODO!!
+						//playbox.load_torrent(torrent);
 						
 						// after it's finished, it'll call the event "metadataAdded"
 						// the event will contain local_file path + torrent path
-						Edb.set("lala", [1,2,3,4], function() {
-							Edb.get("lala", function(key, value) {
-								console.log("lala ==", sys.inspect(value));
-							});
+						Edb.set("archive."+playbox_hash, meta, function() {
+							console.log("saved...");
+							// CURRENT - send an event up saying there's a new archive
 						});
 						
 						fs.unlink(stripped_archive_path);
@@ -170,6 +176,7 @@ function init() {
 	console.log(" torrents_dir: "+playbox.torrents_dir);
 	
 	// dir scan of the torrents
+	/*
 	fs.readdir(playbox.torrents_dir, function(err, files) {
 		if(err) throw err;
 		var i = files.length-1;
@@ -182,6 +189,7 @@ function init() {
 			} while(i--);
 		}
 	});
+	*/
 	
 	var music_dir = playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music";
 	add_media(music_dir);
@@ -204,6 +212,11 @@ function init() {
 	
 	Edb.init(playbox.library_dir + ".edb", function() {
 		console.log("Edb initialized");
+		Edb.list("archive.", function(key, value) {
+			console.log(sys.inspect(key), sys.inspect(value));
+			// CURRENT - save this metadata into memory for queries
+			//playbox.crash();
+		});
 	});
 	
 	// start the updates
@@ -264,6 +277,7 @@ function strip_metadata(file_path, callback) {
 		var remaining = orig_size;
 		var offset = 0;
 		var got_meta = false;
+		var sha1 = crypto.createHmac("sha1", "changeme");
 		var sr = fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
 			sw = fs.createWriteStream(dest_path+".mp3", {flags: 'w+', mode: 0644});
 		
@@ -271,7 +285,9 @@ function strip_metadata(file_path, callback) {
 			buf_pos = 0;
 			if(remaining < buf.length) {
 				if(remaining > 0) {
-					sw.write(buf.slice(offset, remaining));
+					var b = buf.slice(offset, remaining);
+					sw.write(b);
+					sha1.update(b);
 				}
 				
 				remaining = -1;
@@ -279,8 +295,11 @@ function strip_metadata(file_path, callback) {
 				remaining -= buf.length;
 				if(offset === 0) {
 					sw.write(buf);
+					sha1.update(buf);
 				} else {
-					sw.write(buf.slice(offset));
+					var b = buf.slice(offset);
+					sw.write(b);
+					sha1.update(b);
 					offset = 0;
 				}
 			}
@@ -297,6 +316,7 @@ function strip_metadata(file_path, callback) {
 				if(t.id3 && t.id3.size) {
 					offset = t.id3.size;
 					sw.write("ID3\x02\0\0\0\0\0");
+					sha1.update("ID3\x02\0\0\0\0\0");
 				}
 			}
 		}
@@ -308,7 +328,7 @@ function strip_metadata(file_path, callback) {
 				sr.resume();
 			}
 		}).on('close', function() {
-			callback(dest_path+".mp3");
+			callback(dest_path+".mp3", sha1.digest(encoding="hex"));
 		});
 		
 		sr.on("data", function(chunk) {

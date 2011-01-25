@@ -25,7 +25,8 @@ class Playbox : public EventEmitter
 	static Handle<Value> query(const Arguments &args);
 	static Handle<Value> archive(const Arguments &args);
 	static Handle<Value> info(const Arguments &args);
-	static Handle<Value> hash_archive(const Arguments &args);
+	static Handle<Value> make_archive_torrent(const Arguments &args);
+	static Handle<Value> load_torrent(const Arguments &args);
 	static Handle<Value> add_archive_metadata(const Arguments &args);
 	static Handle<Value> get_archive_metadata(const Arguments &args);
 
