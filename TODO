@@ -1,5 +1,8 @@
 current:
-create the corresponding part hashes while stripping the content as well (how does one do this???)
+make the symlink when listing the loading the library
+no fumes discos!
+fix up the events
+add, before() / after() text functions
 
 
 
@@ -14,6 +17,8 @@ configuration panel
 log functions (and remove all those horrible console.logs) (and maybe make a git hook to reject commits)
 convert and integrate edb to be vertex.js
 read up on symbol exports at blog.flameeyes.eu
+create the corresponding part hashes while stripping the content as well (how does one do this???)
+
 
 middle:
 integrate head.js

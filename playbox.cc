@@ -341,7 +341,7 @@ static Handle<Value> entry_to_json(libtorrent::entry e) {
 static void print_progress(int i, int num)
 {
 	//usleep(100);
-	std::cout << "\r" << (i+1) << "/" << num;
+	//std::cout << "\r" << (i+1) << "/" << num;
 }
 
 Handle<Value> Playbox::make_archive_torrent(const Arguments &args)

@@ -118,7 +118,7 @@ Connection = exports.Connection = function(req, res) {
 						return this;
 						
 					case "favicon.ico":
-						console.log("fixme", sys.inspect(req));
+						console.log("fixme - favicon.ico");
 				}
 			}
 			

@@ -1,4 +1,3 @@
-
 var fs = require('fs');
 
 // "db" shit... (this will be changed for a real one soon... for now it's a chusta)
@@ -32,13 +31,18 @@ exports.init = function(dir, callback) {
 exports.get = function(key, callback) {
 	if(edb_dir === false) throw new Error("edb not initialized");
 	fs.readFile(edb_dir + '/' + key, function(err, data) {
-		var value = err ? undefined : JSON.parse(data);
-		if(callback && value !== undefined) {
-			callback(key, value.v);
+		var value;
+		try {
+			value = err ? undefined : JSON.parse(data);
+		} catch(e) {
+			value = undefined
+		}
+		
+		if(callback) {
+			callback(key, value !== undefined ? value.v : false);
 		}
 	});
 }
-
 
 exports.set = function(key, value, callback) {
 	if(edb_dir === false) throw new Error("edb not initialized");

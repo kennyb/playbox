@@ -1,4 +1,3 @@
-
 var sys = require("sys"),
 	fs = require('fs'),
 	path = require('path'),
@@ -10,9 +9,9 @@ var sys = require("sys"),
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
-	add_archive_metadata_queue = [],
+	load_metadata_queue = [],
 	update_loop = null,
-	torrents = {},
+	archives = {},
 	last_activity = 0,
 	status_count = {
 		"PARSING": 0,
@@ -30,15 +29,15 @@ var do_update = function() {
 	//broadcast_event("update", {truth: true});
 	//TODO: put limits.. no fumes discos duros
 	if(!status_count["CHECKING"]) {
-		if(add_archive_metadata_queue.length && status_count["CHECKING"] < 2) {
-			path = add_archive_metadata_queue.shift();
+		if(load_metadata_queue.length && status_count["CHECKING"] < 2) {
+			path = load_metadata_queue.shift();
 			playbox.add_archive_metadata(path);
 		} else if(add_archive_queue.length) {
 			path = add_archive_queue.shift();
 			var c = 0;
-			for(var i in torrents) {
+			for(var i in archives) {
+				var t = archives[i];
 				c++;
-				var t = torrents[i];
 				if(t.local_file === path) {
 					path = null;
 				}
@@ -51,23 +50,25 @@ var do_update = function() {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path, playbox_hash) {
 						status_count["PARSING"]--;
-						var torrent = meta.torrent = playbox.make_archive_torrent(stripped_archive_path);
-						// instead of returning just the hash, return the whole torrent in js format
-						// write a loading of e
-						//meta.hash = hash;
+						var torrent = playbox.make_archive_torrent(stripped_archive_path);
 						meta.id = torrent.comment = playbox_hash;
-						meta.path = path;
-						meta.torrent = torrent;
-						//console.log(sys.inspect(meta));
+						var a = {
+							id: playbox_hash,
+							name: meta.name,
+							path: path,
+							torrent: torrent,
+							meta: meta
+						}
 						
 						//TODO!!
 						//playbox.load_torrent(torrent);
 						
 						// after it's finished, it'll call the event "metadataAdded"
 						// the event will contain local_file path + torrent path
-						Edb.set("archive."+playbox_hash, meta, function() {
+						Edb.set("archive."+playbox_hash, a, function() {
 							console.log("saved...");
 							// CURRENT - send an event up saying there's a new archive
+							
 						});
 						
 						fs.unlink(stripped_archive_path);
@@ -91,62 +92,50 @@ function broadcast_event(evt, data) {
 	}));
 }
 
-/*
-add_archive
-------
-get metadata with ffmpeg
-if(is a mp3) {
-	copy to the library without the metadata
-	make the torrent hashes from the library file
-	save the torrent file
-	save the metadata into edb
-}
-*/
-
 
 playbox.on("stateChanged", function(hash, extra) {
 	console.log(hash, "changed state "+extra.prev_state+" -> "+extra.state);
-	torrents[hash].status = extra.state;
+	archives[hash].status = extra.state;
 	status_count[extra.state]++;
 	status_count[extra.prev_state]--;
 }).on("archiveUnknown", function(hash, e) {
 	console.log("UNKNOWN ARCHIVE");
-	status_count[torrents[hash].status]--;
-	torrents[hash] = {status:"UNKNOWN"};
+	status_count[archives[hash].status]--;
+	archives[hash] = {status:"UNKNOWN"};
 }).on("archivePaused", function(hash, e) {
-	torrents[hash].active = false;
-	broadcast_event("archivePaused", torrents[hash]);
+	archives[hash].active = false;
+	broadcast_event("archivePaused", archives[hash]);
 }).on("archiveResumed", function(hash, e) {
-	torrents[hash].active = true;
-	broadcast_event("archiveResumed", torrents[hash]);
+	archives[hash].active = true;
+	broadcast_event("archiveResumed", archives[hash]);
 }).on("archiveMetadata", function(hash, metadata) {
 	/*if(metadata.local_file) {
 		get_metadata(metadata.local_file, playbox.library_dir + hash, function(tags) {
-			torrents[hash].metadata = Mixin(tags, torrents[hash].metadata);
-			broadcast_event("archiveMetadata", torrents[hash]);
+			archives[hash].metadata = Mixin(tags, archives[hash].metadata);
+			broadcast_event("archiveMetadata", archives[hash]);
 		});
 	}
 	*/
 	
 	status_count["CHECKING"]++;
-	torrents[hash] = {status:"METADATA", downloaded: -1, metadata: metadata};
-	broadcast_event("archiveMetadata", torrents[hash]);
+	archives[hash] = {status:"METADATA", downloaded: -1, metadata: metadata};
+	broadcast_event("archiveMetadata", archives[hash]);
 }).on("archiveDownloading", function(hash, e) {
-	broadcast_event("archiveDownloading", torrents[hash]);
+	broadcast_event("archiveDownloading", archives[hash]);
 }).on("archiveProgress", function(hash, progress) {
-	torrents[hash].downloaded = progress;
-	broadcast_event("archiveProgress", torrents[hash]);
+	archives[hash].downloaded = progress;
+	broadcast_event("archiveProgress", archives[hash]);
 }).on("archiveComplete", function(hash, e) {
-	torrents[hash].downloaded = 100;
-	broadcast_event("archiveComplete", torrents[hash]);
+	archives[hash].downloaded = 100;
+	broadcast_event("archiveComplete", archives[hash]);
 }).on("archiveRemoved", function(hash, e) {
-	status_count[torrents[hash].status]--;
-	torrents[hash].status = "METADATA";
-	torrents[hash].downloaded = -1;
-	torrents[hash].active = false;
-	broadcast_event("archiveRemoved", torrents[hash]);
+	status_count[archives[hash].status]--;
+	archives[hash].status = "METADATA";
+	archives[hash].downloaded = -1;
+	archives[hash].active = false;
+	broadcast_event("archiveRemoved", archives[hash]);
 }).on("metadataAdded", function(hash, path) {
-	add_archive_metadata_queue.push(path);
+	load_metadata_queue.push(path);
 }).on("listening", function(details) {
 	console.log("LISTENING", details);
 }).on("listeningFailed", function(details) {
@@ -183,8 +172,8 @@ function init() {
 		if(i >= 0) {
 			do {
 				hash = files[i].toString();
-				//if(add_archive_metadata_queue.length < 11) {
-					add_archive_metadata_queue.push(playbox.torrents_dir+hash);
+				//if(load_metadata_queue.length < 11) {
+					load_metadata_queue.push(playbox.torrents_dir+hash);
 				//}
 			} while(i--);
 		}
@@ -203,7 +192,7 @@ function init() {
 				if(i >= 0) {
 					do {
 						hash = files[i].toString();
-						add_archive_metadata_queue.push(playbox.torrents_dir+hash);
+						load_metadata_queue.push(playbox.torrents_dir+hash);
 					} while(i--);
 				}
 			});
@@ -213,9 +202,12 @@ function init() {
 	Edb.init(playbox.library_dir + ".edb", function() {
 		console.log("Edb initialized");
 		Edb.list("archive.", function(key, value) {
-			console.log(sys.inspect(key), sys.inspect(value));
-			// CURRENT - save this metadata into memory for queries
-			//playbox.crash();
+			if(value !== false) {
+				console.log(" [*] addded "+value.id);
+				fs.symlink(value.path, playbox.library_dir+value.id);
+				
+				archives[value.id] = value;
+			}
 		});
 	});
 	
@@ -243,18 +235,18 @@ function add_media(p) {
 }
 
 function query(args) {
-	var ret = args ? {} : torrents;
-	console.log("args", args);
-	if(args) {
-		var argslower = args.toLowerCase()
-		for(var i in torrents) {
-			var t = torrents[i];
-			if(t.metadata && (
-				t.metadata.name.toLowerCase().indexOf(argslower) !== -1 ||
-				t.metadata.local_file.toLowerCase().indexOf(argslower) !== -1
-				)) {
-				ret[i] = t;
-			}
+	var ret = {};
+	console.log("args", sys.inspect(args));
+	var argslower = args.toLowerCase();
+	
+	for(var i in archives) {
+		var a = archives[i];
+		if(!args || (
+			a.name.toLowerCase().indexOf(argslower) !== -1 ||
+			a.path.toLowerCase().indexOf(argslower) !== -1
+			)) {
+			
+			ret[i] = a.meta;
 		}
 	}
 	
@@ -297,6 +289,7 @@ function strip_metadata(file_path, callback) {
 					sw.write(buf);
 					sha1.update(buf);
 				} else {
+					// TODO: for some reason this crashes sometimes, saying that the offset is bigger than the buffer
 					var b = buf.slice(offset);
 					sw.write(b);
 					sha1.update(b);
@@ -416,10 +409,10 @@ exports.http = function(c, func, args) {
 			return;
 			
 		case 'i':
-			var t = torrents[args];
+			var t = archives[args];
 			if(!t) {
-				t = torrents[args] = {status:"LOOKUP"};
-				//add_archive_metadata_queue.push(args);
+				t = archives[args] = {status:"LOOKUP"};
+				//load_metadata_queue.push(args);
 				//playbox.add_archive_metadata(args);
 			}
 			
