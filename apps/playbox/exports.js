@@ -20,6 +20,11 @@ var playbox = new Playbox(),
 		"CHECKING": 0,
 		"DOWNLOADING": 0,
 		"OK": 0
+	},
+	config = {
+		// config default values
+		read_kb_speed: 5000,
+		write_kb_speed: 3000
 	};
 
 var do_update = function() {
@@ -164,43 +169,22 @@ function init() {
 	console.log(" library_dir: "+playbox.library_dir);
 	console.log(" torrents_dir: "+playbox.torrents_dir);
 	
-	// dir scan of the torrents
-	/*
-	fs.readdir(playbox.torrents_dir, function(err, files) {
-		if(err) throw err;
-		var i = files.length-1;
-		if(i >= 0) {
-			do {
-				hash = files[i].toString();
-				//if(load_metadata_queue.length < 11) {
-					load_metadata_queue.push(playbox.torrents_dir+hash);
-				//}
-			} while(i--);
-		}
-	});
-	*/
-	
-	var music_dir = playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music";
-	add_media(music_dir);
-	fs.stat(music_dir), function(err, st) {
-		if(st.isFile()) {
-			add_archive_queue.push(music_dir);
-		} else {
-			fs.readdir(playbox.torrents_dir, function(err, files) {
-				if(err) throw err;
-				var i = files.length-1;
-				if(i >= 0) {
-					do {
-						hash = files[i].toString();
-						load_metadata_queue.push(playbox.torrents_dir+hash);
-					} while(i--);
-				}
-			});
-		}
-	}
-	
 	Edb.init(playbox.library_dir + ".edb", function() {
 		console.log("Edb initialized");
+		
+		Edb.get("config", function(key, value) {
+			if(value === false) {
+				// running the playbox for the very first time
+				// do more first time stuff, like loading the local library
+				Edb.set("config", config);
+				
+				console.log("add_media", playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+				add_media(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+			} else {
+				Mixin(config, value);
+			}
+		});
+		
 		Edb.list("archive.", function(key, value) {
 			if(value !== false) {
 				console.log(" [*] addded "+value.id);
