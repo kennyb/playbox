@@ -548,7 +548,8 @@ var apps = {};
 
 var server = ws.createServer({
 	server: http.createServer(function(req, res) {
-		var c = new Connection(req, res);
+		req.setEncoding("utf8");
+		new Connection(req, res);
 	})
 }).addListener("connection", function(conn) {
 	//conn.storage.set("username", "user_"+conn.id);
@@ -612,7 +613,7 @@ fs.readdir("apps", function(err, files) {
 	
 	files.forEach(function(app) {
 		console.log("loading:", app);
-		apps[app] = require("./apps/"+app+"/exports.js");
+		apps[app] = require("./apps/"+app+"/"+app+".js");
 	});
 	
 	for(var i in apps) {
