@@ -296,24 +296,24 @@ def shutdown(ctx):
 			copy2(abspath('build/lib/libavutil.dylib'), 'build/release/lib/libavutil.dylib')
 		
 		# ffprobe & libs (not necessary)
-		if exists('deps/ffmpeg/ffprobe') and not lexists('build/release/ffprobe'):
-			symlink(abspath('deps/ffmpeg/ffprobe'), 'build/release/ffprobe')
-		if exists('deps/ffmpeg/libavdevice/libavdevice.so') and not lexists('build/release/lib/libavdevice.so'):
-			symlink(abspath('deps/ffmpeg/libavdevice/libavdevice.so'), 'build/release/lib/libavdevice.so')
-		elif exists('deps/ffmpeg/libavdevice/libavdevice.dylib') and not lexists('build/release/lib/libavdevice.dylib'):
-			symlink(abspath('deps/ffmpeg/libavdevice/libavdevice.dylib'), 'build/release/lib/libavdevice.dylib')
-		if exists('deps/ffmpeg/libavfilter/libavfilter.so') and not lexists('build/release/lib/libavfilter.so'):
-			symlink(abspath('deps/ffmpeg/libavfilter/libavfilter.so'), 'build/release/lib/libavfilter.so')
-		elif exists('deps/ffmpeg/libavfilter/libavfilter.dylib') and not lexists('build/release/lib/libavfilter.dylib'):
-			symlink(abspath('deps/ffmpeg/libavfilter/libavfilter.dylib'), 'build/release/lib/libavfilter.dylib')
-		if exists('deps/ffmpeg/libswscale/libswscale.so') and not lexists('build/release/lib/libswscale.so'):
-			symlink(abspath('deps/ffmpeg/libswscale/libswscale.so'), 'build/release/lib/libswscale.so')
-		elif exists('deps/ffmpeg/libswscale/libswscale.dylib') and not lexists('build/release/lib/libswscale.dylib'):
-			symlink(abspath('deps/ffmpeg/libswscale/libswscale.dylib'), 'build/release/lib/libswscale.dylib')
-		if exists('deps/ffmpeg/libpostproc/libpostproc.so') and not lexists('build/release/lib/libpostproc.so'):
-			symlink(abspath('deps/ffmpeg/libpostproc/libpostproc.so'), 'build/release/lib/libpostproc.so')
-		elif exists('deps/ffmpeg/libpostproc/libpostproc.dylib') and not lexists('build/release/lib/libpostproc.dylib'):
-			symlink(abspath('deps/ffmpeg/libpostproc/libpostproc.dylib'), 'build/release/lib/libpostproc.dylib')
+		#if exists('deps/ffmpeg/ffprobe') and not lexists('build/release/ffprobe'):
+		#	symlink(abspath('deps/ffmpeg/ffprobe'), 'build/release/ffprobe')
+		#if exists('deps/ffmpeg/libavdevice/libavdevice.so') and not lexists('build/release/lib/libavdevice.so'):
+		#	symlink(abspath('deps/ffmpeg/libavdevice/libavdevice.so'), 'build/release/lib/libavdevice.so')
+		#elif exists('deps/ffmpeg/libavdevice/libavdevice.dylib') and not lexists('build/release/lib/libavdevice.dylib'):
+		#	symlink(abspath('deps/ffmpeg/libavdevice/libavdevice.dylib'), 'build/release/lib/libavdevice.dylib')
+		#if exists('deps/ffmpeg/libavfilter/libavfilter.so') and not lexists('build/release/lib/libavfilter.so'):
+		#	symlink(abspath('deps/ffmpeg/libavfilter/libavfilter.so'), 'build/release/lib/libavfilter.so')
+		#elif exists('deps/ffmpeg/libavfilter/libavfilter.dylib') and not lexists('build/release/lib/libavfilter.dylib'):
+		#	symlink(abspath('deps/ffmpeg/libavfilter/libavfilter.dylib'), 'build/release/lib/libavfilter.dylib')
+		#if exists('deps/ffmpeg/libswscale/libswscale.so') and not lexists('build/release/lib/libswscale.so'):
+		#	symlink(abspath('deps/ffmpeg/libswscale/libswscale.so'), 'build/release/lib/libswscale.so')
+		#elif exists('deps/ffmpeg/libswscale/libswscale.dylib') and not lexists('build/release/lib/libswscale.dylib'):
+		#	symlink(abspath('deps/ffmpeg/libswscale/libswscale.dylib'), 'build/release/lib/libswscale.dylib')
+		#if exists('deps/ffmpeg/libpostproc/libpostproc.so') and not lexists('build/release/lib/libpostproc.so'):
+		#	symlink(abspath('deps/ffmpeg/libpostproc/libpostproc.so'), 'build/release/lib/libpostproc.so')
+		#elif exists('deps/ffmpeg/libpostproc/libpostproc.dylib') and not lexists('build/release/lib/libpostproc.dylib'):
+		#	symlink(abspath('deps/ffmpeg/libpostproc/libpostproc.dylib'), 'build/release/lib/libpostproc.dylib')
 		
 		# node libs
 		if exists('deps/node-websocket-server/lib') and not lexists('build/release/lib/node-websocket-server'):

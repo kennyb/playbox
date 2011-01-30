@@ -1,9 +1,9 @@
 current:
-make the symlink when listing the loading the library
-no fumes discos!
+limit / offset on query (change the params format to be json)
 fix up the events
+verify the local file, by doing the hash on it and comparing to see if it matches.
 add, before() / after() text functions
-
+new class Archive
 
 
 check to see if the file is a regular file load the torrent and start it, else start it paused
@@ -13,6 +13,7 @@ make sure the playbox can serve an image as a an album cover
 http://chromium.googlecode.com/svn/trunk/samples/audio/specification/specification.html
 
 whenever:
+no fumes discos!
 configuration panel
 log functions (and remove all those horrible console.logs) (and maybe make a git hook to reject commits)
 convert and integrate edb to be vertex.js

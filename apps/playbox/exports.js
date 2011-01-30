@@ -31,6 +31,8 @@ var do_update = function() {
 	var path;
 	playbox.update();
 	
+	// control read / write events
+	
 	//broadcast_event("update", {truth: true});
 	//TODO: put limits.. no fumes discos duros
 	if(!status_count["CHECKING"]) {
@@ -274,6 +276,11 @@ function strip_metadata(file_path, callback) {
 					sha1.update(buf);
 				} else {
 					// TODO: for some reason this crashes sometimes, saying that the offset is bigger than the buffer
+					if(offset > buf.length) {
+						console.log(remaining, offset, buf.length);
+						throw new Error("cacas!");
+					}
+					
 					var b = buf.slice(offset);
 					sw.write(b);
 					sha1.update(b);
@@ -326,6 +333,7 @@ function strip_metadata(file_path, callback) {
 				}
 				
 				buf_pos = 0;
+				
 				write_func();
 			} else if(buf_pos < buf_size) {
 				buf_pos = bufNextPos;

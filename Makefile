@@ -10,7 +10,7 @@ all:
 	fi
 	node-waf build -v
 	
-	cd build/release && CWD=`pwd` && ./node main.js
+	cd build/release && CWD=`pwd` && ./node --always_full_compiler main.js
 
 prepare:
 	#git submodule update --init --recursive

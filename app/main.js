@@ -72,85 +72,79 @@ Connection = exports.Connection = function(req, res) {
 	}(this));
 	
 	var static_file_url, static_file;
-	if(req.method === "GET") {
-		this._funcs_done = true;
-		var path = QueryString.unescape(this._url.pathname);
-		if(path === '/') {
-			//static_file_url = "/index.html";
-			//this._headers["Cache-Control"] = "no-cache, must-revalidate";
-			//this._headers["Pragma"] = "no-cache";
-			//this._headers["Expires"] = "Fri, 01 Jan 2010 00:00:01 GMT";
-			this._output_string = "<app>a welcoming poem</app>";
-			this.end();
-			return this;
-		} else {
-			//static_file_url = path;
-			var app_name = path.substr(1),
-				app_func = "/",
-				app_func_offset = app_name.indexOf('/'),
-				app_args = "";
+		method = req.method;
+		
+	this._funcs_done = true;
+	var path = QueryString.unescape(this._url.pathname);
+	if(path === '/') {
+		//static_file_url = "/index.html";
+		//this._headers["Cache-Control"] = "no-cache, must-revalidate";
+		//this._headers["Pragma"] = "no-cache";
+		//this._headers["Expires"] = "Fri, 01 Jan 2010 00:00:01 GMT";
+		this._output_string = "<app>a welcoming poem</app>";
+		this.end();
+	} else {
+		//static_file_url = path;
+		var app_name = path.substr(1),
+			app_func = "/",
+			app_func_offset = app_name.indexOf('/'),
+			app_args = "";
+		
+		if(app_func_offset !== -1) {
+			app_func = app_func_offset === app_name.length-1 ? "/" : app_name.substr(app_func_offset);
+			app_name = app_name.substr(0, app_func_offset);
 			
-			if(app_func_offset !== -1) {
-				app_func = app_func_offset === app_name.length-1 ? "/" : app_name.substr(app_func_offset);
-				app_name = app_name.substr(0, app_func_offset);
-				
-				if(app_func !== "/" && app_func.length > 1/* && app_func.charAt(0) === '/'*/) {
-					app_func = app_func.substr(1);
-					app_func_offset = app_func.indexOf('/');
-				
-					if(app_func_offset !== -1) {
-						app_args = app_func.substr(app_func_offset+1);
-						app_func = app_func.substr(0, app_func_offset);
-					}
+			if(app_func !== "/" && app_func.length > 1/* && app_func.charAt(0) === '/'*/) {
+				app_func = app_func.substr(1);
+				app_func_offset = app_func.indexOf('/');
+			
+				if(app_func_offset !== -1) {
+					app_args = app_func.substr(app_func_offset+1);
+					app_func = app_func.substr(0, app_func_offset);
 				}
-			} else {
-				switch(app_name) {
-					case "crossdomain.xml":
-						//TODO SOME FORM OF SECURITY!!
-						this._headers["Content-Type"] = "text/xml";
-						this._output_string = '<?xml version="1.0"?>'+
-									'<cross-domain-policy>'+
-										'<site-control permitted-cross-domain-policies="all"/>'+
-										'<allow-access-from domain="*"/>'+
-										//'<allow-http-request-headers-from domain="*" headers="*"/>'+
-									'</cross-domain-policy>';
-						this.end();
-						return this;
-						
-					case "favicon.ico":
-						console.log("fixme - favicon.ico");
-				}
-			}
-			
-			console.log("http path", path);
-			console.log("http app", app_name);
-			console.log("http func", app_func);
-			console.log("http args", app_args);
-			
-			var app = apps[app_name];
-			if(app !== undefined) {
-				app.http(this, app_func, app_args);
-				return this;
 			}
 		}
 		
+		console.log("http path", path);
+		console.log("http app", app_name);
+		console.log("http func", app_func);
+		console.log("http args", app_args);
 		
-		static_file = global.static_files[static_file_url];
-		
-		if(static_file === undefined) {
-			this._output_string = "404";
-			this._headers["Content-Type"] = "text/html";
-			this.end(404);
-			return this;
-		} else {
-			this._output_string = static_file;
-			this._headers["Content-Type"] = static_files_mime[static_file_url];
-			
-			if(typeof static_file === 'function') {
-				this._funcs = null;
-			} else {
-				this.end();
-				return this;
+		var app = apps[app_name];
+		if(app !== undefined) {
+			app.http(this, app_func, app_args);
+		} else if(method === "GET") {
+			switch(app_name) {
+				case "crossdomain.xml":
+					//TODO SOME FORM OF SECURITY!!
+					// maybe implement this as an application :)
+					this._headers["Content-Type"] = "text/xml";
+					this._output_string = '<?xml version="1.0"?>'+
+								'<cross-domain-policy>'+
+									'<site-control permitted-cross-domain-policies="all"/>'+
+									'<allow-access-from domain="*"/>'+
+									//'<allow-http-request-headers-from domain="*" headers="*"/>'+
+								'</cross-domain-policy>';
+					this.end();
+				break;
+				default:
+					static_file = global.static_files[app_name];
+
+					if(static_file === undefined) {
+						this._output_string = "404";
+						this._headers["Content-Type"] = "text/html";
+						this.end(404);
+					} else {
+						this._output_string = static_file;
+						this._headers["Content-Type"] = static_files_mime[app_name];
+
+						if(typeof static_file === 'function') {
+							this._funcs = null;
+						} else {
+							this.end();
+						}
+					}
+				break;
 			}
 		}
 	}
@@ -552,32 +546,11 @@ var apps = {};
 //var config = JSON.parse("{lala:5}");
 //fs.readFileSync("config.js");
 
-fs.readdir("apps", function(err, files) {
-	if(err) throw err;
-	
-	files.forEach(function(app) {
-		console.log("loading:", app);
-		apps[app] = require("./apps/"+app+"/exports.js");
-	});
-	
-	for(var i in apps) {
-	var app = apps[i];
-		if(app.init) {
-			app.init({
-				ws_broadcast: server.broadcast
-			});
-		}
-	}
-});
-
 var server = ws.createServer({
 	server: http.createServer(function(req, res) {
 		var c = new Connection(req, res);
 	})
-});
-
-// Handle WebSocket Requests
-server.addListener("connection", function(conn) {
+}).addListener("connection", function(conn) {
 	//conn.storage.set("username", "user_"+conn.id);
 
 	conn.addListener("message", function(path) {
@@ -629,12 +602,38 @@ server.addListener("connection", function(conn) {
 			app.http(ret, app_func, app_args);
 		}
 	});
-});
-
-server.addListener("close", function(conn){
+}).addListener("close", function(conn){
 	//TODO apps[app_name].websocket_disconnect
 	server.broadcast("<"+conn.id+"> disconnected");
 });
+
+fs.readdir("apps", function(err, files) {
+	if(err) throw err;
+	
+	files.forEach(function(app) {
+		console.log("loading:", app);
+		apps[app] = require("./apps/"+app+"/exports.js");
+	});
+	
+	for(var i in apps) {
+	var app = apps[i];
+		if(app.init) {
+			app.init({
+				ws_broadcast: server.broadcast
+			});
+		}
+	}
+});
+
+// crossdomain policy server 
+require("net").createServer(function(socket) {
+	socket.write('<?xml version="1.0"?>'+
+				'<cross-domain-policy>'+
+					'<allow-access-from domain="*" to-ports="1111-1155"/>'+
+				'</cross-domain-policy>');
+	socket.end();
+	console.log("sent policy file");
+}).listen(1156);
 
 
 
@@ -651,20 +650,6 @@ console.log(pro.gen_code(ast, false));
 server.listen(1155, function() {
 	console.log("listening on port: " + 1155);
 });
-
-require("net").createServer(function(socket) {
-	socket.write('<?xml version="1.0"?>'+
-				'<cross-domain-policy>'+
-					'<allow-access-from domain="*" to-ports="1111-1155"/>'+
-				'</cross-domain-policy>');
-	socket.end();
-	console.log("sent policy file");
-}).listen(1156);
-
-
-
-
-
 
 
 
