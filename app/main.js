@@ -71,84 +71,6 @@ Connection = exports.Connection = function(req, res) {
 		}
 	}(this));
 	
-	var static_file_url, static_file;
-		method = req.method;
-		
-	this._funcs_done = true;
-	var path = QueryString.unescape(this._url.pathname);
-	if(path === '/') {
-		//static_file_url = "/index.html";
-		//this._headers["Cache-Control"] = "no-cache, must-revalidate";
-		//this._headers["Pragma"] = "no-cache";
-		//this._headers["Expires"] = "Fri, 01 Jan 2010 00:00:01 GMT";
-		this._output_string = "<app>a welcoming poem</app>";
-		this.end();
-	} else {
-		//static_file_url = path;
-		var app_name = path.substr(1),
-			app_func = "/",
-			app_func_offset = app_name.indexOf('/'),
-			app_args = "";
-		
-		if(app_func_offset !== -1) {
-			app_func = app_func_offset === app_name.length-1 ? "/" : app_name.substr(app_func_offset);
-			app_name = app_name.substr(0, app_func_offset);
-			
-			if(app_func !== "/" && app_func.length > 1/* && app_func.charAt(0) === '/'*/) {
-				app_func = app_func.substr(1);
-				app_func_offset = app_func.indexOf('/');
-			
-				if(app_func_offset !== -1) {
-					app_args = app_func.substr(app_func_offset+1);
-					app_func = app_func.substr(0, app_func_offset);
-				}
-			}
-		}
-		
-		console.log("http path", path);
-		console.log("http app", app_name);
-		console.log("http func", app_func);
-		console.log("http args", app_args);
-		
-		var app = apps[app_name];
-		if(app !== undefined) {
-			app.http(this, app_func, app_args);
-		} else if(method === "GET") {
-			switch(app_name) {
-				case "crossdomain.xml":
-					//TODO SOME FORM OF SECURITY!!
-					// maybe implement this as an application :)
-					this._headers["Content-Type"] = "text/xml";
-					this._output_string = '<?xml version="1.0"?>'+
-								'<cross-domain-policy>'+
-									'<site-control permitted-cross-domain-policies="all"/>'+
-									'<allow-access-from domain="*"/>'+
-									//'<allow-http-request-headers-from domain="*" headers="*"/>'+
-								'</cross-domain-policy>';
-					this.end();
-				break;
-				default:
-					static_file = global.static_files[app_name];
-
-					if(static_file === undefined) {
-						this._output_string = "404";
-						this._headers["Content-Type"] = "text/html";
-						this.end(404);
-					} else {
-						this._output_string = static_file;
-						this._headers["Content-Type"] = static_files_mime[app_name];
-
-						if(typeof static_file === 'function') {
-							this._funcs = null;
-						} else {
-							this.end();
-						}
-					}
-				break;
-			}
-		}
-	}
-	
 	/*
 	var Session = global.db.model("Session");
 	if(this._sid !== null) {
@@ -252,24 +174,98 @@ Connection.prototype.onData = function(chunk) {
 }
 
 Connection.prototype.onDataEnd = function() {
-	if(this._input_string) {
-		this._funcs = JSON.parse(this._input_string);
+	if(this._input_string.length) {
+		this._post = QueryString.parse(this._input_string);
 	} else {
-		this._funcs = {};
+		this._post = {};
 	}
 	
 	this.start();
 };
 
 Connection.prototype.start = function() {
-	console.log(this.id + ": start "+(this._session && this._session._uid ? this._session._uid.toHexString() : null));
-	var func = this._output_string;
+	var func = this._output_string,
+		static_file_url, static_file,
+		method = this._req.method;
+	
 	if(typeof func === 'function') {
 		this._output_string = func(this, this._url.pathname);
 	}
 	
 	if(this._output_string !== false) {
 		this.end();
+	}
+	
+	this._funcs_done = true;
+	var path = QueryString.unescape(this._url.pathname);
+	if(path === '/') {
+		//static_file_url = "/index.html";
+		//this._headers["Cache-Control"] = "no-cache, must-revalidate";
+		//this._headers["Pragma"] = "no-cache";
+		//this._headers["Expires"] = "Fri, 01 Jan 2010 00:00:01 GMT";
+		this._output_string = "<app>a welcoming poem</app>";
+		this.end();
+	} else {
+		//static_file_url = path;
+		var app_name = path.substr(1),
+			app_path = "/",
+			app_path_offset = app_name.indexOf('/');
+		
+		if(app_path_offset !== -1) {
+			app_path = app_path_offset === app_name.length-1 ? "/" : app_name.substr(app_path_offset);
+			app_name = app_name.substr(0, app_path_offset);
+			
+			if(app_path !== "/" && app_path.length > 1/* && app_path.charAt(0) === '/'*/) {
+				app_path = app_path.substr(1);
+			}
+		}
+		
+		console.log(" [HTTP] path", path);
+		console.log(" [HTTP] app", app_name);
+		console.log(" [HTTP] func", app_path);
+		
+		var app = apps[app_name];
+		if(app !== undefined) {
+			try {
+				app.http(this, app_path);
+			} catch(e) {
+				this.print(e.msg || "error");
+				this.end(500);
+			}
+		} else if(method === "GET") {
+			switch(app_name) {
+				case "crossdomain.xml":
+					//TODO SOME FORM OF SECURITY!!
+					// maybe implement this as an application :)
+					this._headers["Content-Type"] = "text/xml";
+					this._output_string = '<?xml version="1.0"?>'+
+								'<cross-domain-policy>'+
+									'<site-control permitted-cross-domain-policies="all"/>'+
+									'<allow-access-from domain="*"/>'+
+									//'<allow-http-request-headers-from domain="*" headers="*"/>'+
+								'</cross-domain-policy>';
+					this.end();
+				break;
+				default:
+					static_file = global.static_files[app_name];
+
+					if(static_file === undefined) {
+						this._output_string = "404";
+						this._headers["Content-Type"] = "text/html";
+						this.end(404);
+					} else {
+						this._output_string = static_file;
+						this._headers["Content-Type"] = static_files_mime[app_name];
+
+						if(typeof static_file === 'function') {
+							this._funcs = null;
+						} else {
+							this.end();
+						}
+					}
+				break;
+			}
+		}
 	}
 }
 
@@ -387,7 +383,6 @@ function add_file(path, vpath, mime, literal) {
 				
 				//TODO - parse the output and make it more optimized before running it
 				txt += '";return o;';
-				//console.log(txt);
 				txt = new Function("p", "c","o", txt);
 			}
 		
@@ -548,7 +543,6 @@ var apps = {};
 
 var server = ws.createServer({
 	server: http.createServer(function(req, res) {
-		req.setEncoding("utf8");
 		new Connection(req, res);
 	})
 }).addListener("connection", function(conn) {
@@ -559,31 +553,22 @@ var server = ws.createServer({
 			path = "/"+path;
 		}
 		
-		// do func lookup
 		var app_name = path.substr(1),
-			app_func = "/",
-			app_func_offset = app_name.indexOf('/'),
-			app_args = "";
+			app_path = "/",
+			app_path_offset = app_name.indexOf('/');
 		
-		if(app_func_offset !== -1) {
-			app_func = app_func_offset === app_name.length-1 ? "/" : app_name.substr(app_func_offset);
-			app_name = app_name.substr(0, app_func_offset);
+		if(app_path_offset !== -1) {
+			app_path = app_path_offset === app_name.length-1 ? "/" : app_name.substr(app_path_offset);
+			app_name = app_name.substr(0, app_path_offset);
 			
-			if(app_func !== "/" && app_func.length > 1/* && app_func.charAt(0) === '/'*/) {
-				app_func = app_func.substr(1);
-				app_func_offset = app_func.indexOf('/');
-			
-				if(app_func_offset !== -1) {
-					app_args = app_func.substr(app_func_offset+1);
-					app_func = app_func.substr(0, app_func_offset);
-				}
+			if(app_path !== "/" && app_path.length > 1/* && app_path.charAt(0) === '/'*/) {
+				app_path = app_path.substr(1);
 			}
 		}
 		
-		console.log("wsock path", path);
-		console.log("wsock app", app_name);
-		console.log("wsock func", app_func);
-		console.log("wsock args", app_args);
+		console.log(" [SOCK] path", path);
+		console.log(" [SOCK] app", app_name);
+		console.log(" [SOCK] func", app_path);
 		
 		var app = apps[app_name];
 		if(app !== undefined && typeof app.http === 'function') {
@@ -600,7 +585,7 @@ var server = ws.createServer({
 				}
 			};
 			
-			app.http(ret, app_func, app_args);
+			app.http(ret, app_path);
 		}
 	});
 }).addListener("close", function(conn){
@@ -617,8 +602,8 @@ fs.readdir("apps", function(err, files) {
 	});
 	
 	for(var i in apps) {
-	var app = apps[i];
-		if(app.init) {
+		var app = apps[i];
+		if(typeof app.init === 'function') {
 			app.init({
 				ws_broadcast: server.broadcast
 			});

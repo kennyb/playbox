@@ -368,13 +368,15 @@ function ext2mime(ext) {
 	return _ext2mime[ext];
 }
 
-exports.http = function(c, func, args) {
-	var output = {
-		func: func,
-		args: args,
-		status: 200,
-		ret: null
-	};
+exports.http = function(c, path) {
+	var path_offset = path.indexOf('/'),
+		func = path_offset === -1 ? path : path.substr(0, path_offset),
+		args = path_offset === -1 ? null : path.substr(path_offset+1),
+		output = {
+			path: path,
+			status: 200,
+			ret: null
+		};
 	
 	switch(func) {
 		case '?':
