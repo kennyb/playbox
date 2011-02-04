@@ -3,14 +3,17 @@ NODE = ./node
 name = all
 
 all:
-	#git submodule update --init
+	git submodule update --init
 	if [ ! -d build ]; \
 	then \
-		node-waf configure; \
+		node-waf configure --without-snapshot; \
 	fi
 	node-waf build -v
 	
 	cd build/release && CWD=`pwd` && ./node --always_full_compiler main.js
+
+configure:
+	node-waf configure --without-snapshot
 
 prepare:
 	#git submodule update --init --recursive
