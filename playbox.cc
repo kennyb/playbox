@@ -67,11 +67,10 @@ static Playbox *playbox;
 static Persistent<String> symbol_stateChange = NODE_PSYMBOL("stateChanged");
 static Persistent<String> symbol_listening = NODE_PSYMBOL("listening");
 static Persistent<String> symbol_listeningFailed = NODE_PSYMBOL("listeningFailed");
-static Persistent<String> symbol_metadataAdded = NODE_PSYMBOL("metadataAdded");
 static Persistent<String> symbol_archiveUnknown = NODE_PSYMBOL("archiveUnknown");
 static Persistent<String> symbol_archivePaused = NODE_PSYMBOL("archivePaused");
 static Persistent<String> symbol_archiveResumed = NODE_PSYMBOL("archiveResumed");
-static Persistent<String> symbol_archiveMetadata = NODE_PSYMBOL("archiveMetadata");
+static Persistent<String> symbol_archiveLoaded = NODE_PSYMBOL("archiveLoaded");
 static Persistent<String> symbol_archiveDownloading = NODE_PSYMBOL("archiveDownloading");
 static Persistent<String> symbol_archiveProgress = NODE_PSYMBOL("archiveProgress");
 static Persistent<String> symbol_archiveComplete = NODE_PSYMBOL("archiveComplete");
@@ -645,9 +644,9 @@ Handle<Value> Playbox::update(const Arguments &args)
 				} else if(libtorrent::metadata_failed_alert* p = libtorrent::alert_cast<libtorrent::metadata_failed_alert>(alert.get())) {
 					hash = lexical_cast<std::string>(p->handle.info_hash());
 					symbol = &symbol_archiveUnknown;
-				} else if(libtorrent::metadata_received_alert* p = libtorrent::alert_cast<libtorrent::metadata_received_alert>(alert.get())) {
-					hash = lexical_cast<std::string>(p->handle.info_hash());
-					symbol = &symbol_archiveMetadata;
+				//} else if(libtorrent::metadata_received_alert* p = libtorrent::alert_cast<libtorrent::metadata_received_alert>(alert.get())) {
+					//hash = lexical_cast<std::string>(p->handle.info_hash());
+					//symbol = &symbol_archiveLoaded;
 				} else if(libtorrent::state_changed_alert* p = libtorrent::alert_cast<libtorrent::state_changed_alert>(alert.get())) {
 					std::string prev_state;
 					std::string state;
@@ -865,7 +864,7 @@ void Playbox::load_torrent(const std::string path)
 		Local<Value> args[2];
 		args[0] = Local<Value>::New(String::New(hash.c_str()));
 		args[1] = js_metadata;
-		playbox->Emit(symbol_archiveMetadata, 2, args);
+		playbox->Emit(symbol_archiveLoaded, 2, args);
 		
 		
 #ifndef BOOST_NO_EXCEPTIONS

@@ -45,7 +45,7 @@ implement the object with the following: (depends on the above)
  Object(Playbox)
   -> Event(metadataAdded) - fired when new metadata has been added to the library
   -> Event(archiveUnknown) - fired after archive() or info() call when the metadata can't be found on the dht
-  -> Event(archiveMetadata) - fired after archive() or info() when the metadata is available
+  -> Event(archiveLoaded) - fired after archive() or info() when the metadata is available
   -> Event(archiveDownloading) - fired when an archive changes state to downloading
   -> Event(archiveProgress) - fired periodically as an archive is downloading
   -> Event(archiveComplete) - fired when an archive is completely downloaded

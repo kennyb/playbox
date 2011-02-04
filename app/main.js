@@ -42,7 +42,7 @@ Connection = exports.Connection = function(req, res) {
 	this._session = null;
 	this._input_string = "";
 	this._funcs_done = null;
-	this._output_string = "";
+	this._output_string = false;
 	
 	this._headers = {
 		"Content-Type": "application/xhtml+xml; charset=utf-8"
@@ -189,11 +189,13 @@ Connection.prototype.start = function() {
 		method = this._req.method;
 	
 	if(typeof func === 'function') {
+		this._output_string = "";
 		this._output_string = func(this, this._url.pathname);
 	}
 	
 	if(this._output_string !== false) {
 		this.end();
+		return;
 	}
 	
 	this._funcs_done = true;
@@ -229,8 +231,9 @@ Connection.prototype.start = function() {
 			try {
 				app.http(this, app_path);
 			} catch(e) {
-				this.print(e.msg || "error");
-				this.end(500);
+				var msg = e.toString();
+				this.print(msg);
+				this.end(parseInt(msg, 10) || 500);
 			}
 		} else if(method === "GET") {
 			switch(app_name) {
@@ -271,6 +274,10 @@ Connection.prototype.start = function() {
 
 
 Connection.prototype.print = function(str) {
+	if(this._output_string === false) {
+		this._output_string = "";
+	}
+	 
 	this._output_string += str.toString();
 };
 
@@ -598,6 +605,7 @@ fs.readdir("apps", function(err, files) {
 	
 	files.forEach(function(app) {
 		console.log("loading:", app);
+		require.paths.unshift("./apps/"+app);
 		apps[app] = require("./apps/"+app+"/"+app+".js");
 	});
 	

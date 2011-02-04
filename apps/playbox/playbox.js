@@ -1,11 +1,12 @@
-var sys = require("sys"),
-	fs = require('fs'),
-	path = require('path'),
-	buffer = require('buffer'),
+var Sys = require("sys"),
+	Fs = require('fs'),
+	Path = require('path'),
+	Buffer = require('buffer'),
 	ID3File = require("node-id3"),
 	Mixin = require("node-websocket-server/lang/mixin"),
 	Edb = require("edb"),
-	crypto = require("crypto");
+	Crypto = require("crypto"),
+	Security = require("security.js");
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
@@ -26,8 +27,8 @@ var playbox = new Playbox(),
 		read_kb_speed: 5000,
 		write_kb_speed: 3000
 	};
-
-var do_update = function() {
+	
+function update() {
 	var path;
 	playbox.update();
 	
@@ -78,7 +79,7 @@ var do_update = function() {
 							
 						});
 						
-						fs.unlink(stripped_archive_path);
+						Fs.unlink(stripped_archive_path);
 					});
 				}
 			}
@@ -115,18 +116,18 @@ playbox.on("stateChanged", function(hash, extra) {
 }).on("archiveResumed", function(hash, e) {
 	archives[hash].active = true;
 	broadcast_event("archiveResumed", archives[hash]);
-}).on("archiveMetadata", function(hash, metadata) {
+}).on("archiveLoaded", function(hash, metadata) {
 	/*if(metadata.local_file) {
 		get_metadata(metadata.local_file, playbox.library_dir + hash, function(tags) {
 			archives[hash].metadata = Mixin(tags, archives[hash].metadata);
-			broadcast_event("archiveMetadata", archives[hash]);
+			broadcast_event("archiveLoaded", archives[hash]);
 		});
 	}
 	*/
 	
 	status_count["CHECKING"]++;
 	archives[hash] = {status:"METADATA", downloaded: -1, metadata: metadata};
-	broadcast_event("archiveMetadata", archives[hash]);
+	broadcast_event("archiveLoaded", archives[hash]);
 }).on("archiveDownloading", function(hash, e) {
 	broadcast_event("archiveDownloading", archives[hash]);
 }).on("archiveProgress", function(hash, progress) {
@@ -151,7 +152,7 @@ playbox.on("stateChanged", function(hash, extra) {
 
 function start() {
 	if(update_loop === null) {
-		update_loop = setInterval(do_update, 100);
+		update_loop = setInterval(update, 100);
 	}
 	
 	return playbox.start();
@@ -190,7 +191,7 @@ function init() {
 		Edb.list("archive.", function(key, value) {
 			if(value !== false) {
 				console.log(" [*] addded "+value.id);
-				fs.symlink(value.path, playbox.library_dir+value.id);
+				Fs.symlink(value.path, playbox.library_dir+value.id);
 				
 				archives[value.id] = value;
 			}
@@ -198,16 +199,16 @@ function init() {
 	});
 	
 	// start the updates
-	update_loop = setInterval(do_update, 100);
+	update_loop = setInterval(update, 100);
 }
 
 function add_media(p) {
-	fs.stat(p, function(err, st) {
+	Fs.stat(p, function(err, st) {
 		if(err) throw err;
 		if(st.isFile() && path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
 			add_archive_queue.push(p);
 		} else if(st.isDirectory()) {
-			fs.readdir(p, function(err, files) {
+			Fs.readdir(p, function(err, files) {
 				if(err) throw err;
 				var i = files.length-1;
 				if(i >= 0) {
@@ -221,9 +222,9 @@ function add_media(p) {
 }
 
 function query(args) {
-	var ret = {};
-	console.log("args", sys.inspect(args));
-	var argslower = args.toLowerCase();
+	if(!args) args = '';
+	var ret = {},
+		argslower = args.toLowerCase();
 	
 	for(var i in archives) {
 		var a = archives[i];
@@ -243,7 +244,7 @@ var tmp_offset = 0;
 function strip_metadata(file_path, callback) {
 	//TODO: circular buffer, and obeying speed limits
 	console.log("strip_metadata", file_path)
-	fs.stat(file_path, function(err, st) {
+	Fs.stat(file_path, function(err, st) {
 		if(err) throw err;
 		var chunk_size = 64 * 1024;
 		var buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
@@ -256,8 +257,8 @@ function strip_metadata(file_path, callback) {
 		var offset = 0;
 		var got_meta = false;
 		var sha1 = crypto.createHmac("sha1", "changeme");
-		var sr = fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
-			sw = fs.createWriteStream(dest_path+".mp3", {flags: 'w+', mode: 0644});
+		var sr = Fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
+			sw = Fs.createWriteStream(dest_path+".mp3", {flags: 'w+', mode: 0644});
 		
 		var write_func = function() {
 			buf_pos = 0;
@@ -350,6 +351,7 @@ function strip_metadata(file_path, callback) {
 	});
 }
 
+// TODO: move this to a lib function
 var _ext2mime = {
 	"html": "text/html",
 	"ico": "image/x-icon",
@@ -370,8 +372,8 @@ function ext2mime(ext) {
 
 exports.http = function(c, path) {
 	var path_offset = path.indexOf('/'),
-		func = path_offset === -1 ? path : path.substr(0, path_offset),
-		args = path_offset === -1 ? null : path.substr(path_offset+1),
+		func = path_offset < 1 ? path : path.substr(0, path_offset),
+		args = (path_offset = func.indexOf('/')) === -1 ? null : path.substr(path_offset+1),
 		output = {
 			path: path,
 			status: 200,
@@ -394,24 +396,24 @@ exports.http = function(c, path) {
 			output.ret = stop();
 			break;
 			
-		case 'q':
-			output.ret = query(args);
-			break;
-			
 		case 'g':
 			c.file("audio/mp3", playbox.library_dir+"/"+args);
 			return;
 			
+		case 'q':
+			output.ret = query(args);
+			break;
+			
 		case 'i':
-			var t = archives[args];
+			var t = archives[path];
 			if(!t) {
-				t = archives[args] = {status:"LOOKUP"};
-				//load_metadata_queue.push(args);
-				//playbox.add_archive_metadata(args);
+				t = archives[path] = {status:"LOOKUP"};
+				//load_metadata_queue.push(path);
+				//playbox.add_archive_metadata(path);
 			}
 			
 			output.ret = t;
-			//output.ret = playbox.archive(args);
+			//output.ret = playbox.archive(path);
 			break;
 			
 		case '/':
@@ -420,8 +422,8 @@ exports.http = function(c, path) {
 			return;
 			
 		default:
-			var mime = ext2mime(path.extname(args)) | "text/plain";
-			c.file(mime, "./public/"+args);
+			var mime = ext2mime(Path.extname(path)) | "text/plain";
+			c.file(mime, "./public/"+path);
 			return;
 	}
 	
@@ -448,7 +450,7 @@ exports.websocket_disconnect = function(c) {
 	console.log("websocket disconnect");
 }
 
-exports.websocket_func = function(c, func, args) {
+exports.websocket_func = function(c, func, path) {
 	//console.log("ws", c._conn.broadcast);
 }
 
