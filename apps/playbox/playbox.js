@@ -5,8 +5,7 @@ var Sys = require("sys"),
 	ID3File = require("node-id3"),
 	Mixin = require("node-websocket-server/lang/mixin"),
 	Edb = require("edb"),
-	Crypto = require("crypto"),
-	Security = require("security.js");
+	Crypto = require("crypto");
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
