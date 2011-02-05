@@ -1,7 +1,7 @@
 var Sys = require("sys"),
 	Fs = require('fs'),
 	Path = require('path'),
-	Buffer = require('buffer'),
+	Buffer = require('buffer').Buffer,
 	ID3File = require("node-id3"),
 	Mixin = require("node-websocket-server/lang/mixin"),
 	Edb = require("edb"),
@@ -29,11 +29,10 @@ var playbox = new Playbox(),
 	
 function update() {
 	var path;
+	
 	playbox.update();
 	
-	// control read / write events
-	
-	//broadcast_event("update", {truth: true});
+	//TODO: control read / write events
 	//TODO: put limits.. no fumes discos duros
 	if(!status_count["CHECKING"]) {
 		if(load_metadata_queue.length && status_count["CHECKING"] < 2) {
@@ -50,7 +49,7 @@ function update() {
 				}
 			}
 			
-			if(status_count["PARSING"] < 2 && path) {
+			if(status_count["PARSING"] < 10 && path) {
 				var meta = playbox.get_archive_metadata(path);
 				
 				if(meta !== false) {
@@ -175,7 +174,8 @@ function init() {
 		console.log("Edb initialized");
 		
 		Edb.get("config", function(key, value) {
-			if(value === false) {
+			
+			if(typeof value === 'undefined') {
 				// running the playbox for the very first time
 				// do more first time stuff, like loading the local library
 				Edb.set("config", config);
@@ -202,9 +202,10 @@ function init() {
 }
 
 function add_media(p) {
+	console.log("add_media", p);
 	Fs.stat(p, function(err, st) {
 		if(err) throw err;
-		if(st.isFile() && path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
+		if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
 			add_archive_queue.push(p);
 		} else if(st.isDirectory()) {
 			Fs.readdir(p, function(err, files) {
@@ -255,7 +256,7 @@ function strip_metadata(file_path, callback) {
 		var remaining = orig_size;
 		var offset = 0;
 		var got_meta = false;
-		var sha1 = crypto.createHmac("sha1", "changeme");
+		var sha1 = Crypto.createHmac("sha1", "changeme");
 		var sr = Fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
 			sw = Fs.createWriteStream(dest_path+".mp3", {flags: 'w+', mode: 0644});
 		

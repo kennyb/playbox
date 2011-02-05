@@ -1,11 +1,13 @@
 current:
-limit / offset on query (change the params format to be json)
 fix up the events
 verify the local file, by doing the hash on it and comparing to see if it matches.
 add, before() / after() text functions
 new class Archive
 
+anyone can do:
+limit / offset on query (change the params format to be json)
 
+notes:
 check to see if the file is a regular file load the torrent and start it, else start it paused
 save songs into the library without metadata and hash them
 convert the torrents over to json format and save them as json files... later, load everything from json
