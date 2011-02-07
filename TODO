@@ -1,5 +1,7 @@
 current:
 fix up the events
+add the  library after all the metadata is loaded (to know what files already exist)
+don't add the files that already exist
 verify the local file, by doing the hash on it and comparing to see if it matches.
 add, before() / after() text functions
 new class Archive

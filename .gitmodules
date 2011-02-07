@@ -1,14 +1,8 @@
 [submodule "libtorrent"]
 	path = libtorrent
 	url = http://git.deluge-torrent.org/libtorrent.git/
-[submodule "node"]
-	path = node
-	url = git://github.com/ry/node.git
 [submodule "deps/node-static"]
 	path = deps/node-static
-	url = https://github.com/cloudhead/node-static.git
-[submodule "apps/playbox/node-static"]
-	path = apps/playbox/node-static
 	url = https://github.com/cloudhead/node-static.git
 [submodule "deps/node"]
 	path = deps/node
