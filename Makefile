@@ -6,9 +6,9 @@ all:
 	git submodule update --init
 	if [ ! -d build ]; \
 	then \
-		node-waf configure --without-snapshot; \
+		node-waf configure; \
 	fi
-	node-waf build -v
+	node-waf build
 	
 	cd build/release && CWD=`pwd` && ./node --always_full_compiler main.js
 

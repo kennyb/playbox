@@ -42,8 +42,9 @@ def configure(conf):
 	conf.check_tool("node_addon")
 	#conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0'])
 	#conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
-	conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections', '-fPIC'])
-	conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections'])
+	conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections', '-fdata-sections', '-fPIC']) #, '-fdata-sections'
+	conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections', '-fdata-sections', '-fno-rtti']) #, '-fno-rtti'
+	
 	
 	if sys.platform.startswith("darwin"):
 		conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])

@@ -12,7 +12,7 @@ var playbox = new Playbox(),
 	load_metadata_queue = [],
 	update_loop = null,
 	archives = {},
-	last_activity = 0,
+	last_idle = 0,
 	status_count = {
 		"PARSING": 0,
 		"METADATA": 0,
@@ -38,18 +38,20 @@ function update() {
 		if(load_metadata_queue.length && status_count["CHECKING"] < 2) {
 			path = load_metadata_queue.shift();
 			playbox.add_archive_metadata(path);
-		} else if(add_archive_queue.length) {
+		} else if(add_archive_queue.length && load_metadata_queue.length === 0) {
 			path = add_archive_queue.shift();
-			var c = 0;
-			for(var i in archives) {
-				var t = archives[i];
+			var c = 0,
+				i, t;
+			
+			for(i in archives) {
+				t = archives[i];
 				c++;
 				if(t.local_file === path) {
 					path = null;
 				}
 			}
 			
-			if(status_count["PARSING"] < 10 && path) {
+			if(c < 10 && status_count["PARSING"] <= 1 && path) {
 				var meta = playbox.get_archive_metadata(path);
 				
 				if(meta !== false) {
@@ -83,7 +85,7 @@ function update() {
 			}
 		}
 	} else {
-		last_activity = new Date();
+		last_idle = new Date();
 	}
 };
 
@@ -179,12 +181,12 @@ function init() {
 				// running the playbox for the very first time
 				// do more first time stuff, like loading the local library
 				Edb.set("config", config);
-				
-				console.log("add_media", playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
-				add_media(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
 			} else {
 				Mixin(config, value);
 			}
+			
+			console.log("add_media", playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+			add_media(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
 		});
 		
 		Edb.list("archive.", function(key, value) {

@@ -26,7 +26,7 @@ require.paths.unshift("lib/node-strtok");
 //var mongoose = require('./lib/mongoose');
 
 // global objects
-Playbox = require('./lib/playbox').Playbox;
+Playbox = require('playbox').Playbox;
 ws = require("node-websocket-server/ws/server");
 Url = require("url");
 QueryString = require("querystring");
@@ -603,10 +603,11 @@ var server = ws.createServer({
 fs.readdir("apps", function(err, files) {
 	if(err) throw err;
 	
+	console.log(sys.inspect(require));
 	files.forEach(function(app) {
 		console.log("loading:", app);
 		require.paths.unshift("./apps/"+app);
-		apps[app] = require("./apps/"+app+"/"+app+".js");
+		apps[app] = require("../apps/"+app+"/"+app+".js");
 	});
 	
 	for(var i in apps) {
