@@ -116,7 +116,7 @@ def build_playbox(bld):
 	if sys.platform.startswith("linux"):
 		playbox.linkflags = ['./lib/libtorrent.so', './lib/libavformat.so']
   
-	playbox.source = ["playbox.cc"]
+	playbox.source = ["playbox/playbox.cc"]
 	playbox.includes = ['libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
 	playbox.cflags = ['-Wall']
 	playbox.cxxflags = ['-Wall']
@@ -329,6 +329,9 @@ def shutdown(ctx):
 		if exists('deps/sha1_stream/sha1_stream.js') and not lexists('build/release/lib/sha1_stream.js'):
 			symlink(abspath('deps/sha1_stream/sha1_stream.js'), 'build/release/lib/sha1_stream.js')
 		
+		if exists('deps/long-stack-traces/lib/long-stack-traces.js') and not lexists('build/release/lib/long-stack-traces.js'):
+			symlink(abspath('deps/long-stack-traces/lib/long-stack-traces.js'), 'build/release/lib/long-stack-traces.js')
+		
 		# node libs
 		if exists('build/default/playbox.node'):
 			copy2('build/default/playbox.node', 'build/release/lib/playbox.node')
@@ -342,10 +345,10 @@ def shutdown(ctx):
 			copy2(abspath('deps/node/build/default/node'), 'build/release/node')
 		
 		# do symlinks
-		if not lexists('build/release/main.js'):
-			symlink(abspath('app/main.js'), 'build/release/main.js')
-		if not lexists('build/release/lib/edb.js'):
-			symlink(abspath('app/edb.js'), 'build/release/lib/edb.js')
+		if not lexists('build/release/main.sjs'):
+			symlink(abspath('main.sjs'), 'build/release/main.sjs')
+		if not lexists('build/release/lib/edb.sjs'):
+			symlink(abspath('edb.sjs'), 'build/release/lib/edb.sjs')
 		
 		# default apps
 		if not exists('build/release/apps'):

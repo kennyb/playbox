@@ -1,5 +1,6 @@
 var Sys = require("sys"),
 	Fs = require('fs'),
+	$fs = require('$fs'),
 	Path = require('path'),
 	Buffer = require('buffer').Buffer,
 	ID3File = require("node-id3"),
@@ -47,7 +48,7 @@ function update() {
 			}
 			
 			//console.log(c, status_count["PARSING"]);
-			if(c < 10 && status_count["PARSING"] <= 1 && (path = add_archive_queue.shift())) {
+			if(c < 11 && status_count["PARSING"] <= 1 && (path = add_archive_queue.shift()) && path.indexOf('04. The American Way') !== -1) {
 				c = true;
 				for(i in archives) {
 					t = archives[i];
@@ -63,7 +64,7 @@ function update() {
 				if(c && (meta = playbox.get_archive_metadata(path)) !== false) {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path, playbox_hash) {
-						console.log("strip_metadata", Sys.inspect(playbox_hash));
+						console.log("strip_metadata - done", Sys.inspect(playbox_hash));
 						status_count["PARSING"]--;
 						var torrent = playbox.make_archive_torrent(stripped_archive_path);
 						meta.id = torrent.comment = playbox_hash;
@@ -80,7 +81,7 @@ function update() {
 						
 						update_metadata(playbox_hash, a);
 						
-						Fs.unlink(stripped_archive_path);
+						$fs.unlink(stripped_archive_path);
 					});
 				}
 			}
@@ -191,8 +192,8 @@ function init() {
 		});
 		
 		Edb.list("archive.", function(key, value) {
-			if(value !== false) {
-				console.log("meta", Sys.inspect(value.path));
+			if(value !== undefined) {
+				console.log("meta", Sys.inspect(value));
 				update_metadata(value.id, value);
 			}
 		});
@@ -209,7 +210,7 @@ function update_metadata(hash, meta) {
 		broadcast_event("archiveUpdated", meta);
 	} else {
 		console.log(" [*] addded "+hash);
-		Fs.symlink(meta.path, playbox.library_dir+hash);
+		$fs.symlink(meta.path, playbox.library_dir+hash);
 		archives[hash] = meta;
 		broadcast_event("archiveAdded", meta);
 	}
@@ -220,22 +221,20 @@ function update_metadata(hash, meta) {
 }
 
 function add_media(p) {
-	Fs.stat(p, function(err, st) {
-		if(err) throw err;
+	using(var st = $fs.stat(p)) {
 		if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
 			add_archive_queue.push(p);
 		} else if(st.isDirectory()) {
-			Fs.readdir(p, function(err, files) {
-				if(err) throw err;
+			using(var files = $fs.readdir(p)) {
 				var i = files.length-1;
 				if(i >= 0) {
 					do {
 						add_media(p+"/"+files[i].toString());
 					} while(i--);
 				}
-			});
+			}
 		}
-	})
+	}
 }
 
 function query(args) {
@@ -257,6 +256,7 @@ function query(args) {
 	return ret;
 }
 
+
 var tmp_offset = 0;
 function strip_metadata(file_path, callback) {
 	//TODO: circular buffer, and obeying speed limits
@@ -264,8 +264,8 @@ function strip_metadata(file_path, callback) {
 	console.log("strip_metadata", file_path)
 	Fs.stat(file_path, function(err, st) {
 		if(err) throw err;
-		var chunk_size = 64 * 1024;
-		var buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
+		var  chunk_size = 64 * 1024;
+		var  buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
 		var buf_pos    = 0;
 		var buf = new Buffer(buf_size);
 		var dest_path = playbox.tmp_path+"strip."+(tmp_offset++);
@@ -274,11 +274,13 @@ function strip_metadata(file_path, callback) {
 		var remaining = orig_size;
 		var offset = 0;
 		var got_meta = false;
+		//CURRENT: final starting key + fix buffering
 		var sha1 = Crypto.createHmac("sha1", "changeme");
 		var sr = Fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
-			sw = Fs.createWriteStream(dest_path+".mp3", {flags: 'w+', mode: 0644});
+			sw = Fs.createWriteStream(dest_path+".mp3", {flags: 'w+', encoding: 'binary', mode: 0644});
 		
 		var write_func = function() {
+			console.log("write_func");
 			buf_pos = 0;
 			if(remaining < buf.length) {
 				if(remaining > 0) {
@@ -325,22 +327,31 @@ function strip_metadata(file_path, callback) {
 		}
 		
 		sw.on('drain', function() {
+			console.log("sw.drain", remaining);
 			if(remaining === -1) {
 				sw.end();
-			} else {
+			} else if(remaining !== -1) {
 				sr.resume();
 			}
 		}).on('close', function() {
+			console.log("write close");
 			callback(dest_path+".mp3", sha1.digest(encoding="hex"));
 		});
 		
 		sr.on("data", function(chunk) {
+			console.log("data", remaining);
 			// TODO: when reading this in, the whole file should be read, and then just simply call the function, "setPieceHashes"
 			// or whatever it's called... to also control the speed the file is read (preventing blocking)
+			if(remaining === -1) {
+				return;
+			}
+			
 			var bufNextPos = buf_pos + chunk.length;
-			buf.write(chunk,'binary',buf_pos);
-			if(bufNextPos >= buf_size) {
-				if(remaining > 0) {
+			console.log(buf_pos, remaining, bufNextPos, remaining-bufNextPos, bufNextPos >= buf_size, bufNextPos > remaining);
+			buf.write(chunk,'binary', buf_pos);
+			if(bufNextPos >= buf_size || bufNextPos > remaining) {
+				if(bufNextPos < remaining) {
+					console.log("pause");
 					sr.pause();
 				}
 				
@@ -356,18 +367,23 @@ function strip_metadata(file_path, callback) {
 				write_func();
 			} else if(buf_pos < buf_size) {
 				buf_pos = bufNextPos;
+				sr.resume();
 			} else {
+				console.log("MMM");
 				// now, write
 				//console.log("still going", chunk.length);
 			}
 		}).on("end", function(chunk) {
+			console.log("end", remaining);
 			buf_pos = 0;
 			write_func();
-		}).addListener("close", function() {
+		}).on("close", function() {
+			console.log("close", remaining);
 			// something of closing here
 		});
 	});
 }
+//*/
 
 // TODO: move this to a lib function
 var _ext2mime = {

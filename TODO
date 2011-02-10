@@ -1,5 +1,8 @@
 current:
-fix up the strip_metadata function. off by one bug or something
+rewrite the streaming using the sjs syntax
+addition of a module system with adherance to nodules (https://github.com/kriszyp/nodules) package.json changes
+downloading of modules automatically
+reloading modules automatically
 verify the local file, by doing the hash on it and comparing to see if it matches.
 add, before() / after() text functions
 new class Archive

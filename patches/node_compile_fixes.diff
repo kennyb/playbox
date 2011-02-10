@@ -1,0 +1,37 @@
+diff --git a/deps/v8/SConstruct b/deps/v8/SConstruct
+index c999399..eca80f5 100644
+--- a/deps/v8/SConstruct
++++ b/deps/v8/SConstruct
+@@ -150,8 +150,8 @@ LIBRARY_FLAGS = {
+       }
+     },
+     'mode:release': {
+-      'CCFLAGS':      ['-O3', '-fomit-frame-pointer', '-fdata-sections',
+-                       '-ffunction-sections'],
++      'CCFLAGS':      ['-Os', '-fomit-frame-pointer', '-fdata-sections',
++                       '-ffunction-sections', '-fno-strict-aliasing', '-fno-tree-vrp'],
+       'os:android': {
+         'CCFLAGS':    ['-mthumb', '-Os'],
+         'CPPDEFINES': ['SK_RELEASE', 'NDEBUG']
+diff --git a/wscript b/wscript
+index 04591ef..4e6d805 100644
+--- a/wscript
++++ b/wscript
+@@ -60,7 +60,7 @@ def set_options(opt):
+ 
+   opt.add_option( '--without-snapshot'
+                 , action='store_true'
+-                , default=False
++                , default=True
+                 , help='Build without snapshotting V8 libraries. You might want to set this for cross-compiling. [Default: False]'
+                 , dest='without_snapshot'
+                 )
+@@ -455,7 +455,7 @@ def configure(conf):
+   # Configure default variant
+   conf.setenv('default')
+   conf.env.append_value('CPPFLAGS', '-DNDEBUG')
+-  default_compile_flags = ['-g', '-O3']
++  default_compile_flags = ['-g', '-Os'] #, '-fno-rtti', '-fno-exceptions'
+   conf.env.append_value('CCFLAGS', default_compile_flags)
+   conf.env.append_value('CXXFLAGS', default_compile_flags)
+   conf.write_config_header("config.h")

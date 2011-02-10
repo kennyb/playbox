@@ -6,7 +6,7 @@
 	url = https://github.com/cloudhead/node-static.git
 [submodule "deps/node"]
 	path = deps/node
-	url = https://github.com/ry/node.git
+	url = https://github.com/kennyb/node.git
 [submodule "deps/ffmpeg"]
 	path = deps/ffmpeg
 	url = git://gitorious.org/ffmpeg/mainline.git
@@ -28,3 +28,6 @@
 [submodule "deps/sha1_stream"]
 	path = deps/sha1_stream
 	url = http://github.com/kennyb/sha1_stream.git
+[submodule "deps/long-stack-traces"]
+	path = deps/long-stack-traces
+	url = https://github.com/tlrobinson/long-stack-traces.git

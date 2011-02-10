@@ -6,11 +6,13 @@ all:
 	git submodule update --init
 	if [ ! -d build ]; \
 	then \
+		patch -N -p1 -d deps/node < patches/node_compile_fixes.diff && \
+		cd deps/node && ./configure && make; \
 		node-waf configure; \
 	fi
 	node-waf build
 	
-	cd build/release && CWD=`pwd` && ./node --always_full_compiler main.js
+	cd build/release && CWD=`pwd` && node --always_full_compiler main.sjs
 
 configure:
 	node-waf configure --without-snapshot

@@ -9,16 +9,28 @@
 
 global.start_time = new Date();
 
-var http = require("http"),
-	sys = require("sys"),
-	Url = require("url"),
-	fs = require("fs"),
-	buffer = require("buffer"),
-	QueryString = require("querystring");
+// global error handler
+process.on('uncaughtException', function(err) {
+	var stack = err.stack.split("\n");
+	console.log('Caught exception:\n', sys.inspect(stack,0,99,1,1));
+	if(previous) {
+		console.log(sys.inspect(previous,0,99,1,1));
+	}
+});
 
 require.paths.unshift("lib");
 require.paths.unshift("../../lib");
 require.paths.unshift("lib/node-strtok");
+require.extensions[".js"] = require.extensions[".sjs"];
+
+var http = require("http"),
+	sys = require("sys"),
+	Url = require("url"),
+	fs = require("fs"),
+	$fs = require("$fs"),
+	buffer = require("buffer"),
+	QueryString = require("querystring");
+
 //var jsp = require("./lib/UglifyJS/lib/parse-js");
 //var pro = require("./lib/UglifyJS/lib/process");
 
@@ -313,14 +325,11 @@ Connection.prototype.end = function(ret_code) {
 
 Connection.prototype.file = function(mime, file_path) {
 	this._output_string = false;
-	fs.stat(file_path, function(c) { return function (e, stat) {
+	try {
+		var stat = $fs.stat(file_path);
 		var res = c._res;
 		
-		if(e) {
-			res.writeHead(404, this._headers);
-			res.write("404!");
-			res.end();
-		} else if(stat.isFile()) {      // Stream a single file.
+		if(stat.isFile()) {      // Stream a single file.
 			c._headers['Content-Length'] = stat.size;
 			c._headers['Content-Type'] = mime;
 			res.writeHead(200, c._headers);
@@ -331,13 +340,13 @@ Connection.prototype.file = function(mime, file_path) {
 					encoding: 'binary',
 					mode: 0666,
 					bufferSize: 4096
-				}).addListener('data', function (chunk) {
+				}).on('data', function (chunk) {
 					buffer.write(chunk, offset, 'binary');
 					c._res.write   (chunk, 'binary');
 					offset    += chunk.length;
-				}).addListener('close', function () {
+				}).on('close', function () {
 					res.end();
-				}).addListener('error', function (err) {
+				}).on('error', function (err) {
 					c.end(500);
 					//sys.error(err);
 				});
@@ -348,7 +357,11 @@ Connection.prototype.file = function(mime, file_path) {
 			res.write("404!");
 			res.end(404);
 		}
-	}}(this));
+	} catch(e) {
+		res.writeHead(404, this._headers);
+		res.write("404!");
+		res.end();
+	}
 }
 
 
@@ -368,11 +381,11 @@ function add_file(path, vpath, mime, literal) {
 		vpath = '/'+vpath;
 	}
 	
-	try {
-		var content = fs.readFileSync(path);
+	using(var content = $fs.readFile(path)) {
 		if(mime.indexOf("text/") !== -1 || mime.indexOf("application/") !== -1) {
 			var txt = content.toString();
 			var old_txt = global.static_files["/" + path];
+			//TODO: this can all be done in parallel
 			if(!literal && typeof txt === 'string' && txt.indexOf("<?") !== -1) {
 				txt = 'o=o||"";o+="'+txt.str_replace_array(['"', "\n", "\t", "  "], ['\\"', "", " ", " "]).trim();
 				txt = txt.trim().replace(/\<\?(.*?)\?\>/g, function(nothing, variable) {
@@ -422,9 +435,6 @@ function add_file(path, vpath, mime, literal) {
 			};
 		}(path, vpath, mime, literal));
 		
-	} catch(e) {
-		console.log(" [ERROR] "+path+" :: "+e.message+" on line "+e.line);
-		throw e;
 	}
 }
 
@@ -542,6 +552,10 @@ add_file("public/templates.html", "text/html; charset=utf-8", true);
 
 //add_dir("public/", "/");
 
+console.log("Initializing poem...");
+
+hold(1000);
+
 var apps = {};
 
 
@@ -552,10 +566,10 @@ var server = ws.createServer({
 	server: http.createServer(function(req, res) {
 		new Connection(req, res);
 	})
-}).addListener("connection", function(conn) {
+}).on("connection", function(conn) {
 	//conn.storage.set("username", "user_"+conn.id);
 
-	conn.addListener("message", function(path) {
+	conn.on("message", function(path) {
 		if(path.charAt(0) !== "/") {
 			path = "/"+path;
 		}
@@ -573,9 +587,7 @@ var server = ws.createServer({
 			}
 		}
 		
-		console.log(" [SOCK] path", path);
-		console.log(" [SOCK] app", app_name);
-		console.log(" [SOCK] func", app_path);
+		console.log(" [SOCK] path", path, "app", app_name, "func", app_path);
 		
 		var app = apps[app_name];
 		if(app !== undefined && typeof app.http === 'function') {
@@ -595,30 +607,29 @@ var server = ws.createServer({
 			app.http(ret, app_path);
 		}
 	});
-}).addListener("close", function(conn){
+}).on("close", function(conn){
 	//TODO apps[app_name].websocket_disconnect
 	server.broadcast("<"+conn.id+"> disconnected");
 });
 
-fs.readdir("apps", function(err, files) {
-	if(err) throw err;
-	
-	console.log(sys.inspect(require));
-	files.forEach(function(app) {
-		console.log("loading:", app);
+using(var files = $fs.readdir("apps")) {
+	for(var i in files) {
+		var app = files[i];
+		console.log(" [*] loading:", app);
 		require.paths.unshift("./apps/"+app);
-		apps[app] = require("../apps/"+app+"/"+app+".js");
-	});
-	
-	for(var i in apps) {
-		var app = apps[i];
-		if(typeof app.init === 'function') {
-			app.init({
-				ws_broadcast: server.broadcast
-			});
-		}
+		apps[app] = require("./apps/"+app+"/"+app);
 	}
-});
+}
+
+for(var i in apps) {
+	var app = apps[i];
+	if(typeof app.init === 'function') {
+		console.log(" [*] app init:", i);
+		app.init({
+			ws_broadcast: server.broadcast
+		});
+	}
+}
 
 // crossdomain policy server 
 require("net").createServer(function(socket) {
@@ -643,7 +654,7 @@ console.log(pro.gen_code(ast, false));
 */
 
 server.listen(1155, function() {
-	console.log("listening on port: " + 1155);
+	console.log(" [*] listening on port: " + 1155);
 });
 
 
