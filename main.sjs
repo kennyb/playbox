@@ -47,16 +47,16 @@ var in_app = "global";
 
 Log = {
 	log: function(header, s) {
-		console.log(" ["+header+"] "+in_app+": "+s);
+		console.log(" ["+header+"] ["+in_app+"] "+s);
 	},
-	success: function(s) {
-		console.log(" [*] "+in_app+": "+s);
+	info: function(s) {
+		Log.log("*", s);
 	},
 	error: function(s) {
-		console.log(" [!] "+in_app+": "+s);
+		Log.log("!", s);
 	},
 	debug: function(s) {
-		console.log(" [DEBUG] "+in_app+": "+s);
+		Log.log("DEBUG", s);
 	}
 };
 Edb = {
@@ -82,7 +82,7 @@ var config = {},
 try {
 	config = $fs.readFile('config.json');
 } catch(e) {
-	console.log(" [ERROR] could not load config.json");
+	Log.error("could not load config.json");
 } finally {
 	config = JSON.parse(config);
 }
@@ -90,17 +90,22 @@ try {
 try {
 	applist = $fs.readFile('applist.json');
 } catch(e) {
-	console.log(" [ERROR] could not load applist.json");
+	Log.error("could not load applist.json");
 } finally {
 	applist = JSON.parse(applist);
 }
 
-console.log("Initializing...");
+Log.info("Initializing...");
 edb.init(".edb", function() {
-	console.log("Edb initialized");
+	Log.info("Edb initialized");
 });
 
 Connection = exports.Connection = function(req, res) {
+	// TODO set the encoding based on the header determined encoding
+	req.setEncoding('utf8');
+	res.header["Content-Type"] = "application/xhtml+xml; charset=utf-8";
+	res.statusCode = 500;
+	
 	this._req = req;
 	this._res = res;
 	this._sid = null;
@@ -110,20 +115,13 @@ Connection = exports.Connection = function(req, res) {
 	this._funcs_done = null;
 	this._output_string = false;
 	
-	this._headers = {
-		"Content-Type": "application/xhtml+xml; charset=utf-8"
-	};
-	
 	this._data = {};
 	this._func_ret = {};
 	this._funcs = {};
 	this.request_time = new Date();
 	
-	// TODO set the encoding based on the header determined encoding
-	req.setEncoding('utf8');
 	this._url = Url.parse(req.url);
-	var get = QueryString.parse(this._url.query);
-	this._get = get;
+	this._get = QueryString.parse(this._url.query);
 	//this._sid = new String(req.getCookie("sid")).toString();
 	this.id = (conn_id++) + "# " + this._url.pathname;
 	
@@ -288,9 +286,7 @@ Connection.prototype.start = function() {
 			}
 		}
 		
-		console.log(" [HTTP] path", path);
-		console.log(" [HTTP] app", app_name);
-		console.log(" [HTTP] func", app_path);
+		Log.log("HTTP", "path "+path+" app "+app_name+" func "+app_path);
 		
 		var app = apps[app_name];
 		if(app !== undefined) {
@@ -370,10 +366,9 @@ Connection.prototype.end = function(ret_code) {
 		output_str = JSON.stringify(output);
 	}
 	
-	this._res.writeHead(this._ret || 200, this._headers);
-	
 	//this._res.shouldKeepAlive = false;
 	if(output_str && output_str.length) {
+		this._res.statusCode = 200;
 		this._res.write(output_str);
 	}
 	
@@ -387,9 +382,9 @@ Connection.prototype.file = function(mime, file_path) {
 		var res = c._res;
 		
 		if(stat.isFile()) {      // Stream a single file.
-			c._headers['Content-Length'] = stat.size;
-			c._headers['Content-Type'] = mime;
-			res.writeHead(200, c._headers);
+			c._res.headers['Content-Length'] = stat.size;
+			c._res.headers['Content-Type'] = mime;
+			c._res.statusCode = 200;
 			
 			(function streamFile(buffer, offset) {
 				fs.createReadStream(file_path, {
@@ -399,7 +394,7 @@ Connection.prototype.file = function(mime, file_path) {
 					bufferSize: 4096
 				}).on('data', function (chunk) {
 					buffer.write(chunk, offset, 'binary');
-					c._res.write   (chunk, 'binary');
+					c._res.write(chunk, 'binary');
 					offset    += chunk.length;
 				}).on('close', function () {
 					res.end();
@@ -408,14 +403,13 @@ Connection.prototype.file = function(mime, file_path) {
 					//sys.error(err);
 				});
 			})(new(buffer.Buffer)(stat.size), 0);
-			
 		} else {
-			res.writeHead(404, this._headers);
+			c._res.statusCode = 404;
 			res.write("404!");
 			res.end(404);
 		}
 	} catch(e) {
-		res.writeHead(404, this._headers);
+		c._res.statusCode = 404;
 		res.write("404!");
 		res.end();
 	}
@@ -488,7 +482,6 @@ function add_file(path, vpath, mime, literal) {
 		fs.watchFile(path, function(path, vpath, mime, literal) {
 			return function(curr, prev) {
 				add_file(path, vpath, mime, literal);
-				console.log("updated: "+path);
 			};
 		}(path, vpath, mime, literal));
 	}
@@ -640,7 +633,7 @@ var server = ws.createServer({
 			}
 		}
 		
-		console.log(" [SOCK] path", path, "app", app_name, "func", app_path);
+		Log.log("SOCK", "path "+path+" app "+app_name+" func "+app_path);
 		
 		var app = apps[app_name];
 		if(app !== undefined && typeof app.http === 'function') {
@@ -648,7 +641,6 @@ var server = ws.createServer({
 			in_app = app_name;
 			var ret = {
 				_conn: conn,
-				_headers: {},
 				_output_string: "",
 				ret: null,
 				print: function(str) {
@@ -681,9 +673,9 @@ Edb.get("applist", function(key, value) {
 using(var files = $fs.readdir("apps")) {
 	for(var i in files) {
 		var app = files[i];
-		console.log(" [*] loading:", app);
-		require.paths.unshift("./apps/"+app);
 		in_app = app;
+		Log.info("Initializing..");
+		require.paths.unshift("./apps/"+app);
 		apps[app] = require("./apps/"+app+"/"+app);
 		in_app = "global";
 	}
@@ -692,7 +684,6 @@ using(var files = $fs.readdir("apps")) {
 for(var i in apps) {
 	var app = apps[i];
 	if(typeof app.init === 'function') {
-		console.log(" [*] app init:", i);
 		in_app = i;
 		app.init({
 			ws_broadcast: server.broadcast
@@ -708,7 +699,7 @@ require("net").createServer(function(socket) {
 					'<allow-access-from domain="*" to-ports="1111-1155"/>'+
 				'</cross-domain-policy>');
 	socket.end();
-	console.log("sent policy file");
+	Log.info("sent policy file");
 }).listen(1156);
 
 
@@ -724,5 +715,5 @@ console.log(pro.gen_code(ast, false));
 */
 
 server.listen(1155, function() {
-	console.log(" [*] listening on port: " + 1155);
+	Log.info("listening on port: " + 1155);
 });

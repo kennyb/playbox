@@ -243,12 +243,10 @@ Handle<Value> Playbox::start(const Arguments &args) {
 					return VException("ports given can not be less than 6000");
 				}
 				
-			default:
-				printf("connecting %d %d (%d)\n", port1, port2, args.Length());
+			default: break;
 				//return VException("args should be: [hostname] || [port1, port2] || [hostname, port1, port2]");
 		}
 		
-		printf("starting, listening: %d\n", cur_session.is_listening());
 		cur_session.set_alert_mask(libtorrent::alert::all_categories);
 		cur_session.listen_on(std::make_pair(port1, port2));
 		cur_session.start_upnp();

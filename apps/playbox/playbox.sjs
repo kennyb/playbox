@@ -164,11 +164,11 @@ function stop() {
 }
 
 function init() {
-	console.log("Initializing playbox-2");
-	console.log(" library_dir: "+playbox.library_dir);
-	console.log(" torrents_dir: "+playbox.torrents_dir);
+	Log.info("playbox-2");
+	Log.info(" library_dir: "+playbox.library_dir);
+	Log.info(" torrents_dir: "+playbox.torrents_dir);
 	
-	Edb.get("playbox.config", function(key, value) {
+	Edb.get("config", function(key, value) {
 		if(typeof value === 'undefined') {
 			// running the playbox for the very first time
 			// do more first time stuff, like loading the local library
@@ -192,11 +192,11 @@ function init() {
 
 function update_metadata(hash, meta) {
 	if(typeof archives[hash] !== 'undefined') {
-		console.log(" [*] updated "+hash);
+		Log.info("updated "+hash);
 		archives[hash] = meta = Mixin(archives[hash], meta);
 		broadcast_event("archiveUpdated", meta);
 	} else {
-		console.log(" [*] addded "+hash);
+		Log.info("addded "+hash);
 		var lib_file = playbox.library_dir+hash;
 		
 		try {
@@ -433,9 +433,7 @@ function broadcast_event(evt, data) {
 }
 
 // start it up!
-console.log("init:", init());
+init();
 
 // debug shit
-console.log("starting:", start());
-
-
+start();
