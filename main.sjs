@@ -103,8 +103,8 @@ edb.init(".edb", function() {
 Connection = exports.Connection = function(req, res) {
 	// TODO set the encoding based on the header determined encoding
 	req.setEncoding('utf8');
-	res.header["Content-Type"] = "application/xhtml+xml; charset=utf-8";
-	res.statusCode = 500;
+	//res.headers["Content-Type"] = "application/xhtml+xml; charset=utf-8";
+	//res.statusCode = 500;
 	
 	this._req = req;
 	this._res = res;
@@ -114,6 +114,9 @@ Connection = exports.Connection = function(req, res) {
 	this._input_string = "";
 	this._funcs_done = null;
 	this._output_string = false;
+	this._headers = {
+		"Content-Type": "application/xhtml+xml; charset=utf-8"
+	};
 	
 	this._data = {};
 	this._func_ret = {};
@@ -366,9 +369,11 @@ Connection.prototype.end = function(ret_code) {
 		output_str = JSON.stringify(output);
 	}
 	
+	this._res.writeHead(this._ret || 200, this._headers); // DEPR
+	
 	//this._res.shouldKeepAlive = false;
 	if(output_str && output_str.length) {
-		this._res.statusCode = 200;
+		//this._res.statusCode = 200;
 		this._res.write(output_str);
 	}
 	
@@ -377,16 +382,19 @@ Connection.prototype.end = function(ret_code) {
 
 Connection.prototype.file = function(mime, file_path) {
 	this._output_string = false;
+	var res = this._res;
 	try {
 		var stat = $fs.stat(file_path);
-		var res = c._res;
 		
 		if(stat.isFile()) {      // Stream a single file.
-			c._res.headers['Content-Length'] = stat.size;
-			c._res.headers['Content-Type'] = mime;
-			c._res.statusCode = 200;
+			//c._res.headers['Content-Length'] = stat.size;
+			//c._res.headers['Content-Type'] = mime;
+			//c._res.statusCode = 200;
+			this._headers['Content-Length'] = stat.size;
+			this._headers['Content-Type'] = mime;
+			res.writeHead(200, this._headers);
 			
-			(function streamFile(buffer, offset) {
+			(function streamFile(c, buffer, offset) {
 				fs.createReadStream(file_path, {
 					flags: 'r',
 					encoding: 'binary',
@@ -402,14 +410,15 @@ Connection.prototype.file = function(mime, file_path) {
 					c.end(500);
 					//sys.error(err);
 				});
-			})(new(buffer.Buffer)(stat.size), 0);
+			})(this, new(buffer.Buffer)(stat.size), 0);
 		} else {
-			c._res.statusCode = 404;
+			res.writeHead(404, this._headers);
 			res.write("404!");
 			res.end(404);
 		}
 	} catch(e) {
-		c._res.statusCode = 404;
+		console.log(sys.inspect(res))
+		res.writeHead(404, this._headers);
 		res.write("404!");
 		res.end();
 	}
@@ -642,6 +651,7 @@ var server = ws.createServer({
 			var ret = {
 				_conn: conn,
 				_output_string: "",
+				_headers: {},
 				ret: null,
 				print: function(str) {
 					this._output_string += str.toString();
