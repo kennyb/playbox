@@ -24,30 +24,81 @@ process.on('uncaughtException', function(err) {
 require.paths.unshift("lib");
 require.paths.unshift("../../lib");
 require.paths.unshift("lib/node-strtok");
-require.extensions[".js"] = require.extensions[".sjs"];
 
 var http = require("http"),
 	sys = require("sys"),
 	Url = require("url"),
+	edb = require("edb"),
 	fs = require("fs"),
 	$fs = require("$fs"),
 	buffer = require("buffer"),
+	QueryString = require("querystring"),
+	ws = require("node-websocket-server/ws/server"),
+	Url = require("url"),
 	QueryString = require("querystring");
+	//cookie = require( "./lib/cookie");
 
-//var jsp = require("./lib/UglifyJS/lib/parse-js");
-//var pro = require("./lib/UglifyJS/lib/process");
-
-//var mongo = require('./lib/mongodb');
-//var mongoose = require('./lib/mongoose');
-
-// global objects
+// globals
+Buffer = require('buffer').Buffer;
+Mixin = require("node-websocket-server/lang/mixin");
 Playbox = require('playbox').Playbox;
-ws = require("node-websocket-server/ws/server");
-Url = require("url");
-QueryString = require("querystring");
-//cookie = require( "./lib/cookie");
+
+var in_app = "global";
+
+Log = {
+	log: function(header, s) {
+		console.log(" ["+header+"] "+in_app+": "+s);
+	},
+	success: function(s) {
+		console.log(" [*] "+in_app+": "+s);
+	},
+	error: function(s) {
+		console.log(" [!] "+in_app+": "+s);
+	},
+	debug: function(s) {
+		console.log(" [DEBUG] "+in_app+": "+s);
+	}
+};
+Edb = {
+	get: function(k, c) {
+		return edb.get(in_app+"."+k, c);
+	},
+	set: function(k, v, c) {
+		return edb.set(in_app+"."+k, v, c);
+	},
+	rm: function(k, c) {
+		return edb.rm(in_app+"."+k, c);
+	},
+	list: function(p, c) {
+		return edb.list(in_app+"."+p, c);
+	}
+};
 
 var conn_id = 0;
+
+var config = {},
+	applist = {};
+
+try {
+	config = $fs.readFile('config.json');
+} catch(e) {
+	console.log(" [ERROR] could not load config.json");
+} finally {
+	config = JSON.parse(config);
+}
+
+try {
+	applist = $fs.readFile('applist.json');
+} catch(e) {
+	console.log(" [ERROR] could not load applist.json");
+} finally {
+	applist = JSON.parse(applist);
+}
+
+console.log("Initializing...");
+edb.init(".edb", function() {
+	console.log("Edb initialized");
+});
 
 Connection = exports.Connection = function(req, res) {
 	this._req = req;
@@ -244,11 +295,14 @@ Connection.prototype.start = function() {
 		var app = apps[app_name];
 		if(app !== undefined) {
 			try {
+				in_app = app_name;
 				app.http(this, app_path);
 			} catch(e) {
 				var msg = e.toString();
 				this.print(msg);
 				this.end(parseInt(msg, 10) || 500);
+			} finally {
+				in_app = "global";
 			}
 		} else if(method === "GET") {
 			switch(app_name) {
@@ -590,6 +644,8 @@ var server = ws.createServer({
 		
 		var app = apps[app_name];
 		if(app !== undefined && typeof app.http === 'function') {
+			//CURRENT: need try/catch?
+			in_app = app_name;
 			var ret = {
 				_conn: conn,
 				_headers: {},
@@ -604,6 +660,7 @@ var server = ws.createServer({
 			};
 			
 			app.http(ret, app_path);
+			in_app = "global";
 		}
 	});
 }).on("close", function(conn){
@@ -611,12 +668,24 @@ var server = ws.createServer({
 	server.broadcast("<"+conn.id+"> disconnected");
 });
 
+Edb.get("applist", function(key, value) {
+	if(typeof value === 'undefined') {
+		// running the playbox for the very first time
+		// do more first time stuff, like loading the local library
+		Edb.set("applist", applist);
+	} else {
+		Mixin(applist, value);
+	}
+});
+
 using(var files = $fs.readdir("apps")) {
 	for(var i in files) {
 		var app = files[i];
 		console.log(" [*] loading:", app);
 		require.paths.unshift("./apps/"+app);
+		in_app = app;
 		apps[app] = require("./apps/"+app+"/"+app);
+		in_app = "global";
 	}
 }
 
@@ -624,9 +693,11 @@ for(var i in apps) {
 	var app = apps[i];
 	if(typeof app.init === 'function') {
 		console.log(" [*] app init:", i);
+		in_app = i;
 		app.init({
 			ws_broadcast: server.broadcast
 		});
+		in_app = "global";
 	}
 }
 
@@ -655,54 +726,3 @@ console.log(pro.gen_code(ast, false));
 server.listen(1155, function() {
 	console.log(" [*] listening on port: " + 1155);
 });
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-// --------------------------
-// --------------------------
-// --------------------------
-/*
-var Playbox = require('./libs/playbox').Playbox;
-var http = require("http");
-var url = require("url");
-
-var p = new Playbox();
-p.init("Library");
-p.start();
-
-var server = http.createServer(function (req, res) {
-
-	// the options are usually optional, accept for 'set'
-	console.log(p.library()); // should print all of the songs
-	console.log(p.info("1234")); // should throw an exception saying the number of arguments is bad
-	console.log(p.info("...")); // should return the file information
-	console.log(p.get("...")); // should return the file information
-	console.log(p.set("...", {cmd: "download"})); // should return true or false
-	
-	res.writeHead(200, {"Content-Type": "application/javascript"});
-	res.write(url.parse(req.url).pathname);
-	res.write(JSON.stringify(p.library()))
-	res.end();
-});
-
-
-server.listen(1155, "localhost", function(e) { console.log("listening on port", 1155); });
-
-// stop the playbox
-//p.stop();
-*/

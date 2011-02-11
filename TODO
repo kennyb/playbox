@@ -1,11 +1,16 @@
 current:
-rewrite the streaming using the sjs syntax
+common logging functions
+common edb functions
+common require functions (which do automatic dependency checks and stuff)
+give each module its own dir, and use package.json to specify the entry point
 addition of a module system with adherance to nodules (https://github.com/kriszyp/nodules) package.json changes
 downloading of modules automatically
 reloading modules automatically
 verify the local file, by doing the hash on it and comparing to see if it matches.
 add, before() / after() text functions
 new class Archive
+make playbox functions static to the module
+make the module able to be 'new'ed
 
 anyone can do:
 limit / offset on query (change the params format to be json)

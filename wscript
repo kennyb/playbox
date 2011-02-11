@@ -349,6 +349,10 @@ def shutdown(ctx):
 			symlink(abspath('main.sjs'), 'build/release/main.sjs')
 		if not lexists('build/release/lib/edb.sjs'):
 			symlink(abspath('edb.sjs'), 'build/release/lib/edb.sjs')
+		if not lexists('build/release/config.json'):
+			symlink(abspath('config.json'), 'build/release/config.json')
+		if not lexists('build/release/applist.json'):
+			symlink(abspath('applist.json'), 'build/release/applist.json')
 		
 		# default apps
 		if not exists('build/release/apps'):

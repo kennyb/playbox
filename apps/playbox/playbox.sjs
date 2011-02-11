@@ -2,10 +2,7 @@ var Sys = require("sys"),
 	Fs = require('fs'),
 	$fs = require('$fs'),
 	Path = require('path'),
-	Buffer = require('buffer').Buffer,
 	ID3File = require("node-id3"),
-	Mixin = require("node-websocket-server/lang/mixin"),
-	Edb = require("edb"),
 	Crypto = require("crypto");
 
 var playbox = new Playbox(),
@@ -171,28 +168,22 @@ function init() {
 	console.log(" library_dir: "+playbox.library_dir);
 	console.log(" torrents_dir: "+playbox.torrents_dir);
 	
-	Edb.init(playbox.library_dir + ".edb", function() {
-		console.log("Edb initialized");
+	Edb.get("playbox.config", function(key, value) {
+		if(typeof value === 'undefined') {
+			// running the playbox for the very first time
+			// do more first time stuff, like loading the local library
+			Edb.set("config", config);
+		} else {
+			Mixin(config, value);
+		}
 		
-		Edb.get("config", function(key, value) {
-			
-			if(typeof value === 'undefined') {
-				// running the playbox for the very first time
-				// do more first time stuff, like loading the local library
-				Edb.set("config", config);
-			} else {
-				Mixin(config, value);
-			}
-			
-			console.log("add_media", playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
-			add_media(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
-		});
-		
-		Edb.list("archive.", function(key, value) {
-			if(value !== undefined) {
-				update_metadata(value.id, value);
-			}
-		});
+		add_media(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+	});
+	
+	Edb.list("archive.", function(key, value) {
+		if(value !== undefined) {
+			update_metadata(value.id, value);
+		}
 	});
 	
 	// start the updates
