@@ -722,10 +722,8 @@ Handle<Value> Playbox::update(const Arguments &args)
 			case libtorrent::listen_succeeded_alert::alert_type:
 				if(libtorrent::listen_succeeded_alert* p = libtorrent::alert_cast<libtorrent::listen_succeeded_alert>(alert.get())) {
 					symbol = &symbol_listening;
-					printf("LISTENING\n");
 				} else if(libtorrent::listen_failed_alert* p = libtorrent::alert_cast<libtorrent::listen_failed_alert>(alert.get())) {
 					symbol = &symbol_listeningFailed;
-					printf("LISTENING FAILED\n");
 #ifndef ENABLE_WARNINGS
 				} else {
 					// putos warnings de mierda! should never get here

@@ -10,13 +10,16 @@
 global.start_time = new Date();
 
 // global error handler
+
 process.on('uncaughtException', function(err) {
-	var stack = err.stack.split("\n");
-	console.log('Caught exception:\n', sys.inspect(stack,0,99,1,1));
+	var sys = require("sys");
+	//var stack = err.stack.split("\n");
+	console.log(" [ERROR] "+err.fileName+": "+err.lineNumber+"\n"+err.message+"\n", sys.inspect(err,0,99,1,1));
 	if(previous) {
 		console.log(sys.inspect(previous,0,99,1,1));
 	}
 });
+//*/
 
 require.paths.unshift("lib");
 require.paths.unshift("../../lib");
@@ -434,7 +437,6 @@ function add_file(path, vpath, mime, literal) {
 				console.log("updated: "+path);
 			};
 		}(path, vpath, mime, literal));
-		
 	}
 }
 
@@ -552,9 +554,6 @@ add_file("public/templates.html", "text/html; charset=utf-8", true);
 
 //add_dir("public/", "/");
 
-console.log("Initializing poem...");
-
-hold(1000);
 
 var apps = {};
 

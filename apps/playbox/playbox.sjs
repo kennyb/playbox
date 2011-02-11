@@ -48,14 +48,12 @@ function update() {
 			}
 			
 			//console.log(c, status_count["PARSING"]);
-			if(c < 11 && status_count["PARSING"] <= 1 && (path = add_archive_queue.shift()) && path.indexOf('04. The American Way') !== -1) {
+			if(c < 11 && status_count["PARSING"] < 1 && (path = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
 				c = true;
 				for(i in archives) {
 					t = archives[i];
-					console.log(t.path, path);
 					if(t.path === path) {
 						// already loaded
-						console.log("LOADED");
 						c = false;
 						break;
 					}
@@ -64,7 +62,6 @@ function update() {
 				if(c && (meta = playbox.get_archive_metadata(path)) !== false) {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path, playbox_hash) {
-						console.log("strip_metadata - done", Sys.inspect(playbox_hash));
 						status_count["PARSING"]--;
 						var torrent = playbox.make_archive_torrent(stripped_archive_path);
 						meta.id = torrent.comment = playbox_hash;
@@ -89,7 +86,7 @@ function update() {
 	} else {
 		last_idle = new Date();
 	}
-};
+}
 
 function broadcast_event(evt, data) {
 	data = data || {};
@@ -147,7 +144,7 @@ playbox.on("stateChanged", function(hash, extra) {
 }).on("metadataAdded", function(hash, path) {
 	load_metadata_queue.push(path);
 }).on("listening", function(details) {
-	console.log("LISTENING", details);
+	//console.log("LISTENING", details);
 }).on("listeningFailed", function(details) {
 	console.log("LISTENING_FAILED", details);
 });
@@ -193,7 +190,6 @@ function init() {
 		
 		Edb.list("archive.", function(key, value) {
 			if(value !== undefined) {
-				console.log("meta", Sys.inspect(value));
 				update_metadata(value.id, value);
 			}
 		});
@@ -210,13 +206,32 @@ function update_metadata(hash, meta) {
 		broadcast_event("archiveUpdated", meta);
 	} else {
 		console.log(" [*] addded "+hash);
-		$fs.symlink(meta.path, playbox.library_dir+hash);
+		var lib_file = playbox.library_dir+hash;
+		
+		try {
+			var st = $fs.lstat(lib_file);
+			if(!st.isSymbolicLink()) {
+				$fs.unlink(lib_file);
+			}
+		} catch(e) {
+			// file doesn't exist (expected behaviour)
+		} finally {
+			try {
+				st = $fs.lstat(lib_file);
+				if(!st.isSymbolicLink()) {
+					throw new Error("unable to make library symlink");
+				}
+			} catch(e) {
+				$fs.symlink(meta.path, playbox.library_dir+hash);
+			}
+		}
+		
 		archives[hash] = meta;
 		broadcast_event("archiveAdded", meta);
 	}
 	
 	Edb.set("archive."+hash, meta, function() {
-		console.log("saved..");
+		//console.log("saved..");
 	});
 }
 
@@ -259,131 +274,58 @@ function query(args) {
 
 var tmp_offset = 0;
 function strip_metadata(file_path, callback) {
-	//TODO: circular buffer, and obeying speed limits
-	//throw new Error("lla");
-	console.log("strip_metadata", file_path)
-	Fs.stat(file_path, function(err, st) {
-		if(err) throw err;
+	//try {
+		var st = $fs.stat(file_path);
 		var  chunk_size = 64 * 1024;
 		var  buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
 		var buf_pos    = 0;
 		var buf = new Buffer(buf_size);
 		var dest_path = playbox.tmp_path+"strip."+(tmp_offset++);
-		
-		var orig_size = st.size;
-		var remaining = orig_size;
-		var offset = 0;
-		var got_meta = false;
-		//CURRENT: final starting key + fix buffering
 		var sha1 = Crypto.createHmac("sha1", "changeme");
-		var sr = Fs.createReadStream(file_path, {flags: 'r', encoding: 'binary', mode: 0666, bufferSize: chunk_size}),
-			sw = Fs.createWriteStream(dest_path+".mp3", {flags: 'w+', encoding: 'binary', mode: 0644});
-		
-		var write_func = function() {
-			console.log("write_func");
-			buf_pos = 0;
-			if(remaining < buf.length) {
-				if(remaining > 0) {
-					var b = buf.slice(offset, remaining);
-					sw.write(b);
-					sha1.update(b);
-				}
+
+		using(var sr = $fs.openInStream(file_path)) {
+			using(var sw = $fs.openOutStream(dest_path+".mp3", 'w+', 0644)) {
+				var bytes = sr.readBuf(buf, 64*1024);
 				
-				remaining = -1;
-			} else {
-				remaining -= buf.length;
-				if(offset === 0) {
-					sw.write(buf);
-					sha1.update(buf);
-				} else {
-					// TODO: for some reason this crashes sometimes, saying that the offset is bigger than the buffer
-					if(offset > buf.length) {
-						console.log(remaining, offset, buf.length);
-						throw new Error("cacas!");
-					}
-					
-					var b = buf.slice(offset);
-					sw.write(b);
-					sha1.update(b);
-					offset = 0;
-				}
-			}
-		}
-		
-		var get_meta = function() {
-			//TODO: do a test to see if the buffer has an ID3 tag at the beginning.
-			// if it doesn't, add it (so that ffmpeg will try and determine the duration)
-			var id3 = new ID3File(buf);
-			if(id3.parse()) {
-				var t = id3.getTags();
-				got_meta = true;
-				
-				if(t.id3 && t.id3.size) {
-					offset = t.id3.size;
-					sw.write("ID3\x02\0\0\0\0\0");
-					sha1.update("ID3\x02\0\0\0\0\0");
-				}
-			}
-		}
-		
-		sw.on('drain', function() {
-			console.log("sw.drain", remaining);
-			if(remaining === -1) {
-				sw.end();
-			} else if(remaining !== -1) {
-				sr.resume();
-			}
-		}).on('close', function() {
-			console.log("write close");
-			callback(dest_path+".mp3", sha1.digest(encoding="hex"));
-		});
-		
-		sr.on("data", function(chunk) {
-			console.log("data", remaining);
-			// TODO: when reading this in, the whole file should be read, and then just simply call the function, "setPieceHashes"
-			// or whatever it's called... to also control the speed the file is read (preventing blocking)
-			if(remaining === -1) {
-				return;
-			}
-			
-			var bufNextPos = buf_pos + chunk.length;
-			console.log(buf_pos, remaining, bufNextPos, remaining-bufNextPos, bufNextPos >= buf_size, bufNextPos > remaining);
-			buf.write(chunk,'binary', buf_pos);
-			if(bufNextPos >= buf_size || bufNextPos > remaining) {
-				if(bufNextPos < remaining) {
-					console.log("pause");
-					sr.pause();
-				}
-				
-				if(got_meta === false) {
-					// right now, there's a huge bug, if the metadata is larger than the buffer, so for now... I'm just skipping it
-					// I will need to continually increase the size of the buffer, until I am able to retrieve the metadata.
-					get_meta();
+				// extract metadata
+				//TODO: do a test to see if the buffer has an ID3 tag at the beginning.
+				// if it doesn't, add it (so that ffmpeg will try and determine the duration)
+				var id3 = new ID3File(buf);
+				if(id3.parse()) {
+					var t = id3.getTags();
 					got_meta = true;
+					
+					if(t.id3 && t.id3.size) {
+						sw.writeUtf8("ID3\x02\0\0\0\0\0");
+						sha1.update("ID3\x02\0\0\0\0\0");
+						
+						var b = buf.slice(t.id3.size);
+						sha1.update(b);
+						sw.writeBuf(b);
+					}
 				}
 				
-				buf_pos = 0;
-				
-				write_func();
-			} else if(buf_pos < buf_size) {
-				buf_pos = bufNextPos;
-				sr.resume();
-			} else {
-				console.log("MMM");
-				// now, write
-				//console.log("still going", chunk.length);
+				while(bytes = sr.readBuf(buf)) {
+					sw.writeBuf(buf, 0, bytes);
+					sha1.update(bytes === buf.length ? buf : buf.slice(0, bytes));
+				}
 			}
-		}).on("end", function(chunk) {
-			console.log("end", remaining);
-			buf_pos = 0;
-			write_func();
-		}).on("close", function() {
-			console.log("close", remaining);
-			// something of closing here
-		});
-	});
+		}
+		
+		if(callback) {
+			callback(dest_path+".mp3", sha1.digest(encoding="hex"));
+		}
+	/*} catch(e) {
+		switch(e.code) {
+			case 'ENOENT':
+				console.log(" [ERROR] file could not be found");
+				break;
+				
+			default:
+				console.log("bailing..", Sys.inspect(e));
+		}
+	}*/
 }
-//*/
 
 // TODO: move this to a lib function
 var _ext2mime = {
