@@ -11,14 +11,15 @@ global.start_time = new Date();
 
 // global error handler
 
-process.on('uncaughtException', function(err) {
-	var sys = require("sys");
-	//var stack = err.stack.split("\n");
-	console.log(" [ERROR] "+err.fileName+": "+err.lineNumber+"\n"+err.message+"\n", sys.inspect(err,0,99,1,1));
-	if(previous) {
-		console.log(sys.inspect(previous,0,99,1,1));
-	}
-});
+process.on('uncaughtException', function(sys) {
+	return function(err) {
+		//var stack = err.stack.split("\n");
+		console.log(" [ERROR] "+err.fileName+": "+err.lineNumber+"\n"+err.message+"\n", sys.inspect(err,0,99,1,1));
+		if(previous) {
+			console.log(sys.inspect(previous,0,99,1,1));
+		}
+	};
+}(require("sys")));
 //*/
 
 require.paths.unshift("lib");
@@ -78,27 +79,6 @@ var conn_id = 0;
 
 var config = {},
 	applist = {};
-
-try {
-	config = $fs.readFile('config.json');
-} catch(e) {
-	Log.error("could not load config.json");
-} finally {
-	config = JSON.parse(config);
-}
-
-try {
-	applist = $fs.readFile('applist.json');
-} catch(e) {
-	Log.error("could not load applist.json");
-} finally {
-	applist = JSON.parse(applist);
-}
-
-Log.info("Initializing...");
-edb.init(".edb", function() {
-	Log.info("Edb initialized");
-});
 
 Connection = exports.Connection = function(req, res) {
 	// TODO set the encoding based on the header determined encoding
@@ -430,9 +410,67 @@ Connection.prototype.file = function(mime, file_path) {
 	}
 }
 
+function init() {
+	global.static_files = {};
+	global.static_files_mime = {};
+	
+	try {
+		config = $fs.readFile('config.json');
+	} catch(e) {
+		Log.error("could not load config.json");
+	} finally {
+		config = JSON.parse(config);
+	}
 
-global.static_files = {};
-global.static_files_mime = {};
+	try {
+		applist = $fs.readFile('applist.json');
+	} catch(e) {
+		Log.error("could not load applist.json");
+	} finally {
+		applist = JSON.parse(applist);
+	}
+
+	Log.info("Initializing...");
+	edb.init(".edb", function() {
+		Log.info("Edb initialized");
+	});
+	
+	
+	Edb.get("applist", function(key, value) {
+		if(typeof value === 'undefined') {
+			// running the playbox for the very first time
+			// do more first time stuff, like loading the local library
+			Edb.set("applist", applist);
+		} else {
+			Mixin(applist, value);
+		}
+	});
+
+	// now, fuck up the require function to restrict access to the apps
+	// by default, grant all applications super access (later, this will be restricted for all non-default apps)
+
+	using(var files = $fs.readdir("apps")) {
+		for(var i in files) {
+			var app = files[i];
+			in_app = app;
+			Log.info("Initializing..");
+			require.paths.unshift("./apps/"+app);
+			apps[app] = require("./apps/"+app+"/"+app);
+			in_app = "global";
+		}
+	}
+
+	for(var i in apps) {
+		var app = apps[i];
+		if(typeof app.init === 'function') {
+			in_app = i;
+			app.init({
+				ws_broadcast: server.broadcast
+			});
+			in_app = "global";
+		}
+	}
+}
 
 
 //TODO... this is caca. we should use the functions better, stat the files, etc
@@ -676,38 +714,6 @@ var server = ws.createServer({
 	server.broadcast("<"+conn.id+"> disconnected");
 });
 
-Edb.get("applist", function(key, value) {
-	if(typeof value === 'undefined') {
-		// running the playbox for the very first time
-		// do more first time stuff, like loading the local library
-		Edb.set("applist", applist);
-	} else {
-		Mixin(applist, value);
-	}
-});
-
-using(var files = $fs.readdir("apps")) {
-	for(var i in files) {
-		var app = files[i];
-		in_app = app;
-		Log.info("Initializing..");
-		require.paths.unshift("./apps/"+app);
-		apps[app] = require("./apps/"+app+"/"+app);
-		in_app = "global";
-	}
-}
-
-for(var i in apps) {
-	var app = apps[i];
-	if(typeof app.init === 'function') {
-		in_app = i;
-		app.init({
-			ws_broadcast: server.broadcast
-		});
-		in_app = "global";
-	}
-}
-
 // crossdomain policy server 
 require("net").createServer(function(socket) {
 	socket.write('<?xml version="1.0"?>'+
@@ -733,3 +739,5 @@ console.log(pro.gen_code(ast, false));
 server.listen(1155, function() {
 	Log.info("listening on port: " + 1155);
 });
+
+init();

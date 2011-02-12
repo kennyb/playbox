@@ -1,6 +1,4 @@
 current:
-common logging functions
-common edb functions
 common require functions (which do automatic dependency checks and stuff)
 give each module its own dir, and use package.json to specify the entry point
 addition of a module system with adherance to nodules (https://github.com/kriszyp/nodules) package.json changes
