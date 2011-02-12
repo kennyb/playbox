@@ -14,9 +14,9 @@ global.start_time = new Date();
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		//var stack = err.stack.split("\n");
-		console.log(" [ERROR] "+err.fileName+": "+err.lineNumber+"\n"+err.message+"\n", sys.inspect(err,0,99,1,1));
+		console.log(" [ERROR] "+err.fileName+": "+err.lineNumber+"\n"+err.message+"\n", Sys.inspect(err,0,99,1,1));
 		if(previous) {
-			console.log(sys.inspect(previous,0,99,1,1));
+			console.log(Sys.inspect(previous,0,99,1,1));
 		}
 	};
 }(require("sys")));
@@ -26,8 +26,11 @@ require.paths.unshift("lib");
 require.paths.unshift("../../lib");
 require.paths.unshift("lib/node-strtok");
 
-var http = require("http"),
-	sys = require("sys"),
+var in_app = "global",
+	http = require("http"),
+	Module = require("module"),
+	Net = require("net"),
+	Sys = require("sys"),
 	Url = require("url"),
 	edb = require("edb"),
 	fs = require("fs"),
@@ -43,8 +46,6 @@ var http = require("http"),
 Buffer = require('buffer').Buffer;
 Mixin = require("node-websocket-server/lang/mixin");
 Playbox = require('playbox').Playbox;
-
-var in_app = "global";
 
 Log = {
 	log: function(header, s) {
@@ -395,7 +396,7 @@ Connection.prototype.file = function(mime, file_path) {
 					res.end();
 				}).on('error', function (err) {
 					c.end(500);
-					//sys.error(err);
+					//Sys.error(err);
 				});
 			})(this, new(buffer.Buffer)(stat.size), 0);
 		} else {
@@ -448,13 +449,42 @@ function init() {
 
 	// now, fuck up the require function to restrict access to the apps
 	// by default, grant all applications super access (later, this will be restricted for all non-default apps)
-
+	(function(_load) {
+		Module._load = function(path, self) {
+			console.log("loading module "+path, in_app);
+			if(path.indexOf("./apps/"+in_app) === 0) {
+				return _load(path, self);
+			} else if(path.indexOf("./apps/") === 0) {
+				throw new Error("application not allowed to load other application's modules");
+			}
+			
+			switch(in_app) {
+				case "playbox":
+				case "unhosted":
+					return _load(path, self);
+				
+				default:
+					throw new Error("application not allowed permissions");
+			}
+			
+			return {};
+		};
+	}(Module._load));
+	
+	//TODO: remove the different paths and stuff from the require function so nothing can be loaded that isn't necessary :)
+	(function(_require) {
+		require = function(path) {
+			return _require(path);
+		};
+	}(require));
+	
 	using(var files = $fs.readdir("apps")) {
 		for(var i in files) {
 			var app = files[i];
 			in_app = app;
 			Log.info("Initializing..");
-			require.paths.unshift("./apps/"+app);
+			//require.paths.unshift("./apps/"+app);
+			//TODO: create global namespace for the app and then use Module._load
 			apps[app] = require("./apps/"+app+"/"+app);
 			in_app = "global";
 		}
@@ -715,7 +745,7 @@ var server = ws.createServer({
 });
 
 // crossdomain policy server 
-require("net").createServer(function(socket) {
+Net.createServer(function(socket) {
 	socket.write('<?xml version="1.0"?>'+
 				'<cross-domain-policy>'+
 					'<allow-access-from domain="*" to-ports="1111-1155"/>'+
