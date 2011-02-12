@@ -394,6 +394,13 @@ Connection.prototype.file = function(mime, file_path) {
 			this._headers['Content-Type'] = mime;
 			res.writeHead(200, this._headers);
 			
+			// TODO: change this over to sjs syntax to make it readable.
+			// the problem is, the whole thing needs to be changed to use $http sjs, requiring an entire rewrite.
+			// when I do the rewrite, I want to think about implementing the keepalives, better function system, and more real-time sorta stuff
+			// so, do this at a later time. let's just get the necessary stuff done now.
+			//using(var sr = $fs.openInStream(file_path)) {
+				
+			//}
 			(function streamFile(c, buffer, offset) {
 				fs.createReadStream(file_path, {
 					flags: 'r',
@@ -417,9 +424,8 @@ Connection.prototype.file = function(mime, file_path) {
 			res.end(404);
 		}
 	} catch(e) {
-		console.log(sys.inspect(res))
-		res.writeHead(404, this._headers);
-		res.write("404!");
+		res.writeHead(500, this._headers);
+		res.write(e.message+"\n"+e.stack);
 		res.end();
 	}
 }

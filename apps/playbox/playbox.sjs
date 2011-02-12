@@ -339,13 +339,15 @@ function ext2mime(ext) {
 
 exports.http = function(c, path) {
 	var path_offset = path.indexOf('/'),
-		func = path_offset < 1 ? path : path.substr(0, path_offset),
-		args = (path_offset = func.indexOf('/')) === -1 ? null : path.substr(path_offset+1),
+		func = path_offset === -1 ? path : path.substr(0, path_offset),
+		args = path_offset === -1 ? "" : path.substr(path_offset+1),
 		output = {
 			path: path,
 			status: 200,
 			ret: null
 		};
+		
+	console.log("func", func, "args", args);
 	
 	switch(func) {
 		case '?':
@@ -364,6 +366,7 @@ exports.http = function(c, path) {
 			break;
 			
 		case 'g':
+			console.log("get", playbox.library_dir+"/"+args);
 			c.file("audio/mp3", playbox.library_dir+"/"+args);
 			return;
 			
