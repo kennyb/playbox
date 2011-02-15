@@ -2,3 +2,17 @@
 playbox preview
 
 licensed under AGPLv3
+
+most of this code is total fumas. It is the goal, over the next few weeks, to make this code look professional. the extreme disorganization was due to many obsoleted ideas in the prototype phase. it took me a while to figure out the exact architecture I wanted. I'm just gonna write random thoughts:
+
+1. I really would like more of an object oriented version, abstracting out the program more and more to js. it will be a gradual change, working to make the code less and less C++ heavy. at first, objects will represent things such as torrents (archives) and dht requests. it is in my best interest to write the majority of this code in js, following the event and callback method of programming common to node js; it is clearly the future. so, I will begin moving large sections of the libtorrent dht stuff out to javascript. it allows me to begin working on the necessary protocol for more complicated tasks.
+
+2. the 'playbox' will become an application to this program in the coming days. the name of this program will be called 'poem'. poem will be a bit of an application server allowing for some programs to do cool shit on your machines. plans are good here. for example, you can find code allowing for the use of libavcodec and libtorrent from javascript. you can see the obvious reason for this. lightweight media servers can be created with the idea of local playback. applications can be created rapidly not needing to know anything more than javascript. later, serving over localhost to the browser, audio, video, etc. can be used. think little media boxes.
+
+3. right now, there is virtually no work done on the network side of things... meaning I am using libtorrent to hash the files and create the torrents. however, the torrents need the dht to begin working. the dht will be used to make to transfer the torrent metadata. it's not really important right now. I need to make a local playbox before we can do same-network transfers between boxes.
+
+4. the reason why I'm changing the name to poem, is because there was an idea of writing a remote control to the playbox and I didn't really want that to be included by default, so I made it possible to have multiple apps running, and services can be provided to others. for example, you make see a new application soon called 'libtorrent' where I begin moving all the work out to the javascript (so it's not blocking) and just running the sha1 functions from javascript as well. I can delete a large part of the library after doing that, creating the entire torrent in javascript. so, 'poem' is the name of the system for maintaining these applications.
+
+5. applications will be able to be downloaded from the internet after I implement some sort of rsa (so harmfull apps would not be installed). also, lots of work will need to be done making the environment safe.
+
+developing..
