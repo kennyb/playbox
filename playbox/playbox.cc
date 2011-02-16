@@ -299,6 +299,7 @@ Handle<Value> Playbox::archive(const Arguments &args)
 	return scope.Close(result);
 }
 
+
 static Handle<Value> entry_to_json(libtorrent::entry e) {
 	using namespace boost;
 	using namespace libtorrent;
@@ -397,43 +398,6 @@ Handle<Value> Playbox::make_archive_torrent(const Arguments &args)
 		
 		Handle<Value> meta = entry_to_json(metadata);
 		return meta;
-		/*
-		// output the metadata to a buffer
-		std::vector<char> buffer;
-		bencode(std::back_inserter(buffer), metadata);
-		torrent_info ti(&buffer[0], buffer.size());
-		buffer.clear();
-		
-		//======
-		// add a symlink in the library to the real file
-		std::string hash(lexical_cast<std::string>(ti.info_hash()));
-		std::string library_file(library_dir + hash);
-		if(!filesystem::exists(library_file)) {
-			std::string str_real_path(real_path.string());
-			if(symlink(str_real_path.c_str(), library_file.c_str()) != 0) {
-				perror("symlink(MusicDirectory)");
-				return False();
-			}
-		}
-		
-		//======
-		// generate the filename based on the info hash
-		std::string torrent_file(::torrents_dir);
-		torrent_file.append(hash);
-		torrent_file.append(".torrent");
-		
-		//======
-		// output the buffer to a file
-		if(!filesystem::exists(torrent_file)) {
-			filesystem::ofstream out(filesystem::path(torrent_file), std::ios_base::binary);
-			bencode(std::ostream_iterator<char>(out), metadata);
-			
-			//Local<Value> args[2];
-			//args[0] = Local<Value>::New(String::New(hash.c_str()));
-			//args[1] = Local<Value>::New(String::New(torrent_file.c_str()));
-			//playbox->Emit(symbol_metadataAdded, 2, args);
-		}
-		*/
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {
@@ -450,7 +414,113 @@ Handle<Value> Playbox::make_archive_torrent(const Arguments &args)
 
 Handle<Value> Playbox::load_torrent(const Arguments &args)
 {
-	return ThrowException(Exception::Error(String::NewSymbol("not yet implemented")));
+	if(args.Length() != 1 || !args[0]->IsString()) {
+		return ThrowException(Exception::Error(String::NewSymbol("load_torrent expects a bencoded string")));
+	}
+	
+	libtorrent::lazy_entry metadata;
+	libtorrent::error_code ec;
+	String::Utf8Value bencoded_string(args[0]->ToString());
+	int pos;
+	
+	if(*bencoded_string == NULL || libtorrent::lazy_bdecode(*bencoded_string, (*bencoded_string) + bencoded_string.length(), metadata, ec, &pos, 55, 1111) != 0) {
+		return ThrowException(Exception::Error(String::NewSymbol("not yet implemented")));
+	}
+	
+#ifndef BOOST_NO_EXCEPTIONS
+	try {
+#endif
+		//======
+		// add_torrent parameters
+		std::string hash;
+		std::string local_file;
+		libtorrent::add_torrent_params params;
+		params.duplicate_is_error = false;
+		params.storage_mode = libtorrent::storage_mode_allocate;
+		params.save_path = library_dir;
+		
+		//======
+		// check to see if the media_path exists
+		bool use_local_file = false;
+		std::string media_path(metadata.dict_find_string_value("media_path"));
+		if(media_path.length()) {
+			if(filesystem::exists(media_path)
+				/*&& is a valid media file */) {
+				filesystem::path media_path_path(media_path);
+				std::string library_sym(media_path + "/" + hash);
+				params.save_path = filesystem::path(media_path_path.branch_path().string()).string();
+				use_local_file = true;
+				if(!filesystem::exists(library_sym) && symlink(media_path.c_str(), library_sym.c_str()) != 0) {
+					std::cerr << "symlink could not be created" << std::endl;
+				}
+			} else {
+				std::cerr << "media path does not exist: " << media_path << std::endl;
+			}
+		} else {
+			std::cerr << "media path not found " << metadata.type() << std::endl;
+		}
+		
+		if(!use_local_file) {
+			params.save_path = library_dir;
+		}
+		
+		//======
+		// load up the torrent info into the params
+		//torrent_info* ti = new torrent_info(metadata);
+		local_file = params.save_path + "/";
+		libtorrent::torrent_info* ti = new libtorrent::torrent_info(metadata, 0);
+		if(ti) {
+			hash = lexical_cast<std::string>(ti->info_hash());
+		
+			if(use_local_file) {
+				const std::string filename(ti->name());
+				ti->rename_file(0, filename);
+				local_file += filename;
+			} else {
+				ti->rename_file(0, hash);
+				local_file += hash;
+			}
+			
+			//js_metadata = extract_metadata(hash, local_file, metadata);
+			params.ti = ti;
+		}
+		
+		// if no media data is found, grab the id3 info!
+		
+		// now, verify that the file is indeed a media file
+		
+		
+		std::cerr << "loading torrent... " << hash << " " << params.save_path << " " << filesystem::exists(params.save_path) << std::endl;
+		libtorrent::torrent_handle handle = cur_session.add_torrent(params);
+		
+		// I can't really imagine code any uglier
+		libtorrent::entry meta_entry;
+		meta_entry = implicit_cast<libtorrent::lazy_entry const&>(metadata);
+		hash = lexical_cast<std::string>(handle.info_hash());
+		Handle<Value> js_metadata = entry_to_json(meta_entry);
+		Local<Value> event_args[2];
+		
+		
+		event_args[0] = Local<Value>::New(String::New(hash.c_str()));
+		event_args[1] = Local<Value>::New(js_metadata);
+		playbox->Emit(symbol_archiveLoaded, 2, event_args);
+		
+		
+#ifndef BOOST_NO_EXCEPTIONS
+	} catch (std::exception& e) {
+		std::cerr << e.what() << "\n";
+		std::string const *stack = boost::get_error_info<stack_error_info>(e);
+		if(stack) {                    
+			std::cerr << stack << std::endl;
+		}
+	}
+#endif
+	
+	
+	// lazy_decode it and throw error if failed
+	// load the torrent
+	
+	return Undefined();
 }
 
 Handle<Value> Playbox::add_archive_metadata(const Arguments &args)
