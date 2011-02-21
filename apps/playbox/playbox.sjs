@@ -3,7 +3,8 @@ var Sys = require("sys"),
 	$fs = require('$fs'),
 	Path = require('path'),
 	ID3File = require("node-id3"),
-	Crypto = require("crypto");
+	Crypto = require("crypto"),
+	bencode = require("bencode");
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
@@ -70,11 +71,12 @@ function update() {
 							meta: meta
 						}
 						
-						//TODO!!
-						//playbox.load_torrent(torrent);
+						//console.log("begin", a);
+						//var b = bencode.encode(a);
+						//console.log("end", b.length, b);
 						
+						//playbox.load_torrent(bencode.encode(a));
 						update_metadata(playbox_hash, a);
-						
 						$fs.unlink(stripped_archive_path);
 					});
 				}
@@ -267,8 +269,8 @@ var tmp_offset = 0;
 function strip_metadata(file_path, callback) {
 	//try {
 		var st = $fs.stat(file_path);
-		var  chunk_size = 64 * 1024;
-		var  buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
+		var chunk_size = 64 * 1024;
+		var buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
 		var buf_pos    = 0;
 		var buf = new Buffer(buf_size);
 		var dest_path = playbox.tmp_path+"strip."+(tmp_offset++);

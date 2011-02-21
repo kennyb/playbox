@@ -14,7 +14,7 @@ global.start_time = new Date();
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		//var stack = err.stack.split("\n");
-		console.log(" [ERROR] "+err.fileName+": "+err.lineNumber+"\n"+err.message+"\n", Sys.inspect(err,0,99,1,1));
+		console.log(" [ERROR] "+err.toString()+"\n"+err.stack+"\n", Sys.inspect(err,0,99,1,1));
 		if(previous) {
 			console.log(Sys.inspect(previous,0,99,1,1));
 		}
@@ -75,6 +75,12 @@ Edb = {
 		return edb.list(in_app+"."+p, c);
 	}
 };
+assert = function(v) {
+	this.v = v;
+	return {
+		
+	};
+}
 
 var conn_id = 0;
 

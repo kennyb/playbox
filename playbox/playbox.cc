@@ -308,8 +308,8 @@ static Handle<Value> entry_to_json(libtorrent::entry e) {
 		case entry::int_t: {
 			return Integer::New(e.integer());
 		} case entry::string_t: {
-			return String::New(e.string().c_str());
-			
+			Local<String> s = String::New(e.string().c_str());
+			return ;
 		} case entry::list_t: {
 			entry::list_type& l = e.list();
 			Local<Array> arr = Array::New(l.size());
@@ -401,11 +401,7 @@ Handle<Value> Playbox::make_archive_torrent(const Arguments &args)
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {
-		std::cerr << e.what() << "\n";
-		std::string const *stack = boost::get_error_info<stack_error_info>(e);
-		if(stack) {                    
-			std::cerr << stack << std::endl;
-		}
+		return ThrowException(Exception::Error(String::New(e.what())));
 	}
 #endif
 	
@@ -424,7 +420,7 @@ Handle<Value> Playbox::load_torrent(const Arguments &args)
 	int pos;
 	
 	if(*bencoded_string == NULL || libtorrent::lazy_bdecode(*bencoded_string, (*bencoded_string) + bencoded_string.length(), metadata, ec, &pos, 55, 1111) != 0) {
-		return ThrowException(Exception::Error(String::NewSymbol("not yet implemented")));
+		return ThrowException(Exception::Error(String::NewSymbol("string unable to be decoded")));
 	}
 	
 #ifndef BOOST_NO_EXCEPTIONS
@@ -508,11 +504,7 @@ Handle<Value> Playbox::load_torrent(const Arguments &args)
 		
 #ifndef BOOST_NO_EXCEPTIONS
 	} catch (std::exception& e) {
-		std::cerr << e.what() << "\n";
-		std::string const *stack = boost::get_error_info<stack_error_info>(e);
-		if(stack) {                    
-			std::cerr << stack << std::endl;
-		}
+		return ThrowException(Exception::Error(String::NewSymbol(e.what())));
 	}
 #endif
 	

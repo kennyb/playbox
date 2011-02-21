@@ -148,20 +148,6 @@ def install_libs(bld):
 	elif exists('deps/ffmpeg/libavutil/libavutil.dylib'):
 		copy2(abspath('deps/ffmpeg/libavutil/libavutil.dylib'), 'build/lib/libavutil.dylib')
 
-#def build_id3(bld):
-#	id3 = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="id3.def")
-#	id3.name = "id3"
-#	id3.target = "id3"
-#	id3.cxxflags = ["-I../id3lib/include"]
-#	id3.cflags = ["-I../id3lib/include"]
-#	id3.includes = ['id3lib', 'id3lib/include', 'id3lib/include/id3', '/opt/local/include']
-#	id3.uselib = "ZLIB ICONV LIBC"
-#	id3.defines = ['HAVE_CONFIG_H']
-#	id3.source = bld.path.ant_glob('id3lib/src/*.cpp')
-#	id3.linkflags = ["-flat_namespace"]
-#	if sys.platform.startswith("darwin"):
-#		id3.linkflags += ["-undefined", "suppress"]
-
 def build_libtorrent(bld):
 	libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="libtorrent.def")
 	libtorrent.name = "torrent"
@@ -332,6 +318,10 @@ def shutdown(ctx):
 		if exists('deps/long-stack-traces/lib/long-stack-traces.js') and not lexists('build/release/lib/long-stack-traces.js'):
 			symlink(abspath('deps/long-stack-traces/lib/long-stack-traces.js'), 'build/release/lib/long-stack-traces.js')
 		
+		if exists('deps/requirejs/require.js') and not lexists('build/release/require.js'):
+			symlink(abspath('deps/requirejs/require.js'), 'build/release/require.js')
+			symlink(abspath('deps/requirejs/require'), 'build/release/require')
+		
 		# node libs
 		if exists('build/default/playbox.node'):
 			copy2('build/default/playbox.node', 'build/release/lib/playbox.node')
@@ -349,6 +339,9 @@ def shutdown(ctx):
 			symlink(abspath('main.sjs'), 'build/release/main.sjs')
 		if not lexists('build/release/lib/edb.sjs'):
 			symlink(abspath('edb.sjs'), 'build/release/lib/edb.sjs')
+		if not lexists('build/release/lib/bencode.js'):
+			symlink(abspath('lib/bencode.js'), 'build/release/lib/bencode.js')
+		
 		if not lexists('build/release/config.json'):
 			symlink(abspath('config.json'), 'build/release/config.json')
 		if not lexists('build/release/applist.json'):
