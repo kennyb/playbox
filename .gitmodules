@@ -10,9 +10,6 @@
 [submodule "deps/ffmpeg"]
 	path = deps/ffmpeg
 	url = git://gitorious.org/ffmpeg/mainline.git
-[submodule "deps/node-websocket-server"]
-	path = deps/node-websocket-server
-	url = git://github.com/miksago/node-websocket-server.git
 [submodule "deps/headjs"]
 	path = deps/headjs
 	url = git://github.com/headjs/headjs.git
@@ -34,3 +31,6 @@
 [submodule "deps/requirejs"]
 	path = deps/requirejs
 	url = git://github.com/kennyb/requirejs.git
+[submodule "deps/socket.io"]
+	path = deps/socket.io
+	url = git://github.com/LearnBoost/Socket.IO-node.git

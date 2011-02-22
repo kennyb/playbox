@@ -2,6 +2,7 @@
 <html>
 	<head>
 		<title>playbox-2</title>
+		<script src="/socket.io/socket.io.js"></script>
 	</head>
 	<body>
 		<h3>playbox-2</h3>
@@ -21,24 +22,21 @@
 		<div id="player" />
 		<div id="library" />
 		<script type="text/javascript">
-var conn;
-(function(){
-	if(window["WebSocket"]) {
-		conn = new WebSocket("ws://"+document.location.host+"/");
-		conn.onmessage = function(evt) {
-			console.log(JSON.parse(evt.data));
-		};
-
-		conn.onclose = function() {
-			console.log("** you have been disconnected");
-		};
-
-		conn.onopen = function(){
-			console.log("** you have been connected");
-			
-		}
-	}
-}());
+		
+		var socket = new io.Socket();
+		socket.connect();
+		socket.on('connect', function() {
+			console.log("connected");
+		});
+		
+		socket.on('message', function(d) {
+			console.log("message", d);
+		});
+		
+		socket.on('disconnect', function(){
+			console.log("disconnected");
+		});
+		
 		</script>
 	</body>
 </html>

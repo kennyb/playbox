@@ -75,7 +75,7 @@ function update() {
 						//var b = bencode.encode(a);
 						//console.log("end", b.length, b);
 						
-						//playbox.load_torrent(bencode.encode(a));
+						//playbox.load_torrent(bencode.encode(torrent));
 						update_metadata(playbox_hash, a);
 						$fs.unlink(stripped_archive_path);
 					});
@@ -90,12 +90,12 @@ function update() {
 function broadcast_event(evt, data) {
 	data = data || {};
 	
-	server.broadcast(JSON.stringify({
+	server.broadcast({
 		app: "playbox",
 		func: "event",
 		args: evt,
 		data: data
-	}));
+	});
 }
 
 
@@ -341,8 +341,8 @@ function ext2mime(ext) {
 
 exports.http = function(c, path) {
 	var path_offset = path.indexOf('/'),
-		func = path_offset === -1 ? path : path.substr(0, path_offset),
-		args = path_offset === -1 ? "" : path.substr(path_offset+1),
+		func = path_offset > 0 ? path.substr(0, path_offset) : path,
+		args = path_offset > 0 ? path.substr(path_offset+1) : "",
 		output = {
 			path: path,
 			status: 200,
@@ -429,12 +429,12 @@ exports.websocket_func = function(c, func, path) {
 function broadcast_event(evt, data) {
 	data = data || {};
 	
-	websocket_broadcast(JSON.stringify({
+	/*websocket_broadcast({
 		app: "playbox",
 		func: "event",
 		args: evt,
 		data: data
-	}));
+	});*/
 }
 
 // start it up!

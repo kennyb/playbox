@@ -14,10 +14,7 @@ global.start_time = new Date();
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		//var stack = err.stack.split("\n");
-		console.log(" [ERROR] "+err.toString()+"\n"+err.stack+"\n", Sys.inspect(err,0,99,1,1));
-		if(previous) {
-			console.log(Sys.inspect(previous,0,99,1,1));
-		}
+		console.log(" [ERROR] "+err.toString()+"\n"+err.stack);
 	};
 }(require("sys")));
 //*/
@@ -34,18 +31,43 @@ var in_app = "global",
 	Url = require("url"),
 	edb = require("edb"),
 	fs = require("fs"),
+	io = require("./deps/socket.io"),
 	$fs = require("$fs"),
 	buffer = require("buffer"),
 	QueryString = require("querystring"),
-	ws = require("node-websocket-server/ws/server"),
 	Url = require("url"),
 	QueryString = require("querystring");
 	//cookie = require( "./lib/cookie");
 
 // globals
 Buffer = require('buffer').Buffer;
-Mixin = require("node-websocket-server/lang/mixin");
+//Mixin = require("node-websocket-server/lang/mixin");
 Playbox = require('playbox').Playbox;
+
+//var config = JSON.parse("{lala:5}");
+//fs.readFileSync("config.js");
+
+var conn_id = 0,
+	config = {},
+	applist = {};
+	apps = {},
+	server = http.createServer(function(req, res) {
+		new Connection(req, res);
+	}),
+	socket = io.listen(server, {flashPolicyServer: false});
+
+//TODO lib func, move me
+function Mixin(target, source) {
+	if(typeof source === "object") {
+		for(var key in source) {
+			if(source.hasOwnProperty(key)){
+				target[key] = source[key];
+			}
+		}
+	}
+	
+	return target;
+}
 
 Log = {
 	log: function(header, s) {
@@ -81,11 +103,6 @@ assert = function(v) {
 		
 	};
 }
-
-var conn_id = 0;
-
-var config = {},
-	applist = {};
 
 Connection = exports.Connection = function(req, res) {
 	// TODO set the encoding based on the header determined encoding
@@ -501,7 +518,7 @@ function init() {
 		if(typeof app.init === 'function') {
 			in_app = i;
 			app.init({
-				ws_broadcast: server.broadcast
+				ws_broadcast: socket.broadcast
 			});
 			in_app = "global";
 		}
@@ -691,19 +708,10 @@ add_file("public/templates.html", "text/html; charset=utf-8", true);
 //add_dir("public/", "/");
 
 
-var apps = {};
-
-
-//var config = JSON.parse("{lala:5}");
-//fs.readFileSync("config.js");
-
-var server = ws.createServer({
-	server: http.createServer(function(req, res) {
-		new Connection(req, res);
-	})
-}).on("connection", function(conn) {
+socket.on("connection", function(conn) {
 	//conn.storage.set("username", "user_"+conn.id);
-
+	conn.broadcast("<"+conn.sessionId+"> connected");
+	
 	conn.on("message", function(path) {
 		if(path.charAt(0) !== "/") {
 			path = "/"+path;
@@ -744,19 +752,19 @@ var server = ws.createServer({
 			app.http(ret, app_path);
 			in_app = "global";
 		}
-	});
-}).on("close", function(conn){
-	//TODO apps[app_name].websocket_disconnect
-	server.broadcast("<"+conn.id+"> disconnected");
+	}).on("disconnect", function() {
+		//TODO apps[app_name].websocket_disconnect
+		socket.broadcast("<"+conn.sessionId+"> disconnected");
+	})
 });
 
 // crossdomain policy server 
-Net.createServer(function(socket) {
-	socket.write('<?xml version="1.0"?>'+
+Net.createServer(function(s) {
+	s.write('<?xml version="1.0"?>'+
 				'<cross-domain-policy>'+
 					'<allow-access-from domain="*" to-ports="1111-1155"/>'+
 				'</cross-domain-policy>');
-	socket.end();
+	s.end();
 	Log.info("sent policy file");
 }).listen(1156);
 
