@@ -3,7 +3,7 @@ NODE = ./node
 name = all
 
 all:
-	git submodule update --init
+	git submodule update --init || git submodule sync && git submodule update --init
 	if [ ! -d build ]; \
 	then \
 		patch -N -p1 -d deps/node < patches/node_compile_fixes.diff && \
