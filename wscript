@@ -335,10 +335,10 @@ def shutdown(ctx):
 			copy2(abspath('deps/node/build/default/node'), 'build/release/node')
 		
 		# do symlinks
-		if not lexists('build/release/main.sjs'):
-			symlink(abspath('main.sjs'), 'build/release/main.sjs')
-		if not lexists('build/release/lib/edb.sjs'):
-			symlink(abspath('edb.sjs'), 'build/release/lib/edb.sjs')
+		if not lexists('build/release/main.js'):
+			symlink(abspath('main.js'), 'build/release/main.js')
+		if not lexists('build/release/lib/edb.js'):
+			symlink(abspath('edb.js'), 'build/release/lib/edb.js')
 		if not lexists('build/release/lib/bencode.js'):
 			symlink(abspath('lib/bencode.js'), 'build/release/lib/bencode.js')
 		

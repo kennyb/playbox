@@ -397,13 +397,6 @@ Connection.prototype.file = function(mime, file_path) {
 			this._headers['Content-Type'] = mime;
 			res.writeHead(200, this._headers);
 			
-			// TODO: change this over to sjs syntax to make it readable.
-			// the problem is, the whole thing needs to be changed to use $http sjs, requiring an entire rewrite.
-			// when I do the rewrite, I want to think about implementing the keepalives, better function system, and more real-time sorta stuff
-			// so, do this at a later time. let's just get the necessary stuff done now.
-			//using(var sr = $fs.openInStream(file_path)) {
-				
-			//}
 			(function streamFile(c, buffer, offset) {
 				fs.createReadStream(file_path, {
 					flags: 'r',
@@ -500,7 +493,9 @@ function init() {
 		};
 	}(require));
 	
-	using(var files = $fs.readdir("apps")) {
+	fs.readdir("apps", function(err, files) {
+		if(err) throw err;
+		
 		for(var i in files) {
 			var app = files[i];
 			in_app = app;
@@ -510,18 +505,18 @@ function init() {
 			apps[app] = require("./apps/"+app+"/"+app);
 			in_app = "global";
 		}
-	}
-
-	for(var i in apps) {
-		var app = apps[i];
-		if(typeof app.init === 'function') {
-			in_app = i;
-			app.init({
-				broadcast: socket.broadcast
-			});
-			in_app = "global";
+		
+		for(var i in apps) {
+			var app = apps[i];
+			if(typeof app.init === 'function') {
+				in_app = i;
+				app.init({
+					broadcast: socket.broadcast
+				});
+				in_app = "global";
+			}
 		}
-	}
+	});
 }
 
 
@@ -537,7 +532,9 @@ function add_file(path, vpath, mime, literal) {
 		vpath = '/'+vpath;
 	}
 	
-	using(var content = $fs.readFile(path)) {
+	fs.readFile(path, function(err, content) {
+		if(err) throw err;
+		
 		if(mime.indexOf("text/") !== -1 || mime.indexOf("application/") !== -1) {
 			var txt = content.toString();
 			var old_txt = global.static_files["/" + path];
@@ -589,7 +586,7 @@ function add_file(path, vpath, mime, literal) {
 				add_file(path, vpath, mime, literal);
 			};
 		}(path, vpath, mime, literal));
-	}
+	});
 }
 
 /*
