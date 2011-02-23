@@ -1,7 +1,6 @@
 
 var Sys = require("sys"),
 	Fs = require('fs'),
-	$fs = require('$fs'),
 	Path = require('path'),
 	ID3File = require("node-id3"),
 	Crypto = require("crypto"),
@@ -35,22 +34,27 @@ var broadcast = function(msg) {
 
 function add_dir(p) {
 	var num = 0;
-	
-	using(var st = $fs.stat(p)) {
+
+	Fs.stat(p, function(err, st) {
+		if(err) throw err;
+		
 		if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
 			add_archive_queue.push(p);
 			num++;
 		} else if(st.isDirectory()) {
-			using(var files = $fs.readdir(p)) {
+			
+			Fs.readdir(p, function(err, files) {
+				if(err) throw err;
+				
 				var i = files.length-1;
 				if(i >= 0) {
 					do {
 						add_dir(p+"/"+files[i].toString());
 					} while(i--);
 				}
-			}
+			});
 		}
-	}
+	});
 	
 	return num;
 }
@@ -75,7 +79,6 @@ function update() {
 				c++;
 			}
 			
-			//console.log(c, status_count["PARSING"]);
 			if(c < 11 && status_count["PARSING"] < 1 && (path = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
 				c = true;
 				for(i in archives) {
@@ -91,26 +94,28 @@ function update() {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path, playbox_hash) {
 						status_count["PARSING"]--;
-						var torrent = playbox.make_torrent(stripped_archive_path);
-						if(torrent) {
-							meta.id = torrent.comment = playbox_hash;
-							var a = {
-								id: playbox_hash,
-								name: meta.name,
-								path: path,
-							//	torrent: torrent,
-								meta: meta
+						if(stripped_archive_path) {
+							var torrent = playbox.make_torrent(stripped_archive_path);
+							if(torrent) {
+								meta.id = torrent.comment = playbox_hash;
+								var a = {
+									id: playbox_hash,
+									name: meta.name,
+									path: path,
+								//	torrent: torrent,
+									meta: meta
+								}
+								
+								//console.log("begin", a);
+								//var b = bencode.encode(a);
+								//console.log("end", b.length, b);
+								
+								//playbox.load_torrent(bencode.encode(torrent));
+								update_metadata(playbox_hash, a);
 							}
 							
-							//console.log("begin", a);
-							//var b = bencode.encode(a);
-							//console.log("end", b.length, b);
-							
-							//playbox.load_torrent(bencode.encode(torrent));
-							update_metadata(playbox_hash, a);
+							Fs.unlink(stripped_archive_path);
 						}
-						
-						$fs.unlink(stripped_archive_path);
 					});
 				}
 			}
@@ -175,49 +180,6 @@ playbox.on("stateChanged", function(hash, extra) {
 });
 
 
-function init() {
-	Log.info("playbox-2");
-	Log.info(" library_dir: "+playbox.library_dir);
-	Log.info(" torrents_dir: "+playbox.torrents_dir);
-	
-	Edb.get("config", function(key, value) {
-		if(typeof value === 'undefined') {
-			// running the playbox for the very first time
-			// do more first time stuff, like loading the local library
-			Edb.set("config", config);
-		} else {
-			Mixin(config, value);
-		}
-		
-		add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
-	});
-	
-	Edb.list("archive.", function(key, value) {
-		if(value !== undefined) {
-			update_metadata(value.id, value);
-		}
-	});
-	
-	// start the updates
-	update_loop = setInterval(update, 100);
-}
-
-function start() {
-	if(update_loop === null) {
-		update_loop = setInterval(update, 100);
-	}
-	
-	return playbox.start();
-}
-
-function stop() {
-	if(update_loop !== null) {
-		clearInterval(update_loop);
-		update_loop = null;
-	}
-	
-	return playbox.stop();
-}
 
 function update_metadata(hash, meta) {
 	if(typeof archives[hash] !== 'undefined') {
@@ -229,30 +191,33 @@ function update_metadata(hash, meta) {
 		var lib_file = playbox.library_dir+hash;
 		
 		try {
-			var st = $fs.lstat(lib_file);
-			if(!st.isSymbolicLink()) {
-				$fs.unlink(lib_file);
-			}
-		} catch(e) {
-			// file doesn't exist (expected behaviour)
-		} finally {
-			try {
-				st = $fs.lstat(lib_file);
-				if(!st.isSymbolicLink()) {
-					throw new Error("unable to make library symlink");
+			Fs.lstat(lib_file, function(err, st) {
+				if(err) {
+					if(err.code !== 'ENOENT') {
+						throw err;
+					}
+					// fall through
+				} else {
+					if(st.isSymbolicLink() && Fs.readlinkSync(lib_file) === meta.path) {
+						Fs.unlink(lib_file, function(err) {
+							if(err) throw err;
+						});
+					}
 				}
-			} catch(e) {
-				$fs.symlink(meta.path, playbox.library_dir+hash);
-			}
+			});
+		} catch(e) {
+			throw e;
+		} finally {
+			Fs.symlink(playbox.library_dir+hash, meta.path, function(err) {
+				if(err && err.code !== 'EEXIST') {
+					throw err;
+				}
+				
+				archives[hash] = meta;
+				emit_event("archiveAdded", meta);
+			});
 		}
-		
-		archives[hash] = meta;
-		emit_event("archiveAdded", meta);
 	}
-	
-	Edb.set("archive."+hash, meta, function() {
-		//console.log("saved..");
-	});
 }
 
 function query(args) {
@@ -277,57 +242,117 @@ function query(args) {
 
 var tmp_offset = 0;
 function strip_metadata(file_path, callback) {
-	//try {
-		var st = $fs.stat(file_path);
-		var chunk_size = 64 * 1024;
-		var buf_size   = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
-		var buf_pos    = 0;
-		var buf = new Buffer(buf_size);
+	try {
 		var dest_path = playbox.tmp_path+"strip."+(tmp_offset++);
-		var sha1 = Crypto.createHmac("sha1", "changeme");
+		var sha1 = Crypto.createHmac("sha1", "human-evolution");
 
-		using(var sr = $fs.openInStream(file_path)) {
-			using(var sw = $fs.openOutStream(dest_path+".mp3", 'w+', 0644)) {
-				var bytes = sr.readBuf(buf, 64*1024);
+		Fs.open(file_path, 'r', function(err, fd_r) {
+			if(err) throw err;
+			
+			Fs.fstat(fd_r, function(err, st) {
+				if(err) {
+					Fs.close(fd_r);
+					throw err;
+				}
 				
-				// extract metadata
-				//TODO: do a test to see if the buffer has an ID3 tag at the beginning.
-				// if it doesn't, add it (so that ffmpeg will try and determine the duration)
-				var id3 = new ID3File(buf);
-				if(id3.parse()) {
-					var t = id3.getTags();
-					got_meta = true;
-					
-					if(t.id3 && t.id3.size) {
-						sw.writeUtf8("ID3\x02\0\0\0\0\0");
-						sha1.update("ID3\x02\0\0\0\0\0");
-						
-						var b = buf.slice(t.id3.size);
-						sha1.update(b);
-						sw.writeBuf(b);
+				var total = st.size;
+				
+				Fs.open(dest_path+".mp3", 'w+', '644', function(err, fd_w) {
+					if(err) {
+						Fs.close(fd_r);
+						throw err;
 					}
-				}
-				
-				while(bytes = sr.readBuf(buf)) {
-					sw.writeBuf(buf, 0, bytes);
-					sha1.update(bytes === buf.length ? buf : buf.slice(0, bytes));
-				}
-			}
+					
+					var interval = setInterval(function() {
+						var chunk_size = 64 * 1024;
+						var buf_size   = 1024 * 1024;
+						var min_id3    = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
+						var buf = new Buffer(buf_size);
+						
+						var tail = 0;
+						var head = 0;
+						var total_read = 0;
+						var total_written = false;
+						var skipped = 0;
+						
+						var do_read = function() {
+							var offset = head >= tail ? head : 0;
+							var avail = Math.min(chunk_size, head >= tail ? buf_size - head : tail);
+							Fs.read(fd_r, buf, offset, avail, total_read, function(err, bytes) {
+								if(err) throw err;
+								
+								//console.log('r', bytes, '||', head, tail, head - tail);
+								total_read += bytes;
+								head += bytes;
+								head %= buf_size;
+							});
+						};
+						
+						var do_write = function() {
+							if(head !== tail) {
+								var offset = tail;
+								var avail = Math.min(chunk_size, head >= tail ? head - tail : buf_size - tail);
+								Fs.write(fd_w, buf, offset, avail, total_written, function(err, bytes) {
+									if(err) throw err;
+									
+									//console.log('w', bytes, '||', head, tail, head - tail);
+									sha1.update(buf.slice(offset, offset + avail));
+									total_written += bytes;
+									tail += bytes;
+									tail %= buf_size;
+								});
+							}
+						};
+						
+						// 10 times a second, we'll worry about reading / writing
+						var start = new Date().getTime();
+						return function() {
+							//TODO: close the file descriptors
+							if(total_written + skipped === total) {
+								clearInterval(interval);
+								Fs.close(fd_r);
+								Fs.close(fd_w);
+								
+								if(callback) {
+									callback(dest_path+".mp3", sha1.digest(encoding="hex"));
+								}
+							}
+							
+							var time_d = new Date().getTime() - start;
+							if(total_read < total && total_read / time_d < (config.read_kb_speed * 1000)) {
+								do_read();
+							}
+							
+							if(total_written === false) {
+								if(total_read >= min_id3) {
+									total_written = 0;
+									var id3 = new ID3File(buf);
+									if(id3.parse()) {
+										var t = id3.getTags();
+										
+										if(t.id3 && t.id3.size) {
+											var b = new Buffer("ID3\x02\0\0\0\0\0");
+											Fs.write(fd_w, b, 0, b.length, 0);
+											sha1.update(b);
+											tail = skipped = t.id3.size;
+										}
+									}
+								}
+							} else if(total_read > total_written && (total_written / time_d) < (config.write_kb_speed * 1000)) {
+								do_write();
+							}
+						};	
+					}(), 100);
+				});
+			});
+		});
+	} catch(e) {
+		if(callback) {
+			callback(false, false);
 		}
 		
-		if(callback) {
-			callback(dest_path+".mp3", sha1.digest(encoding="hex"));
-		}
-	/*} catch(e) {
-		switch(e.code) {
-			case 'ENOENT':
-				console.log(" [ERROR] file could not be found");
-				break;
-				
-			default:
-				console.log("bailing..", Sys.inspect(e));
-		}
-	}*/
+		throw e;
+	}
 }
 
 // TODO: move this to a lib function
@@ -353,7 +378,51 @@ exports.init = function(opts) {
 	if(opts.broadcast) {
 		broadcast = opts.broadcast;
 	}
+	
+	Log.info("playbox-2");
+	Log.info(" library_dir: "+playbox.library_dir);
+	Log.info(" torrents_dir: "+playbox.torrents_dir);
+	
+	Edb.get("config", function(key, value) {
+		if(typeof value === 'undefined') {
+			// running the playbox for the very first time
+			// do more first time stuff, like loading the local library
+			Edb.set("config", config);
+		} else {
+			Mixin(config, value);
+		}
+		
+		add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+	});
+	
+	Edb.list("archive.", function(key, value) {
+		if(value !== undefined) {
+			update_metadata(value.id, value);
+		}
+	});
+	
+	// start the updates
+	update_loop = setInterval(update, 100);
 };
+
+
+exports.start = function() {
+	if(update_loop === null) {
+		update_loop = setInterval(update, 100);
+	}
+	
+	return playbox.start();
+}
+
+exports.stop = function() {
+	if(update_loop !== null) {
+		clearInterval(update_loop);
+		update_loop = null;
+	}
+	
+	return playbox.stop();
+}
+
 
 exports.connect = function(c) {
 	console.log("websocket connect");
@@ -383,14 +452,6 @@ exports.http = function(c, path) {
 			};
 			break;
 		
-		case '-':
-			output.ret = start();
-			break;
-			
-		case 'o':
-			output.ret = stop();
-			break;
-			
 		case 'g':
 			console.log("get", playbox.library_dir+"/"+extra);
 			c.file("audio/mp3", playbox.library_dir+"/"+extra);
@@ -432,7 +493,6 @@ exports.http = function(c, path) {
 function emit_event(evt, data) {
 	data = data || {};
 	
-	console.log("EVENT", evt, data, Object.keys);
 	broadcast({
 		app: "playbox",
 		func: "event",
@@ -440,9 +500,3 @@ function emit_event(evt, data) {
 		data: data
 	});
 }
-
-// start it up!
-init();
-
-// debug shit
-start();

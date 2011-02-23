@@ -10,11 +10,11 @@
 global.start_time = new Date();
 
 // global error handler
-
+/*
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		//var stack = err.stack.split("\n");
-		console.log(" [ERROR] "+err.toString()+"\n"+err.stack);
+		console.log(" [ERROR] "+err.toString()+"\n"+sys.inspect(err.stack)+"\n"+sys.inspect(err));
 	};
 }(require("sys")));
 //*/
@@ -32,7 +32,6 @@ var in_app = "global",
 	edb = require("edb"),
 	fs = require("fs"),
 	io = require("./deps/socket.io"),
-	$fs = require("$fs"),
 	buffer = require("buffer"),
 	Url = require("url"),
 	QueryString = require("querystring");
@@ -56,7 +55,7 @@ var conn_id = 0,
 	socket = io.listen(server, {flashPolicyServer: false});
 
 //TODO lib func, move me
-function Mixin(target, source) {
+Mixin = function(target, source) {
 	if(typeof source === "object") {
 		for(var key in source) {
 			if(source.hasOwnProperty(key)){
@@ -66,7 +65,7 @@ function Mixin(target, source) {
 	}
 	
 	return target;
-}
+};
 
 Log = {
 	log: function(header, s) {
@@ -387,38 +386,40 @@ Connection.prototype.file = function(mime, file_path) {
 	this._output_string = false;
 	var res = this._res;
 	try {
-		var stat = $fs.stat(file_path);
-		
-		if(stat.isFile()) {      // Stream a single file.
-			//c._res.headers['Content-Length'] = stat.size;
-			//c._res.headers['Content-Type'] = mime;
-			//c._res.statusCode = 200;
-			this._headers['Content-Length'] = stat.size;
-			this._headers['Content-Type'] = mime;
-			res.writeHead(200, this._headers);
+		fs.stat(file_path, function(err, stat) {
+			if(err) throw err;
 			
-			(function streamFile(c, buffer, offset) {
-				fs.createReadStream(file_path, {
-					flags: 'r',
-					encoding: 'binary',
-					mode: 0666,
-					bufferSize: 4096
-				}).on('data', function (chunk) {
-					buffer.write(chunk, offset, 'binary');
-					c._res.write(chunk, 'binary');
-					offset    += chunk.length;
-				}).on('close', function () {
-					res.end();
-				}).on('error', function (err) {
-					c.end(500);
-					//Sys.error(err);
-				});
-			})(this, new(buffer.Buffer)(stat.size), 0);
-		} else {
-			res.writeHead(404, this._headers);
-			res.write("404!");
-			res.end(404);
-		}
+			if(stat.isFile()) {      // Stream a single file.
+				//c._res.headers['Content-Length'] = stat.size;
+				//c._res.headers['Content-Type'] = mime;
+				//c._res.statusCode = 200;
+				this._headers['Content-Length'] = stat.size;
+				this._headers['Content-Type'] = mime;
+				res.writeHead(200, this._headers);
+				
+				(function streamFile(c, buffer, offset) {
+					fs.createReadStream(file_path, {
+						flags: 'r',
+						encoding: 'binary',
+						mode: 0666,
+						bufferSize: 4096
+					}).on('data', function (chunk) {
+						buffer.write(chunk, offset, 'binary');
+						c._res.write(chunk, 'binary');
+						offset    += chunk.length;
+					}).on('close', function () {
+						res.end();
+					}).on('error', function (err) {
+						c.end(500);
+						//Sys.error(err);
+					});
+				})(this, new(buffer.Buffer)(stat.size), 0);
+			} else {
+				res.writeHead(404, this._headers);
+				res.write("404!");
+				res.end(404);
+			}
+		});
 	} catch(e) {
 		res.writeHead(500, this._headers);
 		res.write(e.message+"\n"+e.stack);
@@ -431,37 +432,39 @@ function init() {
 	global.static_files_mime = {};
 	
 	try {
-		config = $fs.readFile('config.json');
+		fs.readFile('config.json', function(err, content) {
+			if(err) throw err;
+			config = JSON.parse(content);
+		});
 	} catch(e) {
 		Log.error("could not load config.json");
-	} finally {
-		config = JSON.parse(config);
 	}
 
 	try {
-		applist = $fs.readFile('applist.json');
+		fs.readFile('config.json', function(err, content) {
+			if(err) throw err;
+			applist = JSON.parse(content);
+		});
 	} catch(e) {
 		Log.error("could not load applist.json");
-	} finally {
-		applist = JSON.parse(applist);
 	}
 
 	Log.info("Initializing...");
 	edb.init(".edb", function() {
 		Log.info("Edb initialized");
+		
+		Edb.get("applist", function(key, value) {
+			if(typeof value === 'undefined') {
+				// running the playbox for the very first time
+				// do more first time stuff, like loading the local library
+				Edb.set("applist", applist);
+			} else {
+				Mixin(applist, value);
+			}
+		});
 	});
 	
 	
-	Edb.get("applist", function(key, value) {
-		if(typeof value === 'undefined') {
-			// running the playbox for the very first time
-			// do more first time stuff, like loading the local library
-			Edb.set("applist", applist);
-		} else {
-			Mixin(applist, value);
-		}
-	});
-
 	// now, fuck up the require function to restrict access to the apps
 	// by default, grant all applications super access (later, this will be restricted for all non-default apps)
 	(function(_load) {
@@ -493,6 +496,10 @@ function init() {
 		};
 	}(require));
 	
+	server.listen(1155, function() {
+		Log.info("listening on port: " + 1155);
+	});
+	
 	fs.readdir("apps", function(err, files) {
 		if(err) throw err;
 		
@@ -511,7 +518,11 @@ function init() {
 			if(typeof app.init === 'function') {
 				in_app = i;
 				app.init({
-					broadcast: socket.broadcast
+					broadcast: function(s) {
+						return function() {
+							s.broadcast.apply(s, arguments);
+						}
+					}(socket)
 				});
 				in_app = "global";
 			}
@@ -815,9 +826,5 @@ ast = pro.ast_squeeze(ast);
 console.log(ast[1][0][3]);
 console.log(pro.gen_code(ast, false));
 */
-
-server.listen(1155, function() {
-	Log.info("listening on port: " + 1155);
-});
 
 init();

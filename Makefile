@@ -12,7 +12,7 @@ all:
 	fi
 	node-waf build
 	
-	cd build/release && CWD=`pwd` && node --always_full_compiler main.sjs
+	cd build/release && CWD=`pwd` && node --always_full_compiler main.js
 
 configure:
 	node-waf configure --without-snapshot
