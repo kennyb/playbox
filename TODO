@@ -1,9 +1,11 @@
+node-inspector - http://localhost:8080/debug?port=5858
+
 current:
+when checking the library, first stat the files and see if they're changed. if they are, then reload, otherwise pass
 give each module its own dir, and use package.json to specify the entry point
 addition of a module system with adherance to nodules (https://github.com/kriszyp/nodules) package.json changes
 downloading of modules automatically
 reloading modules automatically
-verify the local file, by doing the hash on it and comparing to see if it matches.
 add, before() / after() text functions
 new class Archive
 make playbox functions static to the module

@@ -83,6 +83,7 @@ function update() {
 				c = true;
 				for(i in archives) {
 					t = archives[i];
+					console.log(t);
 					if(t.path === path) {
 						// already loaded
 						c = false;
@@ -92,16 +93,19 @@ function update() {
 				
 				if(c && (meta = playbox.get_metadata(path)) !== false) {
 					status_count["PARSING"]++;
-					strip_metadata(path, function(stripped_archive_path, playbox_hash) {
+					strip_metadata(path, function(stripped_archive_path, playbox_hash, st) {
 						status_count["PARSING"]--;
 						if(stripped_archive_path) {
 							var torrent = playbox.make_torrent(stripped_archive_path);
-							if(torrent) {
+							//if(torrent) {
 								meta.id = torrent.comment = playbox_hash;
 								var a = {
 									id: playbox_hash,
 									name: meta.name,
 									path: path,
+									ctime: st.ctime,
+									mtime: st.mtime,
+									size: st.size,
 								//	torrent: torrent,
 									meta: meta
 								}
@@ -112,7 +116,7 @@ function update() {
 								
 								//playbox.load_torrent(bencode.encode(torrent));
 								update_metadata(playbox_hash, a);
-							}
+							//}
 							
 							Fs.unlink(stripped_archive_path);
 						}
@@ -172,7 +176,7 @@ playbox.on("stateChanged", function(hash, extra) {
 	//archives[hash].active = false;
 	emit_event("archiveRemoved", archives[hash]);
 }).on("metadataAdded", function(hash, path) {
-	load_metadata_queue.push(path);
+	//load_metadata_queue.push(path);
 }).on("listening", function(details) {
 	//console.log("LISTENING", details);
 }).on("listeningFailed", function(details) {
@@ -249,13 +253,14 @@ function strip_metadata(file_path, callback) {
 		Fs.open(file_path, 'r', function(err, fd_r) {
 			if(err) throw err;
 			
-			Fs.fstat(fd_r, function(err, st) {
+			Fs.fstat(fd_r, function(err, path_stat) {
 				if(err) {
-					Fs.close(fd_r);
+					//TODO  something here with closing the fd - I just don't remember what :)
+					//Fs.close(fd_r);
 					throw err;
 				}
 				
-				var total = st.size;
+				var total = path_stat.size;
 				
 				Fs.open(dest_path+".mp3", 'w+', '644', function(err, fd_w) {
 					if(err) {
@@ -307,14 +312,13 @@ function strip_metadata(file_path, callback) {
 						// 10 times a second, we'll worry about reading / writing
 						var start = new Date().getTime();
 						return function() {
-							//TODO: close the file descriptors
 							if(total_written + skipped === total) {
 								clearInterval(interval);
 								Fs.close(fd_r);
 								Fs.close(fd_w);
 								
 								if(callback) {
-									callback(dest_path+".mp3", sha1.digest(encoding="hex"));
+									callback(dest_path+".mp3", sha1.digest(encoding="hex"), path_stat);
 								}
 							}
 							
@@ -396,6 +400,7 @@ exports.init = function(opts) {
 	});
 	
 	Edb.list("archive.", function(key, value) {
+		console.log("archive", key, value);
 		if(value !== undefined) {
 			update_metadata(value.id, value);
 		}
