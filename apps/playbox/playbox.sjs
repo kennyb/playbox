@@ -1,3 +1,4 @@
+
 var Sys = require("sys"),
 	Fs = require('fs'),
 	$fs = require('$fs'),
@@ -25,7 +26,36 @@ var playbox = new Playbox(),
 		read_kb_speed: 5000,
 		write_kb_speed: 3000
 	};
+
+
+
+var broadcast = function(msg) {
+	console.log("application not initialized with websockets enabled");
+};
+
+function add_dir(p) {
+	var num = 0;
 	
+	using(var st = $fs.stat(p)) {
+		if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
+			add_archive_queue.push(p);
+			num++;
+		} else if(st.isDirectory()) {
+			using(var files = $fs.readdir(p)) {
+				var i = files.length-1;
+				if(i >= 0) {
+					do {
+						add_dir(p+"/"+files[i].toString());
+					} while(i--);
+				}
+			}
+		}
+	}
+	
+	return num;
+}
+
+
 function update() {
 	var path;
 	
@@ -57,26 +87,29 @@ function update() {
 					}
 				}
 				
-				if(c && (meta = playbox.get_archive_metadata(path)) !== false) {
+				if(c && (meta = playbox.get_metadata(path)) !== false) {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path, playbox_hash) {
 						status_count["PARSING"]--;
-						var torrent = playbox.make_archive_torrent(stripped_archive_path);
-						meta.id = torrent.comment = playbox_hash;
-						var a = {
-							id: playbox_hash,
-							name: meta.name,
-							path: path,
-							torrent: torrent,
-							meta: meta
+						var torrent = playbox.make_torrent(stripped_archive_path);
+						if(torrent) {
+							meta.id = torrent.comment = playbox_hash;
+							var a = {
+								id: playbox_hash,
+								name: meta.name,
+								path: path,
+							//	torrent: torrent,
+								meta: meta
+							}
+							
+							//console.log("begin", a);
+							//var b = bencode.encode(a);
+							//console.log("end", b.length, b);
+							
+							//playbox.load_torrent(bencode.encode(torrent));
+							update_metadata(playbox_hash, a);
 						}
 						
-						//console.log("begin", a);
-						//var b = bencode.encode(a);
-						//console.log("end", b.length, b);
-						
-						//playbox.load_torrent(bencode.encode(torrent));
-						update_metadata(playbox_hash, a);
 						$fs.unlink(stripped_archive_path);
 					});
 				}
@@ -87,16 +120,9 @@ function update() {
 	}
 }
 
-function broadcast_event(evt, data) {
-	data = data || {};
-	
-	server.broadcast({
-		app: "playbox",
-		func: "event",
-		args: evt,
-		data: data
-	});
-}
+
+
+
 
 
 playbox.on("stateChanged", function(hash, extra) {
@@ -110,36 +136,36 @@ playbox.on("stateChanged", function(hash, extra) {
 	//archives[hash] = {status:"UNKNOWN"};
 }).on("archivePaused", function(hash, e) {
 	//archives[hash].active = false;
-	broadcast_event("archivePaused", archives[hash]);
+	emit_event("archivePaused", archives[hash]);
 }).on("archiveResumed", function(hash, e) {
 	//archives[hash].active = true;
-	broadcast_event("archiveResumed", archives[hash]);
+	emit_event("archiveResumed", archives[hash]);
 }).on("archiveLoaded", function(hash, metadata) {
 	/*if(metadata.local_file) {
 		get_metadata(metadata.local_file, playbox.library_dir + hash, function(tags) {
 			archives[hash].metadata = Mixin(tags, archives[hash].metadata);
-			broadcast_event("archiveLoaded", archives[hash]);
+			emit_event("archiveLoaded", archives[hash]);
 		});
 	}
 	*/
 	
 	status_count["CHECKING"]++;
 	//archives[hash] = {status:"METADATA", downloaded: -1, metadata: metadata};
-	broadcast_event("archiveLoaded", archives[hash]);
+	emit_event("archiveLoaded", archives[hash]);
 }).on("archiveDownloading", function(hash, e) {
-	broadcast_event("archiveDownloading", archives[hash]);
+	emit_event("archiveDownloading", archives[hash]);
 }).on("archiveProgress", function(hash, progress) {
 	//archives[hash].downloaded = progress;
-	broadcast_event("archiveProgress", archives[hash]);
+	emit_event("archiveProgress", archives[hash]);
 }).on("archiveComplete", function(hash, e) {
 	//archives[hash].downloaded = 100;
-	broadcast_event("archiveComplete", archives[hash]);
+	emit_event("archiveComplete", archives[hash]);
 }).on("archiveRemoved", function(hash, e) {
 	status_count[archives[hash].status]--;
 	//archives[hash].status = "METADATA";
 	//archives[hash].downloaded = -1;
 	//archives[hash].active = false;
-	broadcast_event("archiveRemoved", archives[hash]);
+	emit_event("archiveRemoved", archives[hash]);
 }).on("metadataAdded", function(hash, path) {
 	load_metadata_queue.push(path);
 }).on("listening", function(details) {
@@ -147,6 +173,34 @@ playbox.on("stateChanged", function(hash, extra) {
 }).on("listeningFailed", function(details) {
 	console.log("LISTENING_FAILED", details);
 });
+
+
+function init() {
+	Log.info("playbox-2");
+	Log.info(" library_dir: "+playbox.library_dir);
+	Log.info(" torrents_dir: "+playbox.torrents_dir);
+	
+	Edb.get("config", function(key, value) {
+		if(typeof value === 'undefined') {
+			// running the playbox for the very first time
+			// do more first time stuff, like loading the local library
+			Edb.set("config", config);
+		} else {
+			Mixin(config, value);
+		}
+		
+		add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+	});
+	
+	Edb.list("archive.", function(key, value) {
+		if(value !== undefined) {
+			update_metadata(value.id, value);
+		}
+	});
+	
+	// start the updates
+	update_loop = setInterval(update, 100);
+}
 
 function start() {
 	if(update_loop === null) {
@@ -165,38 +219,11 @@ function stop() {
 	return playbox.stop();
 }
 
-function init() {
-	Log.info("playbox-2");
-	Log.info(" library_dir: "+playbox.library_dir);
-	Log.info(" torrents_dir: "+playbox.torrents_dir);
-	
-	Edb.get("config", function(key, value) {
-		if(typeof value === 'undefined') {
-			// running the playbox for the very first time
-			// do more first time stuff, like loading the local library
-			Edb.set("config", config);
-		} else {
-			Mixin(config, value);
-		}
-		
-		add_media(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
-	});
-	
-	Edb.list("archive.", function(key, value) {
-		if(value !== undefined) {
-			update_metadata(value.id, value);
-		}
-	});
-	
-	// start the updates
-	update_loop = setInterval(update, 100);
-}
-
 function update_metadata(hash, meta) {
 	if(typeof archives[hash] !== 'undefined') {
 		Log.info("updated "+hash);
 		archives[hash] = meta = Mixin(archives[hash], meta);
-		broadcast_event("archiveUpdated", meta);
+		emit_event("archiveUpdated", meta);
 	} else {
 		Log.info("addded "+hash);
 		var lib_file = playbox.library_dir+hash;
@@ -220,29 +247,12 @@ function update_metadata(hash, meta) {
 		}
 		
 		archives[hash] = meta;
-		broadcast_event("archiveAdded", meta);
+		emit_event("archiveAdded", meta);
 	}
 	
 	Edb.set("archive."+hash, meta, function() {
 		//console.log("saved..");
 	});
-}
-
-function add_media(p) {
-	using(var st = $fs.stat(p)) {
-		if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
-			add_archive_queue.push(p);
-		} else if(st.isDirectory()) {
-			using(var files = $fs.readdir(p)) {
-				var i = files.length-1;
-				if(i >= 0) {
-					do {
-						add_media(p+"/"+files[i].toString());
-					} while(i--);
-				}
-			}
-		}
-	}
 }
 
 function query(args) {
@@ -321,17 +331,17 @@ function strip_metadata(file_path, callback) {
 }
 
 // TODO: move this to a lib function
-var _ext2mime = {
-	"html": "text/html",
-	"ico": "image/x-icon",
-	"gif": "image/gif",
-	"jpg": "image/jpeg",
-	"jpg": "image/jpeg",
-	"js": "text/javascript",
-	"json": "application/x-json",
-	"xml": "text/xml",
-};
 function ext2mime(ext) {
+	var _ext2mime = {
+		"html": "text/html",
+		"ico": "image/x-icon",
+		"gif": "image/gif",
+		"jpg": "image/jpeg",
+		"jpg": "image/jpeg",
+		"js": "text/javascript",
+		"json": "application/x-json",
+		"xml": "text/xml",
+	};
 	if(ext.charAt(0) === '.') {
 		ext = ext.substr(1);
 	}
@@ -339,10 +349,24 @@ function ext2mime(ext) {
 	return _ext2mime[ext];
 }
 
+exports.init = function(opts) {
+	if(opts.broadcast) {
+		broadcast = opts.broadcast;
+	}
+};
+
+exports.connect = function(c) {
+	console.log("websocket connect");
+};
+
+exports.disconnect = function(c) {
+	console.log("websocket disconnect");
+};
+
 exports.http = function(c, path) {
 	var path_offset = path.indexOf('/'),
 		func = path_offset > 0 ? path.substr(0, path_offset) : path,
-		args = path_offset > 0 ? path.substr(path_offset+1) : "",
+		extra = path_offset > 0 ? path.substr(path_offset+1) : "",
 		output = {
 			path: path,
 			status: 200,
@@ -368,8 +392,8 @@ exports.http = function(c, path) {
 			break;
 			
 		case 'g':
-			console.log("get", playbox.library_dir+"/"+args);
-			c.file("audio/mp3", playbox.library_dir+"/"+args);
+			console.log("get", playbox.library_dir+"/"+extra);
+			c.file("audio/mp3", playbox.library_dir+"/"+extra);
 			return;
 			
 		case 'q':
@@ -404,37 +428,17 @@ exports.http = function(c, path) {
 	c.end(output.status);
 };
 
-var websocket_broadcast = function(msg) {
-	console.log("application not initialized with websockets enabled");
-};
 
-exports.init = function(opts) {
-	if(opts.ws_broadcast) {
-		websocket_broadcast = opts.ws_broadcast;
-	}
-}
-
-exports.websocket_connect = function(c) {
-	console.log("websocket connect");
-}
-
-exports.websocket_disconnect = function(c) {
-	console.log("websocket disconnect");
-}
-
-exports.websocket_func = function(c, func, path) {
-	//console.log("ws", c._conn.broadcast);
-}
-
-function broadcast_event(evt, data) {
+function emit_event(evt, data) {
 	data = data || {};
 	
-	/*websocket_broadcast({
+	console.log("EVENT", evt, data, Object.keys);
+	broadcast({
 		app: "playbox",
 		func: "event",
 		args: evt,
 		data: data
-	});*/
+	});
 }
 
 // start it up!

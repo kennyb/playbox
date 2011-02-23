@@ -25,13 +25,9 @@ class Playbox : public EventEmitter
 	static Handle<Value> query(const Arguments &args);
 	static Handle<Value> archive(const Arguments &args);
 	static Handle<Value> info(const Arguments &args);
-	static Handle<Value> make_archive_torrent(const Arguments &args);
+	static Handle<Value> get_metadata(const Arguments &args);
+	static Handle<Value> make_torrent(const Arguments &args);
 	static Handle<Value> load_torrent(const Arguments &args);
-	static Handle<Value> add_archive_metadata(const Arguments &args);
-	static Handle<Value> get_archive_metadata(const Arguments &args);
-
-	static void load_torrent(const std::string torrent_path);
-	//static void make_torrent(const boost::filesystem::path path, const boost::filesystem::path orig_path);
 	
   private:
     static Handle<Value> New(const Arguments &args);

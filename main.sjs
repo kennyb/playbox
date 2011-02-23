@@ -34,15 +34,14 @@ var in_app = "global",
 	io = require("./deps/socket.io"),
 	$fs = require("$fs"),
 	buffer = require("buffer"),
-	QueryString = require("querystring"),
 	Url = require("url"),
 	QueryString = require("querystring");
 	//cookie = require( "./lib/cookie");
 
 // globals
 Buffer = require('buffer').Buffer;
-//Mixin = require("node-websocket-server/lang/mixin");
 Playbox = require('playbox').Playbox;
+
 
 //var config = JSON.parse("{lala:5}");
 //fs.readFileSync("config.js");
@@ -518,7 +517,7 @@ function init() {
 		if(typeof app.init === 'function') {
 			in_app = i;
 			app.init({
-				ws_broadcast: socket.broadcast
+				broadcast: socket.broadcast
 			});
 			in_app = "global";
 		}
@@ -712,14 +711,54 @@ socket.on("connection", function(conn) {
 	//conn.storage.set("username", "user_"+conn.id);
 	conn.broadcast("<"+conn.sessionId+"> connected");
 	
-	conn.on("message", function(path) {
-		if(path.charAt(0) !== "/") {
-			path = "/"+path;
+	conn.on("message", function(msg) {
+		var msgs = [],
+			decoded = JSON.decode(msg);
+		
+		if(typeof decoded !== "object") {
+			throw new Error("incorrect message format");
 		}
 		
-		var app_name = path.substr(1),
-			app_path = "/",
-			app_path_offset = app_name.indexOf('/');
+		if(decoded.length > 0) {
+			msgs = decoded;
+		} else {
+			msgs.push(decoded);
+		}
+		
+		// TODO
+		// add a "waitfor" option to organize the order
+		for(var i = 0; i < funcs.length; i++) {
+			var msg = funcs[i];
+			
+			if(!msg.protocol) {
+				throw new Error("protocol not defined");
+			}
+			
+			if(!msg.cmd) {
+				throw new Error("cmd not defined");
+			}
+			
+			if(!msg.params) {
+				throw new Error("params not defined");
+			}
+			
+			var app = apps[app_name];
+			if(!app) {
+				throw new Error("app not installed");
+			}
+			
+			if(typeof app.cmds !== 'object') {
+				
+			}
+			
+			var cmd = app[msg.cmd];
+			if(cmd !== 'function') {
+				throw new Error("function not defined");
+			}
+			
+			//Log.log("SOCK", "path "+path+" app "+app_name+" func "+app_path);
+			cmd(msg.params);
+		}
 		
 		if(app_path_offset !== -1) {
 			app_path = app_path_offset === app_name.length-1 ? "/" : app_name.substr(app_path_offset);
@@ -730,12 +769,12 @@ socket.on("connection", function(conn) {
 			}
 		}
 		
-		Log.log("SOCK", "path "+path+" app "+app_name+" func "+app_path);
+		
 		
 		var app = apps[app_name];
 		if(app !== undefined && typeof app.http === 'function') {
 			//CURRENT: need try/catch?
-			in_app = app_name;
+			
 			var ret = {
 				_conn: conn,
 				_output_string: "",

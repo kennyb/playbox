@@ -26,6 +26,7 @@ log functions (and remove all those horrible console.logs) (and maybe make a git
 convert and integrate edb to be vertex.js
 read up on symbol exports at blog.flameeyes.eu
 create the corresponding part hashes while stripping the content as well (how does one do this???)
+use protobuf to wrap libraries better: (http://code.google.com/p/protobuf-for-node/)
 
 
 middle:

@@ -153,20 +153,14 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	// stops the server and pauses all downloads
 	NODE_SET_PROTOTYPE_METHOD(t, "stop", stop);
 	
-	// returns an object with the archive status
-	NODE_SET_PROTOTYPE_METHOD(t, "archive", archive);
-	
-	// returns the torrent of the archive (to be used for downloading / uploading)
-	NODE_SET_PROTOTYPE_METHOD(t, "make_archive_torrent", make_archive_torrent);
+	// this is eventually going to be deprecated in favour of doing this in javascript
+	NODE_SET_PROTOTYPE_METHOD(t, "make_torrent", make_torrent);
 	
 	// adds a archive into the library
 	NODE_SET_PROTOTYPE_METHOD(t, "load_torrent", load_torrent);
 	
-	// adds a physical torrent file into the library
-	NODE_SET_PROTOTYPE_METHOD(t, "add_archive_metadata", add_archive_metadata);
-	
-	// returns all information about an archive (how the program discovers it)
-	NODE_SET_PROTOTYPE_METHOD(t, "get_archive_metadata", get_archive_metadata);
+	// peeks inside of a file to find out what kind of file it is
+	NODE_SET_PROTOTYPE_METHOD(t, "get_metadata", get_metadata);
 	
 	// run an update pass
 	NODE_SET_PROTOTYPE_METHOD(t, "update", update);
@@ -308,8 +302,12 @@ static Handle<Value> entry_to_json(libtorrent::entry e) {
 		case entry::int_t: {
 			return Integer::New(e.integer());
 		} case entry::string_t: {
-			Local<String> s = String::New(e.string().c_str());
-			return ;
+			//Local<Value> s;
+			//printf("str %d %d\n", e.string().length(), DecodeWrite(e.string().c_str(), e.string().length(), s, node::UTF8));
+			
+			Local<Value> s = Encode(e.string().c_str(), e.string().length(), node::BINARY);
+			//Local<String> s = String::New(e.string().c_str());
+			return s;
 		} case entry::list_t: {
 			entry::list_type& l = e.list();
 			Local<Array> arr = Array::New(l.size());
@@ -342,7 +340,7 @@ static void print_progress(int i, int num)
 	//std::cout << "\r" << (i+1) << "/" << num;
 }
 
-Handle<Value> Playbox::make_archive_torrent(const Arguments &args)
+Handle<Value> Playbox::make_torrent(const Arguments &args)
 {
 	if(args.Length() != 1 || !args[0]->IsString()) {
 		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
@@ -388,7 +386,7 @@ Handle<Value> Playbox::make_archive_torrent(const Arguments &args)
 		
 		//======
 		// generate the torrent & file hashes
-		libtorrent::entry metadata = entry(torrent.generate());
+		libtorrent::entry metadata = torrent.generate();
 		
 		//======
 		// add the real file path to the torrent (to know that it's not in the library)
@@ -515,18 +513,7 @@ Handle<Value> Playbox::load_torrent(const Arguments &args)
 	return Undefined();
 }
 
-Handle<Value> Playbox::add_archive_metadata(const Arguments &args)
-{
-	if(args.Length() == 0 || !args[0]->IsString()) {
-		return ThrowException(Exception::Error(String::NewSymbol("Must provide a file path as a string")));
-    }
-    
-	String::Utf8Value archive_path(args[0]->ToString());
-	Playbox::load_torrent(std::string(*archive_path));
-	return Undefined();
-}
-
-Handle<Value> Playbox::get_archive_metadata(const Arguments &args)
+Handle<Value> Playbox::get_metadata(const Arguments &args)
 {
 	if(args.Length() == 0 || !args[0]->IsString()) {
 		return ThrowException(Exception::Error(String::New("Must provide a file path as a string")));
@@ -808,7 +795,7 @@ Handle<Value> Playbox::update(const Arguments &args)
 	return Undefined();
 }
 
-
+/*
 void Playbox::load_torrent(const std::string path)
 {
 	using namespace boost;
@@ -865,8 +852,7 @@ void Playbox::load_torrent(const std::string path)
 			bool use_local_file = false;
 			std::string media_path(metadata.dict_find_string_value("media_path"));
 			if(media_path.length()) {
-				if(filesystem::exists(media_path)
-					/*&& is a valid media file */) {
+				if(filesystem::exists(media_path)) {
 					filesystem::path media_path_path(media_path);
 					std::string library_sym(media_path + "/" + hash);
 					params.save_path = filesystem::path(media_path_path.branch_path().string()).string();
@@ -935,6 +921,7 @@ void Playbox::load_torrent(const std::string path)
 	}
 #endif
 }
+*/
 
 // Exporting function
 extern "C" void init(Handle<Object> target)
