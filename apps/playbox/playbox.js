@@ -98,7 +98,6 @@ function update() {
 						
 						if(stripped_archive_path) {
 							var torrent = playbox.make_torrent(stripped_archive_path);
-							console.log(stripped_archive_path, playbox_hash, st, typeof torrent);
 							//if(torrent) {
 								meta.id = playbox_hash;
 								var a = {
@@ -226,24 +225,37 @@ function update_metadata(hash, meta) {
 	Edb.set("archive."+hash, meta);
 }
 
-function query(args) {
-	if(!args) args = '';
-	var ret = {},
-		argslower = args.toLowerCase();
-	
-	for(var i in archives) {
-		var a = archives[i];
-		if(!args || (
-			a.name.toLowerCase().indexOf(argslower) !== -1 ||
-			a.path.toLowerCase().indexOf(argslower) !== -1
-			)) {
+exports.cmds = {
+	query: function(args) {
+		if(!args) args = {};
+		
+		var ret = [],
+			name = args.name ? args.name.toLowerCase() : false,
+			offset = args.offset || 0,
+			limit = args.limit || 100,
+			noargs = !name ? true : false,
+			i = 0,
+			count = 0;
+		
+		for(var hash in archives) {
+			var a = archives[hash];
 			
-			ret[i] = a.meta;
+			if(count < limit &&
+			(
+				noargs || 
+				name && (
+					a.name.toLowerCase().indexOf(name) !== -1 ||
+					a.path.toLowerCase().indexOf(name) !== -1
+				)
+			) && i++ >= offset) {
+				ret.push(a.meta);
+				count++;
+			}
 		}
+		
+		return ret;
 	}
-	
-	return ret;
-}
+};
 
 
 var tmp_offset = 0;

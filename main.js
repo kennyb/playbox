@@ -781,85 +781,67 @@ socket.on("connection", function(conn) {
 	conn.broadcast("<"+conn.sessionId+"> connected");
 	
 	conn.on("message", function(msg) {
-		var msgs = [],
-			decoded = JSON.decode(msg);
+		var msgs = [], rets = [], one = true;
 		
-		if(typeof decoded !== "object") {
+		if(typeof msg !== "object") {
+			msg = JSON.parse(msg);
+		}
+		
+		if(typeof msg !== "object") {
 			throw new Error("incorrect message format");
 		}
 		
-		if(decoded.length > 0) {
-			msgs = decoded;
+		if(msg.length > 0) {
+			msgs = msg;
+			one = true;
 		} else {
-			msgs.push(decoded);
+			msgs.push(msg);
 		}
 		
-		// TODO
-		// add a "waitfor" option to organize the order
-		for(var i = 0; i < funcs.length; i++) {
-			var msg = funcs[i];
-			
-			if(!msg.protocol) {
-				throw new Error("protocol not defined");
-			}
-			
-			if(!msg.cmd) {
-				throw new Error("cmd not defined");
-			}
-			
-			if(!msg.params) {
-				throw new Error("params not defined");
-			}
-			
-			var app = apps[app_name];
-			if(!app) {
-				throw new Error("app not installed");
-			}
-			
-			if(typeof app.cmds !== 'object') {
+		var do_msg = function(msg) {
+			try {
+				if(!msg.protocol) {
+					throw new Error("protocol not defined");
+				}
 				
-			}
-			
-			var cmd = app[msg.cmd];
-			if(cmd !== 'function') {
-				throw new Error("function not defined");
+				if(!msg.id) {
+					throw new Error("message id not defined");
+				}
+				
+				if(!msg.cmd) {
+					throw new Error("message cmd not defined");
+				}
+				
+				if(!msg.params) {
+					throw new Error("params not defined");
+				}
+				
+				var app = apps[msg.app];
+				if(!app || !app.cmds) {
+					throw new Error("app not installed");
+				}
+				
+				var cmd = app.cmds[msg.cmd];
+				if(typeof cmd !== 'function') {
+					throw new Error("cmd function not defined");
+				}
+				
+				conn.send({id: msg.id, ret: cmd(msg.params)});
+			} catch(e) {
+				conn.send({id: msg.id, error: e.toString()});
 			}
 			
 			//Log.log("SOCK", "path "+path+" app "+app_name+" func "+app_path);
-			cmd(msg.params);
+		};
+		
+		// TODO: add a "waitfor" option to organize the order
+		for(var i = 0; i < msgs.length; i++) {
+			msg = msgs[i];
+			process.nextTick(function() {
+				do_msg(msg);
+			});
 		}
 		
-		if(app_path_offset !== -1) {
-			app_path = app_path_offset === app_name.length-1 ? "/" : app_name.substr(app_path_offset);
-			app_name = app_name.substr(0, app_path_offset);
-			
-			if(app_path !== "/" && app_path.length > 1/* && app_path.charAt(0) === '/'*/) {
-				app_path = app_path.substr(1);
-			}
-		}
-		
-		
-		
-		var app = apps[app_name];
-		if(app !== undefined && typeof app.http === 'function') {
-			//CURRENT: need try/catch?
-			
-			var ret = {
-				_conn: conn,
-				_output_string: "",
-				_headers: {},
-				ret: null,
-				print: function(str) {
-					this._output_string += str.toString();
-				},
-				end: function(ret) {
-					this._conn.send(this._output_string);
-				}
-			};
-			
-			app.http(ret, app_path);
-			__app = "global";
-		}
 	}).on("disconnect", function() {
 		//TODO apps[app_name].websocket_disconnect
 		socket.broadcast("<"+conn.sessionId+"> disconnected");
