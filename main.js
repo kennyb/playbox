@@ -10,7 +10,7 @@
 global.start_time = new Date();
 
 // global error handler
-/*
+
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		//var stack = err.stack.split("\n");
@@ -148,74 +148,6 @@ Connection = exports.Connection = function(req, res) {
 	
 	return this;
 };
-
-/*
-Connection.prototype.mangle_func = function(func, params) {
-	
-	var values = params ? LIB.values(params).join(',') : "";
-	
-	return '!'+func+ (values.length ? '-'+LIB.keys(params).join(',')+'-'+values : "");
-}
-
-Connection.prototype.func = function(name, params) {
-	if(params === undefined) {
-		params = {};
-	}
-	
-	name = new String(name).toString();
-	//try {
-		var func, func_ret;
-		var model_name = name.until('.');
-		var name_mangled = this.mangle_func(name, params);
-		if(model_name) {
-			// object function
-			var model = global.db.model(model_name);
-			var func_name = name.after('.');
-			
-			func = model[func_name];
-			if(typeof func === 'function') {
-				func.call(model, this, name_mangled, params);
-			}
-		} else if((func = FUNCTIONS[name]) !== undefined) {
-			// global function
-			func(this, name_mangled, params);
-		} else {
-			// model id
-			var model = global.db.model(name), id;
-			if(model) {
-				func = true;
-				if(!(params instanceof Array)) {
-					params = [params];
-				}
-				
-				for(var i = 0; i < params.length; i++) {
-					name_mangled = this.mangle_func(name, params[i]);
-					model.find(params[i]).first(function(connection, name_mangled) {
-						return function(d) {
-							connection.func_ret(name_mangled, d);
-						};
-					}(this, name_mangled));
-				}
-			} else {
-				this.func_ret(name, {$error: "model '"+name+"' does not exist"});
-			}
-		}
-		
-		if(func !== undefined) {
-			this._headers["Content-Type"] = "application/x-javascript; charset=utf-8";
-			return true;
-		} else {
-			this.func_ret(name, {$error: "function '"+name+"' does not exist"});
-		}
-	//} catch(e) {
-	//	console.log("ERROR "+e);
-	//	this._func_ret[name] = {error: e.toString()};
-	//	this.end();
-	//}
-	
-	return undefined;
-}
-*/
 
 Connection.prototype.onData = function(chunk) {
 	// do I need a buffer here?
@@ -752,29 +684,6 @@ function add_dir(dir, vdir) {
 	});
 }
 */
-
-// BEGIN~~~
-
-//global.host = "127.0.0.1";
-//global.port = 27017;
-
-
-/*
-add_file("js/lib.js", "text/javascript");
-add_file("js/site.js", "text/javascript");
-add_file("js/dynarch.js", "text/javascript", true);
-add_file("css/screen.css", "text/css");
-add_file("css/default.css", "text/css");
-add_file("public/unknown.png", "image/png");
-add_file("public/tema.png", "image/png");
-add_file("public/index.html", "application/xhtml+xml; charset=utf-8");
-add_file("public/templates.html", "text/html; charset=utf-8", true);
-*/
-//add_file("public/index.html", "index.html", "application/xhtml+xml; charset=utf-8");
-//add_file("public/templates.html", "templates.html", "text/html; charset=utf-8", true);
-
-//add_dir("public/", "/");
-
 
 socket.on("connection", function(conn) {
 	//conn.storage.set("username", "user_"+conn.id);
