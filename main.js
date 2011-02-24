@@ -365,6 +365,7 @@ Connection.prototype.end = function(ret_code) {
 Connection.prototype.file = function(mime, file_path) {
 	this._output_string = false;
 	var res = this._res;
+	var c = this;
 	try {
 		fs.stat(file_path, function(err, stat) {
 			if(err) throw err;
@@ -373,9 +374,9 @@ Connection.prototype.file = function(mime, file_path) {
 				//c._res.headers['Content-Length'] = stat.size;
 				//c._res.headers['Content-Type'] = mime;
 				//c._res.statusCode = 200;
-				this._headers['Content-Length'] = stat.size;
-				this._headers['Content-Type'] = mime;
-				res.writeHead(200, this._headers);
+				c._headers['Content-Length'] = stat.size;
+				c._headers['Content-Type'] = mime;
+				res.writeHead(200, c._headers);
 				
 				(function streamFile(c, buffer, offset) {
 					fs.createReadStream(file_path, {
@@ -393,9 +394,9 @@ Connection.prototype.file = function(mime, file_path) {
 						c.end(500);
 						//Sys.error(err);
 					});
-				})(this, new(buffer.Buffer)(stat.size), 0);
+				})(c, new(buffer.Buffer)(stat.size), 0);
 			} else {
-				res.writeHead(404, this._headers);
+				res.writeHead(404, c._headers);
 				res.write("404!");
 				res.end(404);
 			}
@@ -545,7 +546,7 @@ function init() {
 						},
 						Log: {
 							log: function(header, s) {
-								console.log(" ["+header+"] ["+__app+"] "+s);
+								console.log(" ["+header+"] ["+app+"] "+s);
 							},
 							info: function(s) {
 								Log.log("*", s);

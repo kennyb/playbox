@@ -74,7 +74,6 @@ exports.list = function(prefix, callback) {
 		if(i >= 0) {
 			do {
 				var file = files[i].toString();
-				console.log(prefix, file, file.substr(0, prefix_len));
 				if(prefix_len === 0 || file.substr(0, prefix_len) === prefix) {
 					exports.get(file, callback);
 				}

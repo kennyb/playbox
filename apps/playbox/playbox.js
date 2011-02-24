@@ -83,9 +83,9 @@ function update() {
 				c = true;
 				for(i in archives) {
 					t = archives[i];
-					console.log(t);
 					if(t.path === path) {
 						// already loaded
+						Log.info(t.id+" already in library");
 						c = false;
 						break;
 					}
@@ -95,10 +95,12 @@ function update() {
 					status_count["PARSING"]++;
 					strip_metadata(path, function(stripped_archive_path, playbox_hash, st) {
 						status_count["PARSING"]--;
+						
 						if(stripped_archive_path) {
 							var torrent = playbox.make_torrent(stripped_archive_path);
+							console.log(stripped_archive_path, playbox_hash, st, typeof torrent);
 							//if(torrent) {
-								meta.id = torrent.comment = playbox_hash;
+								meta.id = playbox_hash;
 								var a = {
 									id: playbox_hash,
 									name: meta.name,
@@ -203,25 +205,25 @@ function update_metadata(hash, meta) {
 					// fall through
 				} else {
 					if(st.isSymbolicLink() && Fs.readlinkSync(lib_file) === meta.path) {
-						Fs.unlink(lib_file, function(err) {
-							if(err) throw err;
-						});
+						Fs.unlinkSync(lib_file);
 					}
 				}
+				
+				Fs.symlink(meta.path, playbox.library_dir+hash, function(err) {
+					if(err && err.code !== 'EEXIST') {
+						throw err;
+					}
+					
+					archives[hash] = meta;
+					emit_event("archiveAdded", meta);
+				});
 			});
 		} catch(e) {
 			throw e;
-		} finally {
-			Fs.symlink(playbox.library_dir+hash, meta.path, function(err) {
-				if(err && err.code !== 'EEXIST') {
-					throw err;
-				}
-				
-				archives[hash] = meta;
-				emit_event("archiveAdded", meta);
-			});
 		}
 	}
+	
+	Edb.set("archive."+hash, meta);
 }
 
 function query(args) {
@@ -400,7 +402,6 @@ exports.init = function(opts) {
 	});
 	
 	Edb.list("archive.", function(key, value) {
-		console.log("archive", key, value);
 		if(value !== undefined) {
 			update_metadata(value.id, value);
 		}
@@ -447,8 +448,6 @@ exports.http = function(c, path) {
 			ret: null
 		};
 		
-	console.log("func", func, "args", args);
-	
 	switch(func) {
 		case '?':
 			output.ret = {
@@ -458,7 +457,6 @@ exports.http = function(c, path) {
 			break;
 		
 		case 'g':
-			console.log("get", playbox.library_dir+"/"+extra);
 			c.file("audio/mp3", playbox.library_dir+"/"+extra);
 			return;
 			
