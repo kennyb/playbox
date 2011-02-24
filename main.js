@@ -23,13 +23,14 @@ require.paths.unshift("lib");
 require.paths.unshift("../../lib");
 require.paths.unshift("lib/node-strtok");
 
-var in_app = "global",
+var __app = "global",
 	http = require("http"),
 	Module = require("module"),
+	vm = require('vm'),
 	Net = require("net"),
 	Sys = require("sys"),
 	Url = require("url"),
-	edb = require("edb"),
+	Edb = require("edb"),
 	fs = require("fs"),
 	io = require("./deps/socket.io"),
 	buffer = require("buffer"),
@@ -41,6 +42,20 @@ var in_app = "global",
 Buffer = require('buffer').Buffer;
 Playbox = require('playbox').Playbox;
 
+Log = {
+	log: function(header, s) {
+		console.log(" ["+header+"] ["+__app+"] "+s);
+	},
+	info: function(s) {
+		Log.log("*", s);
+	},
+	error: function(s) {
+		Log.log("!", s);
+	},
+	debug: function(s) {
+		Log.log("DEBUG", s);
+	}
+};
 
 //var config = JSON.parse("{lala:5}");
 //fs.readFileSync("config.js");
@@ -66,41 +81,6 @@ Mixin = function(target, source) {
 	
 	return target;
 };
-
-Log = {
-	log: function(header, s) {
-		console.log(" ["+header+"] ["+in_app+"] "+s);
-	},
-	info: function(s) {
-		Log.log("*", s);
-	},
-	error: function(s) {
-		Log.log("!", s);
-	},
-	debug: function(s) {
-		Log.log("DEBUG", s);
-	}
-};
-Edb = {
-	get: function(k, c) {
-		return edb.get(in_app+"."+k, c);
-	},
-	set: function(k, v, c) {
-		return edb.set(in_app+"."+k, v, c);
-	},
-	rm: function(k, c) {
-		return edb.rm(in_app+"."+k, c);
-	},
-	list: function(p, c) {
-		return edb.list(in_app+"."+p, c);
-	}
-};
-assert = function(v) {
-	this.v = v;
-	return {
-		
-	};
-}
 
 Connection = exports.Connection = function(req, res) {
 	// TODO set the encoding based on the header determined encoding
@@ -296,14 +276,14 @@ Connection.prototype.start = function() {
 		var app = apps[app_name];
 		if(app !== undefined) {
 			try {
-				in_app = app_name;
+				__app = app_name;
 				app.http(this, app_path);
 			} catch(e) {
 				var msg = e.toString();
 				this.print(msg);
 				this.end(parseInt(msg, 10) || 500);
 			} finally {
-				in_app = "global";
+				__app = "global";
 			}
 		} else if(method === "GET") {
 			switch(app_name) {
@@ -450,7 +430,7 @@ function init() {
 	}
 
 	Log.info("Initializing...");
-	edb.init(".edb", function() {
+	Edb.init(".edb", function() {
 		Log.info("Edb initialized");
 		
 		Edb.get("applist", function(key, value) {
@@ -465,20 +445,30 @@ function init() {
 	});
 	
 	
+	/*
 	// now, fuck up the require function to restrict access to the apps
 	// by default, grant all applications super access (later, this will be restricted for all non-default apps)
+	// -- WARNING --
+	// at the moment this is the mayor chapuza of the app code
+	// I will be spawning separate node processes for each application in the future, jailing them into a directory...
+	// for now, !!!COMPLETE ACCESS!!! - hehe
+	// if you wanna help out to sort this mess, let me know, I'm 110% of the way there
+	
+	
 	(function(_load) {
-		Module._load = function(path, self) {
-			console.log("loading module "+path, in_app);
-			if(path.indexOf("./apps/"+in_app) === 0) {
+		Module._load = function(path, self, app) {
+			app = app || "global";
+			console.log("loading module "+path, app);
+			if(path.indexOf("./apps/"+app) === 0) {
 				return _load(path, self);
 			} else if(path.indexOf("./apps/") === 0) {
 				throw new Error("application not allowed to load other application's modules");
 			}
 			
-			switch(in_app) {
+			switch(app) {
 				case "playbox":
 				case "unhosted":
+				case "global": // <--- this is here for debug right now.
 					return _load(path, self);
 				
 				default:
@@ -495,6 +485,7 @@ function init() {
 			return _require(path);
 		};
 	}(require));
+	*/
 	
 	server.listen(1155, function() {
 		Log.info("listening on port: " + 1155);
@@ -505,27 +496,96 @@ function init() {
 		
 		for(var i in files) {
 			var app = files[i];
-			in_app = app;
+			__app = app;
 			Log.info("Initializing..");
 			//require.paths.unshift("./apps/"+app);
-			//TODO: create global namespace for the app and then use Module._load
-			apps[app] = require("./apps/"+app+"/"+app);
-			in_app = "global";
-		}
-		
-		for(var i in apps) {
-			var app = apps[i];
-			if(typeof app.init === 'function') {
-				in_app = i;
-				app.init({
-					broadcast: function(s) {
-						return function() {
-							s.broadcast.apply(s, arguments);
+			//apps[app] = require("./apps/"+app+"/"+app);
+			fs.readFile("./apps/"+app+"/"+app+".js", function(app) {
+				//TODO get the allowed modules from some sort of app repository
+				var allowed_modules = ['sys', 'fs', 'path', 'crypto', 'assert', 'buffer'];
+				
+				
+				return function(err, code) {
+					if(err) throw err;
+					
+					var context = {
+						__app: app,
+						exports: {},
+						Module: {
+							_load: function(path, self) {
+								Module._load(path, self, app);
+							}
+						},
+						require: function(path) {
+							if(path.indexOf("./") === 0) {
+								if(path.indexOf("./apps/") === -1) {
+									path = "./apps/"+app+"/"+path.substr(2);
+								}
+							} else if(path.indexOf("lib/") === 0) {
+								path = "./"+path;
+							} else if(allowed_modules.indexOf(path) === -1) {
+								throw new Error("module '"+path+"' not allowed");
+							}
+							
+							return Module._load(path, this, app);
+						},
+						Edb: {
+							get: function(k, c) {
+								return Edb.get(app+"."+k, c);
+							},
+							set: function(k, v, c) {
+								return Edb.set(app+"."+k, v, c);
+							},
+							rm: function(k, c) {
+								return Edb.rm(app+"."+k, c);
+							},
+							list: function(p, c) {
+								return Edb.list(app+"."+p, c);
+							}
+						},
+						Log: {
+							log: function(header, s) {
+								console.log(" ["+header+"] ["+__app+"] "+s);
+							},
+							info: function(s) {
+								Log.log("*", s);
+							},
+							error: function(s) {
+								Log.log("!", s);
+							},
+							debug: function(s) {
+								Log.log("DEBUG", s);
+							}
+						},
+						Buffer: Buffer,
+						Mixin: Mixin,
+						setTimeout: setTimeout,
+						setInterval: setInterval,
+						clearInterval: clearInterval,
+						console: console,
+						Playbox: Playbox
+					};
+					
+					vm.runInNewContext(code, context, app);
+					
+					if(context.exports) {
+						apps[app] = context.exports;
+						if(typeof context.exports.init === 'function') {
+							context.exports.init({
+								broadcast: function(s) {
+									return function() {
+										s.broadcast.apply(s, arguments);
+									}
+								}(socket)
+							});
 						}
-					}(socket)
-				});
-				in_app = "global";
-			}
+					} else {
+						throw new Error("application does not export anything");
+					}
+				};
+			}(app));
+			
+			__app = "global";
 		}
 	});
 }
@@ -797,7 +857,7 @@ socket.on("connection", function(conn) {
 			};
 			
 			app.http(ret, app_path);
-			in_app = "global";
+			__app = "global";
 		}
 	}).on("disconnect", function() {
 		//TODO apps[app_name].websocket_disconnect

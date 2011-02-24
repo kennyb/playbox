@@ -2,9 +2,9 @@
 var Sys = require("sys"),
 	Fs = require('fs'),
 	Path = require('path'),
-	ID3File = require("node-id3"),
 	Crypto = require("crypto"),
-	bencode = require("bencode");
+	ID3File = require("lib/node-id3"),
+	bencode = require("lib/bencode");
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
