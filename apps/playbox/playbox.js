@@ -1,4 +1,4 @@
-
+//"use strict";
 var Sys = require("sys"),
 	Fs = require('fs'),
 	Path = require('path'),
@@ -109,7 +109,7 @@ function update() {
 									size: st.size,
 								//	torrent: torrent,
 									meta: meta
-								}
+								};
 								
 								//console.log("begin", a);
 								//var b = bencode.encode(a);
@@ -380,10 +380,9 @@ function ext2mime(ext) {
 		"ico": "image/x-icon",
 		"gif": "image/gif",
 		"jpg": "image/jpeg",
-		"jpg": "image/jpeg",
 		"js": "text/javascript",
 		"json": "application/x-json",
-		"xml": "text/xml",
+		"xml": "text/xml"
 	};
 	if(ext.charAt(0) === '.') {
 		ext = ext.substr(1);
@@ -430,7 +429,7 @@ exports.start = function() {
 	}
 	
 	return playbox.start();
-}
+};
 
 exports.stop = function() {
 	if(update_loop !== null) {
@@ -439,7 +438,7 @@ exports.stop = function() {
 	}
 	
 	return playbox.stop();
-}
+};
 
 
 exports.connect = function(c) {

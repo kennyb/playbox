@@ -10,7 +10,7 @@ exports.init = function(dir, callback) {
 	fs.stat(edb_dir, function(err, s) {
 		if(err) {
 			// create directory
-			fs.mkdir(edb_dir, 0777, function(err) {
+			fs.mkdir(edb_dir, '777', function(err) {
 				if(callback) {
 					callback(err);
 				}
@@ -33,7 +33,7 @@ exports.get = function(key, callback) {
 		try {
 			value = err ? undefined : JSON.parse(data);
 		} catch(e) {
-			value = undefined
+			value = undefined;
 		}
 		
 		if(callback) {
@@ -44,7 +44,7 @@ exports.get = function(key, callback) {
 			callback(key, value, err);
 		}
 	});
-}
+};
 
 exports.set = function(key, value, callback) {
 	if(edb_dir === false) throw new Error("edb not initialized");
@@ -53,7 +53,7 @@ exports.set = function(key, value, callback) {
 			callback(key, value, err);
 		}
 	});
-}
+};
 
 exports.rm = function(key, callback) {
 	if(edb_dir === false) throw new Error("edb not initialized");
@@ -62,7 +62,7 @@ exports.rm = function(key, callback) {
 			callback(err);
 		}
 	});
-}
+};
 
 exports.list = function(prefix, callback) {
 	if(edb_dir === false) throw new Error("edb not initialized");
@@ -80,4 +80,4 @@ exports.list = function(prefix, callback) {
 			} while(i--);
 		}
 	});
-}
+};

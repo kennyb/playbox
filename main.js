@@ -6,6 +6,7 @@
 
 // download this for testing:
 // http://github.com/cloudhead/vows
+//"use strict";
 
 global.start_time = new Date();
 
@@ -62,7 +63,7 @@ Log = {
 
 var conn_id = 0,
 	config = {},
-	applist = {};
+	applist = {},
 	apps = {},
 	server = http.createServer(function(req, res) {
 		new Connection(req, res);
@@ -252,7 +253,7 @@ Connection.prototype.start = function() {
 			}
 		}
 	}
-}
+};
 
 
 Connection.prototype.print = function(str) {
@@ -314,7 +315,7 @@ Connection.prototype.file = function(mime, file_path) {
 					fs.createReadStream(file_path, {
 						flags: 'r',
 						encoding: 'binary',
-						mode: 0666,
+						mode: '666',
 						bufferSize: 4096
 					}).on('data', function (chunk) {
 						buffer.write(chunk, offset, 'binary');
@@ -545,7 +546,7 @@ function add_file(path, vpath, mime, literal) {
 			//TODO: this can all be done in parallel
 			if(!literal && typeof txt === 'string' && txt.indexOf("<?") !== -1) {
 				txt = 'o=o||"";o+="'+txt.str_replace_array(['"', "\n", "\t", "  "], ['\\"', "", " ", " "]).trim();
-				txt = txt.trim().replace(/\<\?(.*?)\?\>/g, function(nothing, variable) {
+				txt = txt.trim().replace(/<\?(.*?)\?\>/g, function(nothing, variable) {
 					variable = variable.str_replace_array(['\\"', "\n", "  "], ['"', "", " "]).trim();
 					if(variable.charAt(variable.length-1) === ';') {
 						variable = variable.substr(0, variable.length-1);
@@ -754,7 +755,7 @@ socket.on("connection", function(conn) {
 	}).on("disconnect", function() {
 		//TODO apps[app_name].websocket_disconnect
 		socket.broadcast("<"+conn.sessionId+"> disconnected");
-	})
+	});
 });
 
 // crossdomain policy server 
