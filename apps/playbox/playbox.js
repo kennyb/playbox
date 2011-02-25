@@ -28,6 +28,16 @@ var playbox = new Playbox(),
 	};
 
 
+function emit_event(evt, data) {
+	data = data || {};
+	
+	broadcast({
+		app: "playbox",
+		func: "event",
+		args: evt,
+		data: data
+	});
+}
 
 var broadcast = function(msg) {
 	console.log("application not initialized with websockets enabled");
@@ -225,39 +235,6 @@ function update_metadata(hash, meta) {
 	
 	Edb.set("archive."+hash, meta);
 }
-
-exports.cmds = {
-	query: function(args) {
-		if(!args) args = {};
-		
-		var ret = [],
-			name = args.name ? args.name.toLowerCase() : false,
-			offset = args.offset || 0,
-			limit = args.limit || 100,
-			noargs = !name ? true : false,
-			i = 0,
-			count = 0;
-		
-		for(var hash in archives) {
-			var a = archives[hash];
-			
-			if(count < limit &&
-			(
-				noargs || 
-				name && (
-					a.name.toLowerCase().indexOf(name) !== -1 ||
-					a.path.toLowerCase().indexOf(name) !== -1
-				)
-			) && i++ >= offset) {
-				ret.push(a.meta);
-				count++;
-			}
-		}
-		
-		return ret;
-	},
-	
-};
 
 
 var tmp_offset = 0;
@@ -487,14 +464,35 @@ exports.http = function(c, path) {
 	c.end(output.status);
 };
 
-
-function emit_event(evt, data) {
-	data = data || {};
+exports.cmds = {
+	query: function(args) {
+		if(!args) args = {};
+		
+		var ret = [],
+			name = args.name ? args.name.toLowerCase() : false,
+			offset = args.offset || 0,
+			limit = args.limit || 100,
+			noargs = !name ? true : false,
+			i = 0,
+			count = 0;
+		
+		for(var hash in archives) {
+			var a = archives[hash];
+			
+			if(count < limit &&
+			(
+				noargs || 
+				name && (
+					a.name.toLowerCase().indexOf(name) !== -1 ||
+					a.path.toLowerCase().indexOf(name) !== -1
+				)
+			) && i++ >= offset) {
+				ret.push(a.meta);
+				count++;
+			}
+		}
+		
+		return ret;
+	},
 	
-	broadcast({
-		app: "playbox",
-		func: "event",
-		args: evt,
-		data: data
-	});
-}
+};
