@@ -29,8 +29,6 @@ require.paths.unshift("lib/node-strtok");
 
 
 // exports
-exports.apps = {};
-
 
 var http = require("http"),
 	Module = require("module"),
@@ -38,6 +36,7 @@ var http = require("http"),
 	Net = require("net"),
 	Sys = require("sys"),
 	Edb = require("edb"),
+	Poem = require("./poem"),
 	fs = require("fs"),
 	io = require("./deps/socket.io"),
 	buffer = require("buffer"),
@@ -68,10 +67,9 @@ Log = {
 //var config = JSON.parse("{lala:5}");
 //fs.readFileSync("config.js");
 
-console.log(Connection);
 var config = {},
 	applist = {},
-	apps = exports.apps,
+	apps = Poem.apps,
 	server = http.createServer(function(req, res) {
 		new Connection(req, res);
 	}),
@@ -175,6 +173,16 @@ function init() {
 		Log.info("listening on port: " + 1155);
 	});
 	
+	
+	Poem.init({
+		broadcast: function(s) {
+			return function() {
+				s.broadcast.apply(s, arguments);
+			}
+		}(socket)
+	});
+	
+	//TODO move all this over to poem
 	fs.readdir("apps", function(err, files) {
 		if(err) throw err;
 		
@@ -459,7 +467,7 @@ socket.on("connection", function(conn) {
 		}
 		
 		var do_msg = function(msg) {
-			var protocol = msg.protocol || msg.p,
+			var protocol = msg.protocol || msg.x,
 				id = msg.id || msg.i,
 				cmd = msg.cmd || msg.c,
 				params = msg.params || msg.p,
@@ -470,7 +478,7 @@ socket.on("connection", function(conn) {
 					throw new Error("protocol not defined");
 				}
 				
-				if(protocol === "poem/RPC-1") {
+				if(protocol !== "poem/RPC-1") {
 					throw new Error("protocol not defined");
 				}
 				

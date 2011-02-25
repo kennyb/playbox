@@ -340,6 +340,8 @@ def shutdown(ctx):
 		# do symlinks
 		if not lexists('build/release/main.js'):
 			symlink(abspath('main.js'), 'build/release/main.js')
+		if not lexists('build/release/poem.js'):
+			symlink(abspath('poem.js'), 'build/release/poem.js')
 		if not lexists('build/release/connection.js'):
 			symlink(abspath('connection.js'), 'build/release/connection.js')
 		if not lexists('build/release/lib/edb.js'):

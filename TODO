@@ -1,12 +1,16 @@
 node-inspector - http://localhost:8080/debug?port=5858
 
 current:
-load html templates
+create templates
 config panel
 need database for config
 add / remove dirs 
 playbox -> poem
+move application loading over to poem and keep the app list there
+make functions for querying the app list and getting the app status (the only will be playbox)
+give poem power
 panel app start / stop / restart
+
 
 wtf:
 implement multi-node type system for multiple applications https://github.com/kriszyp/multi-node (and then split poem / playbox)
@@ -89,35 +93,6 @@ implement the object with the following: (depends on the above)
   -> String(path) - the real location of the file
   -> String(status) - the current state of the archive
   -> Object(stats) - the stats of the archive
-
-implement a basic application framework
----------------------------------------
-allow applications to receive function calls over http
-allow applications to receive function calls over plain sockets
-
-implement http interface
-------------------------
-export the following functions to the http interface:
- [o] disconnect the playbox from the network, but maintain the library functioning
- [-] connect the playbox to the internet, listening on the specified ports
- [q] queries against the library (nothing for the whole library)
- [g] return the archive to http
-  -> 100 waiting for first chunk
-  -> 200 + contents of the file
-  -> 404 file doesn't exist
- [i] request archive info
-  -> 100 waiting for the metadata to be downloaded
-  -> 200 + js object with object info
-  -> 404 metadata cannot be found on the DHT
-
-implement plain socket interface
---------------------------------
-I dunno yet :)
-
-determine mp3 duration, id3 data, etc
--------------------------------------
-add the C++ library you saw on that dev website
-retain the iconv dependency if the above library isn't sufficient
 
 
 download metadata from dht extension

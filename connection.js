@@ -1,13 +1,12 @@
 "use strict"
 
-var conn_id = 0,
-	apps = require("./main").apps,
-	fs = require("fs"),
+var fs = require("fs"),
 	Url = require("url"),
 	QueryString = require("querystring"),
-	Url = require("url");
-
-console.log("a:", apps);
+	Url = require("url"),
+	Poem = require("./poem"),
+	apps = Poem.apps,
+	conn_id = 0;
 
 var Connection = function(req, res) {
 	var c = this;
@@ -172,7 +171,6 @@ Connection.prototype.start = function() {
 							c.end(404);
 						} else {
 							var ext = app_name.substr(public_path.lastIndexOf(".")+1);
-							console.log("ext:", ext);
 							c.file(ext2mime(ext), public_path);
 						}						
 					});
