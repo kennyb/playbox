@@ -14,7 +14,6 @@ global.start_time = new Date();
 
 process.on('uncaughtException', function(sys) {
 	return function(err) {
-		//var stack = err.stack.split("\n");
 		console.log(" [ERROR] "+err.toString()+"\n"+(err.stack));
 	};
 }(require("sys")));
@@ -24,23 +23,30 @@ require.paths.unshift("lib");
 require.paths.unshift("../../lib");
 require.paths.unshift("lib/node-strtok");
 
-var __app = "global",
-	http = require("http"),
+
+// data
+
+
+
+// exports
+exports.apps = {};
+
+
+var http = require("http"),
 	Module = require("module"),
 	vm = require('vm'),
 	Net = require("net"),
 	Sys = require("sys"),
-	Url = require("url"),
 	Edb = require("edb"),
 	fs = require("fs"),
 	io = require("./deps/socket.io"),
 	buffer = require("buffer"),
-	Url = require("url"),
-	QueryString = require("querystring"),
+	Connection = require('./connection').Connection,
 	ext2mime = require('./lib/http').ext2mime;
 	//cookie = require( "./lib/cookie");
 
 // globals
+__app = "global";
 Buffer = require('buffer').Buffer;
 Playbox = require('playbox').Playbox;
 
@@ -62,10 +68,10 @@ Log = {
 //var config = JSON.parse("{lala:5}");
 //fs.readFileSync("config.js");
 
-var conn_id = 0,
-	config = {},
+console.log(Connection);
+var config = {},
 	applist = {},
-	apps = {},
+	apps = exports.apps,
 	server = http.createServer(function(req, res) {
 		new Connection(req, res);
 	}),
@@ -84,279 +90,6 @@ Mixin = function(target, source) {
 	return target;
 };
 
-Connection = exports.Connection = function(req, res) {
-	// TODO set the encoding based on the header determined encoding
-	req.setEncoding('utf8');
-	//res.headers["Content-Type"] = "application/xhtml+xml; charset=utf-8";
-	//res.statusCode = 500;
-	
-	this._req = req;
-	this._res = res;
-	this._sid = null;
-	this._ret = 200;
-	this._session = null;
-	this._input_string = "";
-	this._funcs_done = null;
-	this._output_string = false;
-	this._headers = {
-		"Content-Type": "application/xhtml+xml; charset=utf-8"
-	};
-	
-	this._data = {};
-	this._func_ret = {};
-	this._funcs = {};
-	this.request_time = new Date();
-	
-	this._url = Url.parse(req.url);
-	this._get = QueryString.parse(this._url.query);
-	//this._sid = new String(req.getCookie("sid")).toString();
-	this.id = (conn_id++) + "# " + this._url.pathname;
-	
-	req.on('end', function(connection) {
-		return function() {
-			connection.onDataEnd.call(connection);
-		}
-	}(this)).on('data', function(connection) {
-		return function(chunk) {
-			connection.onData.call(connection, chunk);
-		}
-	}(this));
-	
-	/*
-	var Session = global.db.model("Session");
-	if(this._sid !== null) {
-		// load the session
-		if(Session) {
-			Session.find(
-				  {sid: this._sid} // , d_expires: {$lt: this.request_time}
-			).first(function(c) {
-				return function(data) {
-					//console.log(c.id + ": getting session");
-					if(data === null) {
-						// create a session
-						c._session = new Session();
-						c._session.sid = c._sid = LIB.rand_str(26);
-						//this._session.d_expires = new Date()
-					} else {
-						c._session = data;
-					}
-					
-					c.start.call(c);
-				};
-			}(this));
-		}
-	}
-	*/
-	
-	return this;
-};
-
-Connection.prototype.onData = function(chunk) {
-	// do I need a buffer here?
-	this._input_string += chunk;
-}
-
-Connection.prototype.onDataEnd = function() {
-	if(this._input_string.length) {
-		this._post = QueryString.parse(this._input_string);
-	} else {
-		this._post = {};
-	}
-	
-	this.start();
-};
-
-Connection.prototype.start = function() {
-	var c = this,
-		func = c._output_string,
-		static_file_url, static_file,
-		method = c._req.method;
-	
-	if(typeof func === 'function') {
-		c._output_string = "";
-		c._output_string = func(c, c._url.pathname);
-	}
-	
-	if(c._output_string !== false) {
-		c.end();
-		return;
-	}
-	
-	c._funcs_done = true;
-	var path = QueryString.unescape(c._url.pathname);
-	if(path === '/') {
-		//static_file_url = "/index.html";
-		//c._headers["Cache-Control"] = "no-cache, must-revalidate";
-		//c._headers["Pragma"] = "no-cache";
-		//c._headers["Expires"] = "Fri, 01 Jan 2010 00:00:01 GMT";
-		//c._output_string = "<app>a welcoming poem</app>";
-		
-		c.file("text/html; charset=utf-8", "./public/poem.html");
-	} else {
-		//static_file_url = path;
-		var app_name = path.substr(1),
-			app_path = "/",
-			app_path_offset = app_name.indexOf('/');
-		
-		if(app_path_offset !== -1) {
-			app_path = app_path_offset === app_name.length-1 ? "/" : app_name.substr(app_path_offset);
-			app_name = app_name.substr(0, app_path_offset);
-			
-			if(app_path !== "/" && app_path.length > 1/* && app_path.charAt(0) === '/'*/) {
-				app_path = app_path.substr(1);
-			}
-		}
-		
-		Log.log("HTTP", "path "+path+" app "+app_name+" func "+app_path);
-		
-		var app = apps[app_name];
-		if(app !== undefined) {
-			try {
-				__app = app_name;
-				app.http(c, app_path);
-			} catch(e) {
-				var msg = e.toString();
-				c.print(msg);
-				c.end(parseInt(msg, 10) || 500);
-			} finally {
-				__app = "global";
-			}
-		} else if(method === "GET") {
-			switch(app_name) {
-				case "crossdomain.xml":
-					//TODO SOME FORM OF SECURITY!!
-					// maybe implement this as an application :)
-					c._headers["Content-Type"] = "text/xml";
-					c._output_string = '<?xml version="1.0"?>'+
-								'<cross-domain-policy>'+
-									'<site-control permitted-cross-domain-policies="all"/>'+
-									'<allow-access-from domain="*"/>'+
-									//'<allow-http-request-headers-from domain="*" headers="*"/>'+
-								'</cross-domain-policy>';
-					c.end();
-				break;
-				default:
-					var public_path = "public/"+app_name;
-					fs.stat(public_path, function(err, st) {
-						if(err) {
-							c._output_string = "404";
-							c._headers["Content-Type"] = "text/html";
-							c.end(404);
-						} else {
-							var ext = app_name.substr(public_path.lastIndexOf(".")+1);
-							console.log("ext:", ext);
-							c.file(ext2mime(ext), public_path);
-						}						
-					});
-					/*
-					static_file = global.static_files[app_name];
-
-					if(static_file === undefined) {
-						c._output_string = "404";
-						c._headers["Content-Type"] = "text/html";
-						c.end(404);
-					} else {
-						c._output_string = static_file;
-						c._headers["Content-Type"] = static_files_mime[app_name];
-
-						if(typeof static_file === 'function') {
-							c._funcs = null;
-						} else {
-							c.end();
-						}
-					}
-					*/
-				break;
-			}
-		}
-	}
-};
-
-
-Connection.prototype.print = function(str) {
-	if(this._output_string === false) {
-		this._output_string = "";
-	}
-	 
-	this._output_string += str.toString();
-};
-
-Connection.prototype.end = function(ret_code) {
-	var output_str = this._output_string || "";
-	
-	// TODO update the expire time in both the session and the cookie 
-	//this._res.setCookie("sid", this._sid);
-	
-	if(output_str.length === 0) {
-		var output = {};
-		
-		if(this._data.length !== 0) {
-			output.data = this._data;
-		}
-		
-		if(this._func_ret.length !== 0) {
-			output.ret = this._func_ret;
-		}
-		
-		output_str = JSON.stringify(output);
-	}
-	
-	this._res.writeHead(this._ret || 200, this._headers); // DEPR
-	
-	//this._res.shouldKeepAlive = false;
-	if(output_str && output_str.length) {
-		//this._res.statusCode = 200;
-		this._res.write(output_str);
-	}
-	
-	this._res.end();
-}
-
-Connection.prototype.file = function(mime, file_path) {
-	this._output_string = false;
-	var res = this._res;
-	var c = this;
-	try {
-		fs.stat(file_path, function(err, stat) {
-			if(err) throw err;
-			
-			if(stat.isFile()) {      // Stream a single file.
-				//c._res.headers['Content-Length'] = stat.size;
-				//c._res.headers['Content-Type'] = mime;
-				//c._res.statusCode = 200;
-				c._headers['Content-Length'] = stat.size;
-				c._headers['Content-Type'] = mime;
-				res.writeHead(200, c._headers);
-				
-				(function streamFile(c, buffer, offset) {
-					fs.createReadStream(file_path, {
-						flags: 'r',
-						encoding: 'binary',
-						mode: '666',
-						bufferSize: 4096
-					}).on('data', function (chunk) {
-						buffer.write(chunk, offset, 'binary');
-						c._res.write(chunk, 'binary');
-						offset    += chunk.length;
-					}).on('close', function () {
-						res.end();
-					}).on('error', function (err) {
-						c.end(500);
-						//Sys.error(err);
-					});
-				})(c, new(buffer.Buffer)(stat.size), 0);
-			} else {
-				res.writeHead(404, c._headers);
-				res.write("404!");
-				res.end(404);
-			}
-		});
-	} catch(e) {
-		res.writeHead(500, this._headers);
-		res.write(e.message+"\n"+e.stack);
-		res.end();
-	}
-}
 
 function init() {
 	global.static_files = {};
@@ -810,3 +543,5 @@ console.log(pro.gen_code(ast, false));
 */
 
 init();
+
+
