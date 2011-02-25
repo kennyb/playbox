@@ -3,6 +3,8 @@ playbox preview
 
 licensed under AGPLv3
 
+----------------
+
 most of this code is total fumas. It is the goal, over the next few weeks, to make this code look professional. the extreme disorganization was due to many obsoleted ideas in the prototype phase. it took me a while to figure out the exact architecture I wanted. I'm just gonna write random thoughts:
 
 1. I really would like more of an object oriented version, abstracting out the program more and more to js. it will be a gradual change, working to make the code less and less C++ heavy. at first, objects will represent things such as torrents (archives) and dht requests. it is in my best interest to write the majority of this code in js, following the event and callback method of programming common to node js; it is clearly the future. so, I will begin moving large sections of the libtorrent dht stuff out to javascript. it allows me to begin working on the necessary protocol for more complicated tasks.
@@ -16,3 +18,78 @@ most of this code is total fumas. It is the goal, over the next few weeks, to ma
 5. applications will be able to be downloaded from the internet after I implement some sort of rsa (so harmfull apps would not be installed). also, lots of work will need to be done making the environment safe.
 
 developing..
+
+
+==========================
+
+(under heavy development; not final at all)
+
+
+= poem =
+poem is a generic application framework to run javascript applications easily.
+in its current state of development, it will compile and run on osx and linux.
+applications will able to be downloaded over torrent or http.
+applications are signed and checked before installing to prevent malicious behaviour
+applications will be sandboxed in a new procecss with a restricted namespace
+applications can be downloaded, started, stopped, and reloaded at any time
+applications will not be able to run each others code, but they will be able to export functions to other applications
+
+
+= message format =
+
+== poem/RPC-1 ==
+format similar to JSON-RPC. it, however accepts a single command, or an array of commands.
+commands will be returned to the client as they finish / fail
+(meaning that if you send an array of 3 commands, you'll get 3 separate responses)
+all fields are required.
+
+structure:
+<pre>
+{
+  [protocol|p] : "poem/RPC-1"
+  [id|i]       : [string|int]
+  [app|a]      : [string]
+  [cmd|c]      : [string]
+  [params|p]   : [object]
+}
+</pre>
+
+=== protocol ===
+must be "poem/RPC-1", as that's the only protocol implemented right now.
+
+=== id ===
+this is a unique identifier in which the request id will correspond with the response id, allowing for async messaging.
+logic will be added to allow for control flow of the messages
+
+=== app ===
+specifies which application to route the message.
+
+=== cmd ===
+specifies which cmd should be called, exported by the application in the "cmds" object
+
+=== params ===
+params are passed to the cmd function as an object
+
+
+== return format ==
+{
+  [id]        : [string|int]
+  [ret|error] : [object]
+}
+
+=== id ===
+id corresponds to the id of the message sent
+
+=== ret ===
+in the case of success, ret will be returned
+
+=== error ===
+if there were any errors encountered, it will not return "ret", instead "error" with the error message.
+
+
+=============================
+
+DOCS TODO:
+document the application creation process
+document application permissions
+traducir al español (aunque deberian saber algo de ingles de todos modos, jaja)

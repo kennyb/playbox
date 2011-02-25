@@ -302,6 +302,9 @@ def shutdown(ctx):
 		#elif exists('deps/ffmpeg/libpostproc/libpostproc.dylib') and not lexists('build/release/lib/libpostproc.dylib'):
 		#	symlink(abspath('deps/ffmpeg/libpostproc/libpostproc.dylib'), 'build/release/lib/libpostproc.dylib')
 		
+		if exists('public') and not lexists('build/release/public'):
+			symlink(abspath('public'), 'build/release/public')
+		
 		# node libs
 		if exists('deps/socket.io') and not lexists('build/release/lib/socket.io'):
 			symlink(abspath('deps/socket.io'), 'build/release/lib/socket.io')
@@ -341,6 +344,8 @@ def shutdown(ctx):
 			symlink(abspath('edb.js'), 'build/release/lib/edb.js')
 		if not lexists('build/release/lib/bencode.js'):
 			symlink(abspath('lib/bencode.js'), 'build/release/lib/bencode.js')
+		if not lexists('build/release/lib/http.js'):
+			symlink(abspath('lib/http.js'), 'build/release/lib/http.js')
 		
 		if not lexists('build/release/config.json'):
 			symlink(abspath('config.json'), 'build/release/config.json')

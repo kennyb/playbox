@@ -15,7 +15,7 @@ global.start_time = new Date();
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		//var stack = err.stack.split("\n");
-		console.log(" [ERROR] "+err.toString()+"\n"+sys.inspect(err.stack)+"\n"+sys.inspect(err));
+		console.log(" [ERROR] "+err.toString()+"\n"+(err.stack));
 	};
 }(require("sys")));
 //*/
@@ -36,7 +36,8 @@ var __app = "global",
 	io = require("./deps/socket.io"),
 	buffer = require("buffer"),
 	Url = require("url"),
-	QueryString = require("querystring");
+	QueryString = require("querystring"),
+	ext2mime = require('./lib/http').ext2mime;
 	//cookie = require( "./lib/cookie");
 
 // globals
@@ -166,29 +167,31 @@ Connection.prototype.onDataEnd = function() {
 };
 
 Connection.prototype.start = function() {
-	var func = this._output_string,
+	var c = this,
+		func = c._output_string,
 		static_file_url, static_file,
-		method = this._req.method;
+		method = c._req.method;
 	
 	if(typeof func === 'function') {
-		this._output_string = "";
-		this._output_string = func(this, this._url.pathname);
+		c._output_string = "";
+		c._output_string = func(c, c._url.pathname);
 	}
 	
-	if(this._output_string !== false) {
-		this.end();
+	if(c._output_string !== false) {
+		c.end();
 		return;
 	}
 	
-	this._funcs_done = true;
-	var path = QueryString.unescape(this._url.pathname);
+	c._funcs_done = true;
+	var path = QueryString.unescape(c._url.pathname);
 	if(path === '/') {
 		//static_file_url = "/index.html";
-		//this._headers["Cache-Control"] = "no-cache, must-revalidate";
-		//this._headers["Pragma"] = "no-cache";
-		//this._headers["Expires"] = "Fri, 01 Jan 2010 00:00:01 GMT";
-		this._output_string = "<app>a welcoming poem</app>";
-		this.end();
+		//c._headers["Cache-Control"] = "no-cache, must-revalidate";
+		//c._headers["Pragma"] = "no-cache";
+		//c._headers["Expires"] = "Fri, 01 Jan 2010 00:00:01 GMT";
+		//c._output_string = "<app>a welcoming poem</app>";
+		
+		c.file("text/html; charset=utf-8", "./public/poem.html");
 	} else {
 		//static_file_url = path;
 		var app_name = path.substr(1),
@@ -210,11 +213,11 @@ Connection.prototype.start = function() {
 		if(app !== undefined) {
 			try {
 				__app = app_name;
-				app.http(this, app_path);
+				app.http(c, app_path);
 			} catch(e) {
 				var msg = e.toString();
-				this.print(msg);
-				this.end(parseInt(msg, 10) || 500);
+				c.print(msg);
+				c.end(parseInt(msg, 10) || 500);
 			} finally {
 				__app = "global";
 			}
@@ -223,32 +226,46 @@ Connection.prototype.start = function() {
 				case "crossdomain.xml":
 					//TODO SOME FORM OF SECURITY!!
 					// maybe implement this as an application :)
-					this._headers["Content-Type"] = "text/xml";
-					this._output_string = '<?xml version="1.0"?>'+
+					c._headers["Content-Type"] = "text/xml";
+					c._output_string = '<?xml version="1.0"?>'+
 								'<cross-domain-policy>'+
 									'<site-control permitted-cross-domain-policies="all"/>'+
 									'<allow-access-from domain="*"/>'+
 									//'<allow-http-request-headers-from domain="*" headers="*"/>'+
 								'</cross-domain-policy>';
-					this.end();
+					c.end();
 				break;
 				default:
+					var public_path = "public/"+app_name;
+					fs.stat(public_path, function(err, st) {
+						if(err) {
+							c._output_string = "404";
+							c._headers["Content-Type"] = "text/html";
+							c.end(404);
+						} else {
+							var ext = app_name.substr(public_path.lastIndexOf(".")+1);
+							console.log("ext:", ext);
+							c.file(ext2mime(ext), public_path);
+						}						
+					});
+					/*
 					static_file = global.static_files[app_name];
 
 					if(static_file === undefined) {
-						this._output_string = "404";
-						this._headers["Content-Type"] = "text/html";
-						this.end(404);
+						c._output_string = "404";
+						c._headers["Content-Type"] = "text/html";
+						c.end(404);
 					} else {
-						this._output_string = static_file;
-						this._headers["Content-Type"] = static_files_mime[app_name];
+						c._output_string = static_file;
+						c._headers["Content-Type"] = static_files_mime[app_name];
 
 						if(typeof static_file === 'function') {
-							this._funcs = null;
+							c._funcs = null;
 						} else {
-							this.end();
+							c.end();
 						}
 					}
+					*/
 				break;
 			}
 		}
@@ -709,39 +726,51 @@ socket.on("connection", function(conn) {
 		}
 		
 		var do_msg = function(msg) {
+			var protocol = msg.protocol || msg.p,
+				id = msg.id || msg.i,
+				cmd = msg.cmd || msg.c,
+				params = msg.params || msg.p,
+				app = msg.app || msg.a;
+			
 			try {
-				if(!msg.protocol) {
+				if(!protocol) {
 					throw new Error("protocol not defined");
 				}
 				
-				if(!msg.id) {
+				if(protocol === "poem/RPC-1") {
+					throw new Error("protocol not defined");
+				}
+				
+				if(!id) {
 					throw new Error("message id not defined");
 				}
 				
-				if(!msg.cmd) {
+				if(!cmd) {
 					throw new Error("message cmd not defined");
 				}
 				
-				if(!msg.params) {
+				if(!params) {
 					throw new Error("params not defined");
 				}
 				
-				var app = apps[msg.app];
-				if(!app || !app.cmds) {
+				if(!app) {
 					throw new Error("app not installed");
 				}
 				
-				var cmd = app.cmds[msg.cmd];
+				app = apps[app];
+				if(!app.cmds) {
+					throw new Error("app does not have any cmds");
+				}
+				
+				cmd = app.cmds[cmd];
 				if(typeof cmd !== 'function') {
 					throw new Error("cmd function not defined");
 				}
 				
-				conn.send({id: msg.id, ret: cmd(msg.params)});
+				conn.send({id: id, ret: cmd(params)});
 			} catch(e) {
-				conn.send({id: msg.id, error: e.toString()});
+				conn.send({id: id, error: e.toString()});
 			}
-			
-			//Log.log("SOCK", "path "+path+" app "+app_name+" func "+app_path);
 		};
 		
 		// TODO: add a "waitfor" option to organize the order

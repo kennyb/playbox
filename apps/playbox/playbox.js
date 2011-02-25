@@ -4,7 +4,8 @@ var Sys = require("sys"),
 	Path = require('path'),
 	Crypto = require("crypto"),
 	ID3File = require("lib/node-id3"),
-	bencode = require("lib/bencode");
+	bencode = require("lib/bencode"),
+	ext2mime = require('lib/http').ext2mime;
 
 var playbox = new Playbox(),
 	add_archive_queue = [],
@@ -254,7 +255,8 @@ exports.cmds = {
 		}
 		
 		return ret;
-	}
+	},
+	
 };
 
 
@@ -371,24 +373,6 @@ function strip_metadata(file_path, callback) {
 		
 		throw e;
 	}
-}
-
-// TODO: move this to a lib function
-function ext2mime(ext) {
-	var _ext2mime = {
-		"html": "text/html",
-		"ico": "image/x-icon",
-		"gif": "image/gif",
-		"jpg": "image/jpeg",
-		"js": "text/javascript",
-		"json": "application/x-json",
-		"xml": "text/xml"
-	};
-	if(ext.charAt(0) === '.') {
-		ext = ext.substr(1);
-	}
-	
-	return _ext2mime[ext];
 }
 
 exports.init = function(opts) {
