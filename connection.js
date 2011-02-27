@@ -5,6 +5,7 @@ var fs = require("fs"),
 	QueryString = require("querystring"),
 	Url = require("url"),
 	Poem = require("./poem"),
+	ext2mime = require('./lib/http').ext2mime,
 	apps = Poem.apps,
 	conn_id = 0;
 
@@ -228,7 +229,11 @@ Connection.prototype.end = function(ret_code) {
 		output_str = JSON.stringify(output);
 	}
 	
-	c._res.writeHead(c._ret || 200, c._headers); // DEPR
+	if(typeof ret_code === "undefined") {
+		ret_code = c._ret;
+	}
+	
+	c._res.writeHead(ret_code, c._headers); // DEPR
 	
 	//c._res.shouldKeepAlive = false;
 	if(output_str && output_str.length) {

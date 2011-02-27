@@ -40,8 +40,7 @@ var http = require("http"),
 	fs = require("fs"),
 	io = require("./deps/socket.io"),
 	buffer = require("buffer"),
-	Connection = require('./connection').Connection,
-	ext2mime = require('./lib/http').ext2mime;
+	Connection = require('./connection').Connection;
 	//cookie = require( "./lib/cookie");
 
 // globals
