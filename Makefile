@@ -45,7 +45,6 @@ prepare:
 		--enable-avfilter-lavf \
 		--disable-doc \
 		--arch=x86_64 \
-		--cc=/usr/bin/gcc-4.2 \
 		--disable-stripping \
 		--enable-debug \
 		--prefix="." && make -j3

@@ -504,7 +504,7 @@ socket.on("connection", function(conn) {
 				
 				cmd = app.cmds[cmd];
 				if(typeof cmd !== 'function') {
-					throw new Error("cmd function not defined");
+					throw new Error("cmd ("+cmd+"): function not defined");
 				}
 				
 				conn.send({id: id, ret: cmd(params)});
