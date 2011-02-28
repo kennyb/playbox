@@ -12,6 +12,13 @@ exports.init = function(opts) {
 
 exports.apps = apps;
 exports.cmds = {
+	status: function(params) {
+		return {
+			cache: 0,
+			max_cache: 1024 * 100,
+			used_cache: 0
+		}
+	},
 	list: function(params) {
 		/*
 		var ret = [];
@@ -25,7 +32,11 @@ exports.cmds = {
 		return [
 			{
 				id: "playbox",
-				status: "ONLINE"
+				desc: "network music machine",
+				status: "ONLINE",
+				cache: 0,
+				max_cache: 1024 * 100,
+				used_cache: 0
 			}
 		];
 	},

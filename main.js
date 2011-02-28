@@ -497,17 +497,19 @@ socket.on("connection", function(conn) {
 					throw new Error("app not installed");
 				}
 				
+				console.log("cmd("+id+"): "+app+"."+cmd+" "+Sys.inspect(params));
+				
 				app = apps[app];
 				if(!app.cmds) {
 					throw new Error("app does not have any cmds");
 				}
 				
-				cmd = app.cmds[cmd];
-				if(typeof cmd !== 'function') {
+				var cmd_f = app.cmds[cmd];
+				if(typeof cmd_f !== 'function') {
 					throw new Error("cmd ("+cmd+"): function not defined");
 				}
 				
-				conn.send({id: id, ret: cmd(params)});
+				conn.send({id: id, ret: cmd_f(params)});
 			} catch(e) {
 				conn.send({id: id, error: e.toString()});
 			}

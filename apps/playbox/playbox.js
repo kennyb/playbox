@@ -23,6 +23,7 @@ var playbox = new Playbox(),
 	},
 	config = {
 		// config default values
+		directories: [],
 		read_kb_speed: 5000,
 		write_kb_speed: 3000
 	};
@@ -44,6 +45,24 @@ var broadcast = function(msg) {
 };
 
 function add_dir(p) {
+	var n = add_dir_recursive(p),
+		dirs = config.directories,
+		exists;
+	
+	for(var i = 0; i < dirs.length; i++) {
+		var d = dirs[i];
+		if(d.path === p) {
+			exists = 1;
+		}
+	}
+	
+	if(!exists) {
+		config.directories.push({path: p});
+		Edb.set("config", config);
+	}
+}
+
+function add_dir_recursive(p) {
 	var num = 0;
 
 	Fs.stat(p, function(err, st) {
@@ -60,7 +79,7 @@ function add_dir(p) {
 				var i = files.length-1;
 				if(i >= 0) {
 					do {
-						add_dir(p+"/"+files[i].toString());
+						add_dir_recursive(p+"/"+files[i].toString());
 					} while(i--);
 				}
 			});
@@ -254,7 +273,6 @@ function strip_metadata(file_path, callback) {
 				}
 				
 				var total = path_stat.size;
-				
 				Fs.open(dest_path+".mp3", 'w+', '644', function(err, fd_w) {
 					if(err) {
 						Fs.close(fd_r);
@@ -365,12 +383,16 @@ exports.init = function(opts) {
 		if(typeof value === 'undefined') {
 			// running the playbox for the very first time
 			// do more first time stuff, like loading the local library
+			add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
 			Edb.set("config", config);
 		} else {
 			Mixin(config, value);
 		}
 		
-		add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+		var dirs = config.directories;
+		for(var i = 0; i < dirs.length; i++) {
+			add_dir(dirs[i].path);
+		}
 	});
 	
 	Edb.list("archive.", function(key, value) {
@@ -494,5 +516,8 @@ exports.cmds = {
 		
 		return ret;
 	},
-	
+	get_directories: function(params) {
+		console.log("get_directories", config.directories);
+		return config.directories;
+	}
 };
