@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+		<meta name="ROBOTS" content="NONE" />
+		<script type="text/javascript">
+			/*<![CDATA[*/
+			top.LIB.addEvent('load', function() {
+				top.document.getElementsByTagName("body")[0].appendChild(top.document.importNode(document.getElementById("templates"), true));
+				top.LIB.loadedLib({templates: true});
+			}, window);
+			/*]]>*/
+		</script>
+	</head>
+	<body>
+		<div id="templates" style="display:none">
+			
+			<xmp id="template_loading">
+				<h1>loading...</h1>
+			</xmp>
+			
+			<xmp id="template_loading2">
+				<?
+					console.log("loading config");
+				?>
+				loading config...
+			</xmp>
+			
+			<xmp id="template_sidebar">
+				<div id="sidebar">
+					<?=SKIN.data_template("app_button", "list", {}, "poem")?>
+				</div>
+				<div id="add_app">
+					add +
+				</div>
+			</xmp>
+			
+			<xmp id="template_footer">
+				<ul>
+					<li id="menu_version">
+						<a href="#/version">version</a>
+					</li>
+					<li id="menu_about">
+						<a href="#/about">about</a>
+					</li>
+				</ul>
+			</xmp>
+			
+			<xmp id="template_home">
+				<h2>
+					playbox
+				</h2>
+				<h4>
+					Library
+				</h4>
+				<div>
+					<div>songs x</div>
+					<div>...</div>
+					<div>...</div>
+					<div>...</div>
+				</div>
+				<h4>
+					directories
+				</h4>
+				<?=SKIN.data_template("directory_entry", "get_directories", {})?>
+				<div>
+					<input type="button" value="add" />
+				</div>
+				<h4>
+					cache
+				</h4>
+			</xmp>
+			
+			<xmp id="template_directory_entry">
+				<div><?=d.path?></div>
+			</xmp>
+			
+			<xmp id="template_app_button">
+				<h4>
+					<?=d.id?>
+				</h4>
+				<div>
+					(<?=d.desc?>)
+				</div>
+				<?
+				console.log("app_button", d);
+				?>
+			</xmp>
+			
+		</div>
+	</body>
+</html>
