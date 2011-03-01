@@ -32,13 +32,21 @@ exports.cmds = {
 		
 		return [
 			{
+				id: "poem",
+				desc: "system",
+				status: "ONLINE",
+				cache: 0,
+				max_cache: 1024 * 100,
+				used_cache: 0
+			},
+			{
 				id: "playbox",
 				desc: "network music machine",
 				status: "ONLINE",
 				cache: 0,
 				max_cache: 1024 * 100,
 				used_cache: 0
-			}
+			},
 		];
 	},
 	start: function(params) {

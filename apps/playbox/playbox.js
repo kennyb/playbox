@@ -46,21 +46,18 @@ var broadcast = function(msg) {
 };
 
 function add_dir(p) {
-	var n = add_dir_recursive(p),
-		dirs = config.directories,
-		exists;
+	p = Path.normalize(p);
+	var dirs = config.directories;
 	
 	for(var i = 0; i < dirs.length; i++) {
 		var d = dirs[i];
-		if(d.path === p) {
-			exists = 1;
+		if(d.path.indexOf(p) === 0) {
+			throw new Error("path already exists or is a subdirectory of an existing path");
 		}
 	}
 	
-	if(!exists) {
-		config.directories.push({path: p});
-		Edb.set("config", config);
-	}
+	config.directories.push({path: p});
+	Edb.set("config", config);
 }
 
 function add_dir_recursive(p) {
@@ -384,15 +381,16 @@ exports.init = function(opts) {
 		if(typeof value === 'undefined') {
 			// running the playbox for the very first time
 			// do more first time stuff, like loading the local library
-			add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
-			Edb.set("config", config);
+			Edb.set("config", config, function() {
+				add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
+			});
 		} else {
 			Mixin(config, value);
 		}
 		
 		var dirs = config.directories;
 		for(var i = 0; i < dirs.length; i++) {
-			add_dir(dirs[i].path);
+			add_dir_recursive(dirs[i].path);
 		}
 	});
 	
@@ -502,8 +500,7 @@ exports.cmds = {
 		for(var hash in archives) {
 			var a = archives[hash];
 			
-			if(count < limit &&
-			(
+			if(count < limit && (
 				noargs || 
 				name && (
 					a.name.toLowerCase().indexOf(name) !== -1 ||
@@ -518,7 +515,6 @@ exports.cmds = {
 		return ret;
 	},
 	get_dirs: function(params) {
-		console.log("get_directories", config.directories);
 		return config.directories;
 	},
 	add_dir: function(params) {
