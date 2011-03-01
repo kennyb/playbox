@@ -1,4 +1,5 @@
-//"use strict";
+"use strict";
+
 var Sys = require("sys"),
 	Fs = require('fs'),
 	Path = require('path'),
@@ -154,9 +155,9 @@ function update() {
 					});
 				}
 			}
+		} else {
+			last_idle = new Date();
 		}
-	} else {
-		last_idle = new Date();
 	}
 }
 
@@ -256,10 +257,10 @@ function update_metadata(hash, meta) {
 }
 
 
-var tmp_offset = 0;
+var tmp_file_id = 0;
 function strip_metadata(file_path, callback) {
 	try {
-		var dest_path = playbox.tmp_path+"strip."+(tmp_offset++);
+		var dest_path = playbox.tmp_path+"strip."+(tmp_file_id++);
 		var sha1 = Crypto.createHmac("sha1", "human-evolution");
 
 		Fs.open(file_path, 'r', function(err, fd_r) {
@@ -516,8 +517,34 @@ exports.cmds = {
 		
 		return ret;
 	},
-	get_directories: function(params) {
+	get_dirs: function(params) {
 		console.log("get_directories", config.directories);
 		return config.directories;
+	},
+	add_dir: function(params) {
+		var path = params.path;
+		if(!path) {
+			throw new Error("'path' not defined");
+		}
+		
+		// throw event
+		add_dir(path);
+	},
+	rm_dir: function(params) {
+		var dirs = config.directories,
+			path = params.path;
+		
+		if(!path) {
+			throw new Error("'path' not defined");
+		}
+		
+		for(var i = 0; i < dirs.length; i++) {
+			var d = dirs[i];
+			if(d.path === path) {
+				// remove and unwatch
+				// throw event
+				break;
+			}
+		}
 	}
 };

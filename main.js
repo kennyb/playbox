@@ -6,7 +6,7 @@
 
 // download this for testing:
 // http://github.com/cloudhead/vows
-//"use strict";
+"use strict";
 
 global.start_time = new Date();
 
@@ -44,11 +44,11 @@ var http = require("http"),
 	//cookie = require( "./lib/cookie");
 
 // globals
-__app = "global";
-Buffer = require('buffer').Buffer;
-Playbox = require('playbox').Playbox;
+global.__app = "global";
+global.Buffer = require('buffer').Buffer;
+global.Playbox = require('playbox').Playbox;
 
-Log = {
+global.Log = {
 	log: function(header, s) {
 		console.log(" ["+header+"] ["+__app+"] "+s);
 	},
@@ -75,7 +75,7 @@ var config = {},
 	socket = io.listen(server, {flashPolicyServer: false});
 
 //TODO lib func, move me
-Mixin = function(target, source) {
+global.Mixin = function(target, source) {
 	if(typeof source === "object") {
 		for(var key in source) {
 			if(source.hasOwnProperty(key)){

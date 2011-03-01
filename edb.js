@@ -1,3 +1,5 @@
+"use strict";
+
 var fs = require('fs');
 
 // "db" shit... (this will be changed for a real one soon... for now it's a chusta)

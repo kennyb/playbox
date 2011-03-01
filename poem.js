@@ -1,3 +1,4 @@
+"use strict";
 
 var apps = {};
 var app_status = {};
