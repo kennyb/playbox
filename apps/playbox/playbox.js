@@ -471,12 +471,12 @@ exports.http = function(c, path) {
 			
 		case '/':
 			//c.file("application/xhtml+xml", "./apps/playbox/public/index.html");
-			c.file("text/html; charset=utf-8", "./apps/playbox/public/index.html");
+			c.file("text/html; charset=utf-8", "./apps/playbox/public/playbox.html");
 			return;
 			
 		default:
 			var mime = ext2mime(Path.extname(path)) | "text/plain";
-			c.file(mime, "./public/"+path);
+			c.file(mime, "./apps/playbox/public/"+path);
 			return;
 	}
 	

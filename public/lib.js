@@ -277,7 +277,7 @@ LIB = {
 						i = document.createElement("iframe");
 						i.id = 'templates_iframe';
 						i.width = i.height = 0;
-						i.src = '/templates.html?';// + DATA.staticVersions['templates.html'];
+						i.src = '/'+$app+'/templates.html?';// + DATA.staticVersions['templates.html'];
 						document.getElementsByTagName("body")[0].appendChild(i);
 					break;
 				}
