@@ -6,11 +6,11 @@ config panel
 need database for config
 add / remove dirs 
 playbox -> poem
+rename app -> poem (in code)
 move application loading over to poem and keep the app list there
 make functions for querying the app list and getting the app status (the only will be playbox)
 give poem power
 panel app start / stop / restart
-
 
 wtf:
 implement multi-node type system for multiple applications https://github.com/kriszyp/multi-node (and then split poem / playbox)

@@ -36,7 +36,7 @@ var http = require("http"),
 	Net = require("net"),
 	Sys = require("sys"),
 	Edb = require("edb"),
-	Poem = require("./poem"),
+	Poem = require("./poem/app-manager"),
 	fs = require("fs"),
 	io = require("./deps/socket.io"),
 	buffer = require("buffer"),
@@ -91,6 +91,13 @@ global.Mixin = function(target, source) {
 function init() {
 	global.static_files = {};
 	global.static_files_mime = {};
+	var init = {
+		broadcast: function(s) {
+			return function() {
+				s.broadcast.apply(s, arguments);
+			}
+		}(socket)
+	};
 	
 	try {
 		fs.readFile('config.json', function(err, content) {
@@ -178,7 +185,7 @@ function init() {
 			return function() {
 				s.broadcast.apply(s, arguments);
 			}
-		}(socket)
+		3}(socket)
 	});
 	
 	//TODO move all this over to poem
@@ -262,13 +269,11 @@ function init() {
 					if(context.exports) {
 						apps[app] = context.exports;
 						if(typeof context.exports.init === 'function') {
-							context.exports.init({
-								broadcast: function(s) {
-									return function() {
-										s.broadcast.apply(s, arguments);
-									}
-								}(socket)
-							});
+							if(app === "poem") {
+								init.Poem = Poem;
+							}
+							
+							context.exports.init(init);
 						}
 					} else {
 						throw new Error("application does not export anything");

@@ -34,6 +34,29 @@ applications will be sandboxed in a new procecss with a restricted namespace
 applications can be downloaded, started, stopped, and reloaded at any time
 applications will not be able to run each others code, but they will be able to export functions to other applications
 
+= poem program structure =
+
+/main.js - starting point of the program. contains all module reloading code
+/poem/app-manager.js - contains the code which dynamically loads the "apps" into the server to be run
+/poem/cache.js - contains functions used for each app's cache
+/poem/edb.js - temporary library until we've got a real data layer
+/poem/library.node - contains C++ code to maintain the poem library and cache
+/apps/[app] - each application (or poem) which can be loaded by the poem server contains its own directory
+/apps/[app]/[app].js - each application contains its own entry point self-named
+
+= application (poem) structure =
+
+each program must export the following:
+
+init: function({[broadcast: function(msg)], ...}) {...}
+start: function() {...}
+stop: function() {...}
+connect: function(socket) - called on all apps currently loaded when a client connects
+disconnect: function(socket) {...} - called on all apps currently loaded when a client disconnects
+http: function(connection, path) {...} - called each time the application is accessed over http (http://localhost:1155/app/)
+cmds: {	[cmd2]: function(params) {...},
+        [cmd1]: function(params) {...}}
+
 
 = message format =
 

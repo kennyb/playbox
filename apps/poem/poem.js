@@ -1,17 +1,13 @@
 "use strict";
 
-var apps = {};
-var app_status = {};
+var Poem;
 var broadcast;
 
 exports.init = function(opts) {
+	Poem = opts.Poem;
 	broadcast = opts.broadcast;
-	
-	console.log("poem initialized");
 };
 
-
-exports.apps = apps;
 exports.cmds = {
 	status: function(params) {
 		return {
@@ -68,7 +64,8 @@ exports.cmds = {
 		throw new Error("not yet implemented");
 	}
 };
-
+/*
 apps["poem"] = {
 	cmds: exports.cmds
 };
+*/

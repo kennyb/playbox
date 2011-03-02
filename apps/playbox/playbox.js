@@ -486,14 +486,14 @@ exports.http = function(c, path) {
 };
 
 exports.cmds = {
-	query: function(args) {
-		if(!args) args = {};
+	query: function(params) {
+		if(!params) params = {};
 		
 		var ret = [],
-			name = args.name ? args.name.toLowerCase() : false,
-			offset = args.offset || 0,
-			limit = args.limit || 100,
-			noargs = !name ? true : false,
+			name = params.name ? params.name.toLowerCase() : false,
+			offset = params.offset || 0,
+			limit = params.limit || 100,
+			noparams = !name ? true : false,
 			i = 0,
 			count = 0;
 		
@@ -501,7 +501,7 @@ exports.cmds = {
 			var a = archives[hash];
 			
 			if(count < limit && (
-				noargs || 
+				noparams || 
 				name && (
 					a.name.toLowerCase().indexOf(name) !== -1 ||
 					a.path.toLowerCase().indexOf(name) !== -1
