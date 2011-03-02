@@ -34,13 +34,15 @@ var http = require("http"),
 	Module = require("module"),
 	vm = require('vm'),
 	Net = require("net"),
+	Path = require("path"),
 	Sys = require("sys"),
 	Edb = require("edb"),
 	Poem = require("./poem/app-manager"),
 	fs = require("fs"),
 	io = require("./deps/socket.io"),
 	buffer = require("buffer"),
-	Connection = require('./connection').Connection;
+	Connection = require('./connection').Connection,
+	ext2mime = require('./lib/http').ext2mime;
 	//cookie = require( "./lib/cookie");
 
 // globals
@@ -97,6 +99,21 @@ function init() {
 				s.broadcast.apply(s, arguments);
 			}
 		}(socket)
+	};
+	
+	var http_router = function(app, ext2mime) {
+		return function(c, path) {
+			switch(path) {
+				case "/":
+					c.file("text/html; charset=utf-8", "./apps/"+app+"/public/"+app+".html");
+					break;
+				
+				default:
+					var mime = ext2mime(Path.extname(path)) | "text/plain";
+					c.file(mime, "./apps/"+app+"/public/"+path);
+					return;
+			}
+		};
 	};
 	
 	try {
@@ -257,6 +274,7 @@ function init() {
 						},
 						Buffer: Buffer,
 						Mixin: Mixin,
+						Path: Path,
 						setTimeout: setTimeout,
 						setInterval: setInterval,
 						clearInterval: clearInterval,
@@ -275,6 +293,11 @@ function init() {
 							
 							context.exports.init(init);
 						}
+						
+						if(!context.exports.http) {
+							context.exports.http = http_router(app, ext2mime);
+						}
+						
 					} else {
 						throw new Error("application does not export anything");
 					}

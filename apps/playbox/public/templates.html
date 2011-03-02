@@ -5,6 +5,7 @@
 		<meta name="ROBOTS" content="NONE" />
 		<script type="text/javascript">
 			/*<![CDATA[*/
+			//document.domain = 'gatunes.com';
 			top.LIB.addEvent('load', function() {
 				top.document.getElementsByTagName("body")[0].appendChild(top.document.importNode(document.getElementById("templates"), true));
 				top.LIB.loadedLib({templates: true});
@@ -19,22 +20,9 @@
 				<h1>loading...</h1>
 			</xmp>
 			
-			<xmp id="template_loading2">
-				<?
-					console.log("loading cacas");
-				?>
-				loading config...
-			</xmp>
-			
 			<xmp id="template_sidebar">
-				<div id="sidebar">
-					<h3>apps</h3>
-					<hr />
-					<?=SKIN.data_template("app_button", "list", {}, "poem")?>
-				</div>
-				<h2 id="add_app">
-					<a href="javascript:alert('not yet implemented')">add +</a>
-				</h2>
+				<h3><a href="#/library">library</a></h3>
+				<h3><a href="#/config">config</a></h3>
 			</xmp>
 			
 			<xmp id="template_footer">
@@ -50,17 +38,31 @@
 			
 			<xmp id="template_home">
 				<h4>
-					stats
+					about
 				</h4>
 				<div>
-					<div>...</div>
+					playbox-2.0 - preview version
+				</div>
+			</xmp>
+			
+			<xmp id="template_library">
+				not yet implemented...
+			</xmp>
+			
+			<xmp id="template_config">
+				<h2>
+					config
+				</h2>
+				<h4>
+					directories
+				</h4>
+				<?=SKIN.data_template("directory_entry", "get_dirs", {})?>
+				<div>
+					<input type="button" value="add" />
 				</div>
 				<h4>
 					cache
 				</h4>
-				<div>
-					<div>...</div>
-				</div>
 			</xmp>
 			
 			<xmp id="template_directory_entry">
@@ -68,17 +70,15 @@
 			</xmp>
 			
 			<xmp id="template_app_button">
-				<div style="border: 1px solid #00b; padding: 5px">
-					<div style="font-weight:bold">
-						<?=d.id?>
-					</div>
-					<div>
-						(<?=d.desc?>)
-					</div>
-					<?
-					console.log("app_button", d);
-					?>
+				<h4>
+					<?=d.id?>
+				</h4>
+				<div>
+					(<?=d.desc?>)
 				</div>
+				<?
+				console.log("app_button2", d);
+				?>
 			</xmp>
 			
 		</div>

@@ -1,12 +1,15 @@
 node-inspector - http://localhost:8080/debug?port=5858
 
+bugs:
+when a file is not found, it doesn't return a 404... just an error on the console
+fix scoping in the templates
+
+
 current:
-create templates
-config panel
 need database for config
 add / remove dirs 
 playbox -> poem
-rename app -> poem (in code)
+rename: 'an app' -> 'a poem' (in code)
 move application loading over to poem and keep the app list there
 make functions for querying the app list and getting the app status (the only will be playbox)
 give poem power
