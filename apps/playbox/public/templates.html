@@ -45,8 +45,13 @@
 				</div>
 			</xmp>
 			
+			<xmp id="template_library_entry">
+				<div><?=d.name?></div>
+			</xmp>
+			
 			<xmp id="template_library">
-				not yet implemented...
+				<h2>library</h2>
+				<?=SKIN.data_template("library_entry", "query", {})?>
 			</xmp>
 			
 			<xmp id="template_config">
@@ -77,7 +82,7 @@
 					(<?=d.desc?>)
 				</div>
 				<?
-				console.log("app_button2", d);
+				console.log("app", d);
 				?>
 			</xmp>
 			
