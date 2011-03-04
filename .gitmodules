@@ -34,3 +34,6 @@
 [submodule "deps/socket.io"]
 	path = deps/socket.io
 	url = git://github.com/LearnBoost/Socket.IO-node.git
+[submodule "deps/apf"]
+	path = deps/apf
+	url = https://github.com/ajaxorg/apf.git
