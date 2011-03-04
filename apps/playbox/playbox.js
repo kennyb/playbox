@@ -327,7 +327,7 @@ function strip_metadata(file_path, callback) {
 								Fs.close(fd_w);
 								
 								if(callback) {
-									callback(dest_path+".mp3", sha1.digest(encoding="hex"), path_stat);
+									callback(dest_path+".mp3", sha1.digest("hex"), path_stat);
 								}
 							}
 							

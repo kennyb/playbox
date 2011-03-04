@@ -282,7 +282,7 @@ function init() {
 						Playbox: Playbox
 					};
 					
-					vm.runInNewContext(code, context, app);
+					vm.runInNewContext(code, context, "apps/"+app+"/"+app+".js");
 					
 					if(context.exports) {
 						apps[app] = context.exports;
