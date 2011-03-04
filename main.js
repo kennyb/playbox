@@ -221,7 +221,10 @@ function init() {
 				
 				
 				return function(err, code) {
-					if(err) throw err;
+					if(err) {
+						//throw err;
+						code = "";
+					}
 					
 					var context = {
 						__app: app,

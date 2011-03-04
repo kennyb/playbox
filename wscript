@@ -2,9 +2,9 @@
 
 import Options
 import sys
-from os import unlink, symlink, popen, environ, makedirs
+from os import unlink, removedirs, symlink, popen, environ, makedirs
 from os.path import exists, lexists, abspath
-from shutil import copy2, copytree
+from shutil import copy2, copytree, rmtree
 
 srcdir = "."
 top = "release"
@@ -357,5 +357,27 @@ def shutdown(ctx):
 			symlink(abspath('applist.json'), 'build/release/applist.json')
 		
 		# default apps
+		#if lexists('build/release/apps'):
+		#	unlink('build/release/apps')
+		#elif exists('build/release/apps'):):
+		#	removedirs('build/release/apps')
+		
 		if not exists('build/release/apps'):
-			symlink(abspath('apps'), 'build/release/apps')
+			makedirs('build/release/apps')
+		
+		if not exists('build/release/apps/poem'):
+			symlink(abspath('apps/poem'), 'build/release/apps/poem')
+			
+		if not exists('build/release/apps/playbox'):
+			symlink(abspath('apps/playbox'), 'build/release/apps/playbox')
+			
+		# js lib: APF (ajax.org)
+		if not exists('build/release/apps/apf/public'):
+			makedirs('build/release/apps/apf/public')
+		
+		if exists('deps/apf/apf.js') and not lexists('build/release/apps/apf/public/apf.js'):
+			symlink(abspath('deps/apf/apf.js'), 'build/release/apps/apf/public/apf.js')
+			symlink(abspath('deps/apf/loader.js'), 'build/release/apps/apf/public/loader.js')
+			symlink(abspath('deps/apf/core'), 'build/release/apps/apf/public/core')
+			symlink(abspath('deps/apf/elements'), 'build/release/apps/apf/public/elements')
+			symlink(abspath('deps/apf/processinginstructions'), 'build/release/apps/apf/public/processinginstructions')
