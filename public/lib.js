@@ -113,7 +113,7 @@ function cE(type, opts) {
 	
 	for(field = 2; field < len; field++) {
 		value = arguments[field];
-		if(value) {
+		if(typeof value !== 'undefined') {
 			aC(e, value);
 		}
 	}
