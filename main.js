@@ -109,7 +109,7 @@ function init() {
 					break;
 				
 				default:
-					var mime = ext2mime(Path.extname(path)) | "text/plain";
+					var mime = ext2mime(Path.extname(path)) || "text/plain";
 					c.file(mime, "./apps/"+app+"/public/"+path);
 					return;
 			}

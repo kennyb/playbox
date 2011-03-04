@@ -4,6 +4,7 @@ var fs = require("fs"),
 	Url = require("url"),
 	QueryString = require("querystring"),
 	Url = require("url"),
+	Path = require("path"),
 	Poem = require("./poem/app-manager"),
 	ext2mime = require('./lib/http').ext2mime,
 	apps = Poem.apps,
@@ -171,8 +172,7 @@ Connection.prototype.start = function() {
 							c._headers["Content-Type"] = "text/html";
 							c.end(404);
 						} else {
-							var ext = app_name.substr(public_path.lastIndexOf(".")+1);
-							c.file(ext2mime(ext), public_path);
+							c.file(ext2mime(Path.extname(public_path)), public_path);
 						}						
 					});
 					/*
