@@ -381,18 +381,15 @@ LIB = {
 		return string;
 	},
 	trim : function(string) {
-		if(typeof string === 'undefined') console.trace();
 		if(typeof string.trim === 'function') {
 			// support in firefox 3.5 for this
 			string = string.trim();
 		} else {
-			string = string.replace(/^\s+/, '');
-			for (var i = string.length; i > 0; i--) {
-				if (/\S/.test(string.charAt(i-1))) {
-					string = string.substr(0, i);
-					break;
-				}
-			}
+			string = string.replace(/^\s\s*/, '');
+			var ws = /\s/,
+				i = string.length;
+			while (ws.test(string.charAt(--i)));
+			return string.slice(0, i + 1);
 		}
 
 		return string;
