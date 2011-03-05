@@ -450,7 +450,7 @@ exports.http = function(c, path) {
 			break;
 		
 		case 'g':
-			c.file("audio/mp3", playbox.library_dir+"/"+extra);
+			c.file("audio/mpeg", playbox.library_dir+"/"+extra);
 			return;
 			
 		case 'q':

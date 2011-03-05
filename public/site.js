@@ -130,8 +130,15 @@ var SKIN = {
 					var attributes = node.attributes;
 					var children = node.childNodes;
 					for(var i = 0; i < attributes.length; i++) {
-						var a = attributes[i];
-						attrs.push(a.nodeName.toLowerCase()+":"+concat_vars(a.nodeValue));
+						var a = attributes[i],
+							attr = a.nodeName.toLowerCase();
+						
+						if(attr.substr(0, 2) === "on") {
+							// for now we'll assume this is an event
+							attrs.push(attr+":function(d){return function(){"+a.nodeValue+"}}(d)")
+						} else {
+							attrs.push(attr+":"+concat_vars(a.nodeValue));
+						}
 					}
 					
 					for(var i = 0; i < children.length; i++) {

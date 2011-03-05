@@ -381,3 +381,11 @@ def shutdown(ctx):
 			symlink(abspath('deps/apf/core'), 'build/release/apps/apf/public/core')
 			symlink(abspath('deps/apf/elements'), 'build/release/apps/apf/public/elements')
 			symlink(abspath('deps/apf/processinginstructions'), 'build/release/apps/apf/public/processinginstructions')
+
+		# js lib: jPlayer (http://www.jplayer.org)
+		if not exists('build/release/apps/jPlayer/public'):
+			makedirs('build/release/apps/jPlayer/public')
+		
+		if exists('deps/jPlayer/jquery.jplayer/jquery.jplayer.js') and not lexists('build/release/apps/jPlayer/public/jplayer.js'):
+			symlink(abspath('deps/jPlayer/jquery.jplayer/jquery.jplayer.js'), 'build/release/apps/jPlayer/public/jplayer.js')
+			symlink(abspath('deps/jPlayer/jquery.jplayer/Jplayer.swf'), 'build/release/apps/jPlayer/public/Jplayer.swf')

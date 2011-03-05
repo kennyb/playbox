@@ -60,6 +60,19 @@
 				?>
 			</xmp>
 			
+			<xmp id="template_player">
+				<div>testing some stuff out...</div>
+				<div id="song_list">
+					<?=SKIN.data_template("library_entry", "query", {})?>
+				</div>
+			</xmp>
+			
+			<xmp id="template_library_entry">
+				<div onclick="$('#jplayer_1').jPlayer('setMedia', {mp3: 'http://localhost:1155/playbox/g/'+d.id}).jPlayer('play')">
+					<?=d.name?> | <?=LIB.formatTime(d.time)?>
+				</div>
+			</xmp>
+			
 			<xmp id="template_library">
 				not yet implemented...
 			</xmp>

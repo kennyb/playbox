@@ -439,6 +439,12 @@ LIB = {
 	
 		return LIB.str_replace_array(LIB.trim(LIB.strip_accents(param)), badchars, replaces);
 	},
+	formatTime : function(time) {
+		var sec = time % 60,
+			min = Math.floor(time / 60);
+		
+		return (min > 9 ? min : '0'+min) + ":" + (sec > 9 ? sec : '0'+sec);
+	},
 	formatDate : function(date) {
 		var	diff = Math.round((new Date().getTime() - new Date(date).getTime()) / 1000),
 			future;

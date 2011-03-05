@@ -1,6 +1,7 @@
 node-inspector - http://localhost:8080/debug?port=5858
 
 bugs:
+add support for header 'Accept-Ranges' (http://www.jplayer.org/latest/developer-guide/)
 when a file is not found, it doesn't return a 404... just an error on the console
 fix scoping in the templates
 

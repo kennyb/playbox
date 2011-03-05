@@ -6,11 +6,32 @@
 		<script type="text/javascript" src="/lib.js"></script>
 		<script type="text/javascript" src="/site.js"></script>
 		<script type="text/javascript" src="/socket.io/socket.io.js"></script>
+		
+		<script type="text/javascript" src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
+		
+		<!-- <script type="text/javascript" src="/audiojs/audio.js"></script> -->
+		<!-- <link rel="stylesheet" href="/audiojs/audio-js.css" type="text/css" media="screen" charset="utf-8" /> -->
+		
 		<!-- <script type="text/javascript" src="/apf/apf.js"></script> -->
+		
+		<script type="text/javascript" src="/jPlayer/jplayer.js"></script>
+		
 		<script type="text/javascript">
 		/*<![CDATA[*/
+		$(document).ready(function(){
+			SERVER.connect();
+			$("#jplayer_1").jPlayer({
+				ready: function () {
+					$(this).jPlayer("setMedia", {
+						mp3: "http://localhost:1155/playbox/g/68fd78fc9b89542081a89ef9f03ae6ef253879ae",
+					});
+				},
+				swfPath: "/jPlayer",
+				supplied: "mp3"
+			});
+		});
 		var $app = "playbox";
-		SERVER.connect();
+		
 		/*]]>*/
 		</script>
 	</head>
@@ -20,6 +41,7 @@
 				playbox
 			</h1>
 		</div>
+		<div id="jplayer_1"></div>
 		
 		<hr />
 		
