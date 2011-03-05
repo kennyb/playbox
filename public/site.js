@@ -52,7 +52,9 @@ function testing(t, d, o) {
 var SKIN = {
 	templates: {},
 	get_template : function(tpl, txt) {
-		var fn = SKIN.templates[tpl], is_panel = 0;
+		var fn = SKIN.templates[tpl],
+			is_panel = 0;
+		
 		if(typeof fn !== 'function') {
 			function arg_vars(str) {
 				str = '"'+LIB.trim(str).replace(/\{\{\{\{(.*?)\}\}\}\}/g, function(nothing, variable) {
@@ -93,7 +95,7 @@ var SKIN = {
 					var scope = [];
 					while(true) {
 						node_type = node.nodeName.toLowerCase();
-						var inner = LIB.trim(node.innerHTML);
+						var inner = LIB.trim(node.innerHTML + "");
 						if(inner.charAt(inner.length-1) === ';') {
 							inner = inner.substr(0, inner.length-1);
 						}
@@ -195,14 +197,13 @@ var SKIN = {
 			}
 			
 			txt = "return "+txt+';';
-			console.log(txt);
 			if(is_panel) {
 				fn = SKIN.templates[tpl] = new Function("t", "p", "o", txt);
 			} else {
 				fn = SKIN.templates[tpl] = new Function("t", "d", "o", txt);
 			}
 			
-			console.log(tpl, " :: ", fn.toString());
+			//console.log(tpl, " :: ", fn.toString());
 		}
 		
 		return fn;
@@ -274,7 +275,7 @@ var SKIN = {
 			xmp=xmps[i];
 			e = xmp.id.indexOf("_noLang");
 			if(e !== -1) {
-				c = xmp.innerHTML.replace(/\{\{(.*?)\}\}/g, function(a, b) { return L[b]; });
+				c = LIB.trim(xmp.innerHTML).replace(/\{\{(.*?)\}\}/g, function(a, b) { return L[b]; });
 				id = xmp.id.substr(0, e);
 				LIB.removeElement(id);
 				e = document.createElement("xmp");

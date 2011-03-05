@@ -381,9 +381,10 @@ LIB = {
 		return string;
 	},
 	trim : function(string) {
-		if(String.trim) {
+		if(typeof string === 'undefined') console.trace();
+		if(typeof string.trim === 'function') {
 			// support in firefox 3.5 for this
-			string = String.trim(string);
+			string = string.trim();
 		} else {
 			string = string.replace(/^\s+/, '');
 			for (var i = string.length; i > 0; i--) {
