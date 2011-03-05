@@ -1,12 +1,12 @@
 // generic lib file
 
-function $(i) {
+function $_(i) {
 	return document.getElementById(i);
 }
 
 function display(elem, show) {
 	if(!elem.style) {
-		elem = $(elem);
+		elem = $_(elem);
 	}
 	
 	elem.style.display = show ? '' : 'none';
@@ -125,7 +125,7 @@ function cE(type, opts) {
 // this function is nice, because it will ensure that IE will garbage collect any references to this element.
 // I think this may break firefox though, with innerHTML things... (not sure though)
 function discard(element) {
-	var garbageBin = $('IEsucks');
+	var garbageBin = $_('IEsucks');
 	if(!garbageBin) {
 		garbageBin = document.createElement('DIV');
 		garbageBin.id = 'IEsucks';
@@ -143,14 +143,14 @@ function show(id, st) {
 		st = '';
 	}
 	
-	var elem = id.style ? id : $(id);
+	var elem = id.style ? id : $_(id);
 	if(elem) {
 		elem.style.display = st;
 	}
 }
 
 function hide(id) {
-	var elem = id.style ? id : $(id);
+	var elem = id.style ? id : $_(id);
 	if(elem) {
 		elem.style.display = 'none';
 	}
@@ -162,7 +162,7 @@ function swap(id1, id2, st) {
 }
 
 function toggle(id, st) {
-	var elem = id.style ? id : $(id);
+	var elem = id.style ? id : $_(id);
 	if(elem) {
 		if(elem.style.display === 'none') {
 			if(!st) {
@@ -247,7 +247,7 @@ STATEMANAGER = {
 			if(intercept) {
 				intercept(params);
 			} else {
-				SKIN.template(panel, params, $('content'));
+				SKIN.template(panel, params, $_('content'));
 			}
 		} else {
 			document.location.hash = '#/home';
@@ -289,7 +289,7 @@ LIB = {
 		
 	loadedLib : function(lib) {
 		var allDone = true,
-			/*l = $('loading'),*/
+			/*l = $_('loading'),*/
 			h = 9.8,
 			p = 14.25,
 			i;
@@ -345,7 +345,7 @@ LIB = {
 	},
 	removeElement : function(e, fade, callback) {
 		if(!e.style) {
-			e = $(e);
+			e = $_(e);
 		}
 		
 		if(e) {

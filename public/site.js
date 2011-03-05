@@ -154,9 +154,9 @@ var SKIN = {
 			// --------------
 			
 			if(typeof txt === 'undefined') {
-				if(txt = $('template_' + tpl)) {
+				if(txt = $_('template_' + tpl)) {
 					txt = txt.textContent;
-				} else if(txt = $('panel_' + tpl)) {
+				} else if(txt = $_('panel_' + tpl)) {
 					is_panel = 1;
 					txt = txt.textContent;
 				} else {
@@ -264,7 +264,7 @@ var SKIN = {
 		return output; //typeof output !== 'undefined' ? new String(output).toString() : "";
 	},
 	render : function(uid) {
-		SKIN.template("sidebar", {}, $('sidebar'));
+		SKIN.template("sidebar", {}, $_('sidebar'));
 		SKIN.resize();
 	},
 	parsePanelsLang : function() {

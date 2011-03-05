@@ -40,3 +40,9 @@
 [submodule "deps/audiojs"]
 	path = deps/audiojs
 	url = git://github.com/dz0ny/AudioJS.git
+[submodule "deps/jPlayer"]
+	path = deps/jPlayer
+	url = https://github.com/happyworm/jPlayer.git
+[submodule "deps/jquery"]
+	path = deps/jquery
+	url = git://github.com/jquery/jquery.git
