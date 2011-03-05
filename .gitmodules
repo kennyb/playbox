@@ -37,3 +37,6 @@
 [submodule "deps/apf"]
 	path = deps/apf
 	url = https://github.com/ajaxorg/apf.git
+[submodule "deps/audiojs"]
+	path = deps/audiojs
+	url = git://github.com/dz0ny/AudioJS.git
