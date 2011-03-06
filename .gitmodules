@@ -43,3 +43,6 @@
 [submodule "deps/jquery"]
 	path = deps/jquery
 	url = git://github.com/jquery/jquery.git
+[submodule "deps/async.js"]
+	path = deps/async.js
+	url = git://github.com/fjakobs/async.js.git

@@ -309,6 +309,10 @@ def shutdown(ctx):
 		if exists('deps/socket.io') and not lexists('build/release/lib/socket.io'):
 			symlink(abspath('deps/socket.io'), 'build/release/lib/socket.io')
 	
+		if exists('deps/async.js/lib') and not lexists('build/release/lib/async.js'):
+			symlink(abspath('deps/async.js/lib'), 'build/release/lib/async.js')
+	
+		# TODO: change this over to music-metadata (or whatever it was)
 		if exists('deps/node-id3/lib/id3') and not lexists('build/release/lib/node-id3'):
 			symlink(abspath('deps/node-id3/lib/id3'), 'build/release/lib/node-id3')
 			
