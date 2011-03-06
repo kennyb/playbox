@@ -107,7 +107,7 @@ function update() {
 				c++;
 			}
 			
-			if(c < 11 && status_count["PARSING"] < 1 && (path = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
+			if(status_count["PARSING"] < 1 && (path = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
 				c = true;
 				for(i in archives) {
 					t = archives[i];
