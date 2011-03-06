@@ -23,13 +23,6 @@ require.paths.unshift("lib");
 require.paths.unshift("../../lib");
 require.paths.unshift("lib/node-strtok");
 
-
-// data
-
-
-
-// exports
-
 var http = require("http"),
 	Module = require("module"),
 	vm = require('vm'),
@@ -64,9 +57,6 @@ global.Log = {
 		Log.log("DEBUG", s);
 	}
 };
-
-//var config = JSON.parse("{lala:5}");
-//fs.readFileSync("config.js");
 
 var config = {},
 	applist = {},

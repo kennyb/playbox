@@ -34,15 +34,46 @@ class Playbox : public EventEmitter
 	//static int save_id3_info(const ID3_Tag &tag, libtorrent::entry *metadata);
 };
 
-//TODO: improve me, this was something I copied from the internet
-// what I really want is a utf-8 compatible trim which gobbles all whitespace and everything below 0x20 (space)
-inline std::string trim(const std::string& src, const std::string& c = " \r\n")
+
+// trim functions ripped from
+// http://www.zedwood.com/article/107/cpp-trim-function
+std::string& trim(std::string &str)
 {
-	unsigned int p2 = src.find_last_not_of(c);
-	if (p2 == std::string::npos) return std::string();
-	unsigned int p1 = src.find_first_not_of(c);
-	if (p1 == std::string::npos) p1 = 0;
-	return src.substr(p1, (p2-p1)+1);
+    int i,j,start,end;
+
+    //ltrim
+    for (i=0; (str[i]!=0 && str[i]<=32); )
+        i++;
+    start=i;
+
+    //rtrim
+    for(i=0,j=0; str[i]!=0; i++)
+        j = ((str[i]<=32)? j+1 : 0);
+    end=i-j;
+    str = str.substr(start,end-start);
+    return str;
+}
+std::string& ltrim(std::string &str)
+{
+    int i,j,start,end;
+
+    for (i=0; (str[i]!=0 && str[i]<=32); )
+        i++;
+    start=i;
+
+    str = str.substr(start,str.length()-start);
+    return str;
+}
+std::string& rtrim(std::string &str)
+{
+    int i,j,start,end;
+
+    for(i=0,j=0; str[i]!=0; i++)
+        j = ((str[i]<=32)? j+1 : 0);
+    end=i-j;
+
+    str = str.substr(0,end);
+    return str;
 }
 
 
