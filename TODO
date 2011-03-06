@@ -1,10 +1,12 @@
 node-inspector - http://localhost:8080/debug?port=5858
 
-bugs:
-add support for header 'Accept-Ranges' (http://www.jplayer.org/latest/developer-guide/)
-when a file is not found, it doesn't return a 404... just an error on the console
-fix scoping in the templates
+current:
+subscribe to events + centralized event emitter
+move the home dir resolution over to node using process.env['HOME']
 
+bugs:
+when a file is not found, it doesn't return a 404... just an error on the console
+add support for header 'Accept-Ranges' (http://www.jplayer.org/latest/developer-guide/)
 
 current:
 need database for config
@@ -29,6 +31,7 @@ make the module able to be 'new'ed
 
 anyone can do:
 order by on queries (I will do this soon actually)
+move tmp dir over to the allocated space (env['TMPDIR']) and abstract out the file access
 
 notes:
 check to see if the file is a regular file load the torrent and start it, else start it paused
@@ -47,7 +50,6 @@ use protobuf to wrap libraries better: (http://code.google.com/p/protobuf-for-no
 
 middle:
 integrate head.js
-integrate video.js
 integrate less.js
 integrate unhosted
 library cache system

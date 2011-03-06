@@ -1,16 +1,7 @@
 "use strict";
 
-var Poem;
-var broadcast;
-
-
 var Path = require('path'),
 	ext2mime = require('lib/http').ext2mime;
-
-exports.init = function(opts) {
-	Poem = opts.Poem;
-	broadcast = opts.broadcast;
-};
 
 exports.cmds = {
 	status: function(params) {
