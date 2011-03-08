@@ -6,7 +6,7 @@
 	url = git://github.com/cloudhead/node-static.git
 [submodule "deps/node"]
 	path = deps/node
-	url = git://github.com/ry/node.git
+	url = git://github.com/joyent/node.git
 [submodule "deps/ffmpeg"]
 	path = deps/ffmpeg
 	url = git://gitorious.org/ffmpeg/mainline.git
@@ -34,3 +34,15 @@
 [submodule "deps/socket.io"]
 	path = deps/socket.io
 	url = git://github.com/LearnBoost/Socket.IO-node.git
+[submodule "deps/apf"]
+	path = deps/apf
+	url = git://github.com/ajaxorg/apf.git
+[submodule "deps/jPlayer"]
+	path = deps/jPlayer
+	url = git://github.com/happyworm/jPlayer.git
+[submodule "deps/jquery"]
+	path = deps/jquery
+	url = git://github.com/jquery/jquery.git
+[submodule "deps/async.js"]
+	path = deps/async.js
+	url = git://github.com/fjakobs/async.js.git

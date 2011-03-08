@@ -19,16 +19,15 @@ process.on('uncaughtException', function(sys) {
 }(require("sys")));
 //*/
 
+require.paths.unshift(".");
+
+//TODO fixme~!!!
+require.paths.unshift("lib/node-strtok");
+/*
+
 require.paths.unshift("lib");
 require.paths.unshift("../../lib");
-require.paths.unshift("lib/node-strtok");
-
-
-// data
-
-
-
-// exports
+*/
 
 var http = require("http"),
 	Module = require("module"),
@@ -36,19 +35,70 @@ var http = require("http"),
 	Net = require("net"),
 	Path = require("path"),
 	Sys = require("sys"),
-	Edb = require("edb"),
+	Edb = require("lib/edb"),
 	Poem = require("./poem/app-manager"),
-	fs = require("fs"),
+	Fs = require("fs"),
 	io = require("./deps/socket.io"),
+	async = require("lib/async.js/async"),
 	buffer = require("buffer"),
 	Connection = require('./connection').Connection,
 	ext2mime = require('./lib/http').ext2mime;
 	//cookie = require( "./lib/cookie");
 
+// lame hack, lol...
+Fs.mkdirs = function (dirname, mode, callback) {
+	if (typeof mode === 'function') {
+		callback = mode;
+		mode = undefined;
+	}
+	if (mode === undefined) mode = 0x1ff ^ process.umask();
+	var pathsCreated = [], pathsFound = [];
+	var makeNext = function() {
+		var fn = pathsFound.pop();
+		if (!fn) {
+			if (callback) callback(null, pathsCreated);
+		}
+		else {
+			Fs.mkdir(fn, mode, function(err) {
+				if (!err) {
+					pathsCreated.push(fn);
+					makeNext();
+				}
+				else if (callback) {
+					callback(err);
+				}
+			});
+		}
+	}
+	var findNext = function(fn){
+		Fs.stat(fn, function(err, stats) {
+			if (err) {
+				if (err.code === 'ENOENT') {
+					pathsFound.push(fn);
+					findNext(Path.dirname(fn));
+				}
+				else if (callback) {
+					callback(err);
+				}
+			}
+			else if (stats.isDirectory()) {
+				// create all dirs we found up to this dir
+				makeNext();
+			}
+			else {
+				if (callback) {
+					callback(new Error('Unable to create directory at '+fn));
+				}
+			}
+		});
+	}
+	findNext(dirname);
+};
+
 // globals
 global.__app = "global";
 global.Buffer = require('buffer').Buffer;
-global.Playbox = require('playbox').Playbox;
+global.Playbox = require('lib/playbox').Playbox;
 
 global.Log = {
 	log: function(header, s) {
@@ -65,11 +115,9 @@ global.Log = {
 	}
 };
 
-//var config = JSON.parse("{lala:5}");
-//fs.readFileSync("config.js");
-
 var config = {},
 	applist = {},
+	working_dir = process.env["HOME"] + "/Library/poem/",
 	apps = Poem.apps,
 	server = http.createServer(function(req, res) {
 		new Connection(req, res);
@@ -91,65 +139,6 @@ global.Mixin = function(target, source) {
 
 
 function init() {
-	global.static_files = {};
-	global.static_files_mime = {};
-	var init = {
-		broadcast: function(s) {
-			return function() {
-				s.broadcast.apply(s, arguments);
-			}
-		}(socket)
-	};
-	
-	var http_router = function(app, ext2mime) {
-		return function(c, path) {
-			switch(path) {
-				case "/":
-					c.file("text/html; charset=utf-8", "./apps/"+app+"/public/"+app+".html");
-					break;
-				
-				default:
-					var mime = ext2mime(Path.extname(path)) | "text/plain";
-					c.file(mime, "./apps/"+app+"/public/"+path);
-					return;
-			}
-		};
-	};
-	
-	try {
-		fs.readFile('config.json', function(err, content) {
-			if(err) throw err;
-			config = JSON.parse(content);
-		});
-	} catch(e) {
-		Log.error("could not load config.json");
-	}
-
-	try {
-		fs.readFile('config.json', function(err, content) {
-			if(err) throw err;
-			applist = JSON.parse(content);
-		});
-	} catch(e) {
-		Log.error("could not load applist.json");
-	}
-
-	Log.info("Initializing...");
-	Edb.init(".edb", function() {
-		Log.info("Edb initialized");
-		
-		Edb.get("applist", function(key, value) {
-			if(typeof value === 'undefined') {
-				// running the playbox for the very first time
-				// do more first time stuff, like loading the local library
-				Edb.set("applist", applist);
-			} else {
-				Mixin(applist, value);
-			}
-		});
-	});
-	
-	
 	/*
 	// now, fuck up the require function to restrict access to the apps
 	// by default, grant all applications super access (later, this will be restricted for all non-default apps)
@@ -194,19 +183,16 @@ function init() {
 	
 	server.listen(1155, function() {
 		Log.info("listening on port: " + 1155);
+		Poem.init({broadcast: broadcast});
+		load_apps();
 	});
+}
 	
 	
-	Poem.init({
-		broadcast: function(s) {
-			return function() {
-				s.broadcast.apply(s, arguments);
-			}
-		3}(socket)
-	});
 	
+function load_apps() {
 	//TODO move all this over to poem
-	fs.readdir("apps", function(err, files) {
+	Fs.readdir("apps", function(err, files) {
 		if(err) throw err;
 		
 		for(var i in files) {
@@ -215,13 +201,16 @@ function init() {
 			Log.info("Initializing..");
 			//require.paths.unshift("./apps/"+app);
 			//apps[app] = require("./apps/"+app+"/"+app);
-			fs.readFile("./apps/"+app+"/"+app+".js", function(app) {
+			Fs.readFile("./apps/"+app+"/"+app+".js", function(app) {
 				//TODO get the allowed modules from some sort of app repository
 				var allowed_modules = ['sys', 'fs', 'path', 'crypto', 'assert', 'buffer'];
 				
 				
 				return function(err, code) {
-					if(err) throw err;
+					if(err) {
+						//throw err;
+						code = "";
+					}
 					
 					var context = {
 						__app: app,
@@ -278,29 +267,35 @@ function init() {
 						setTimeout: setTimeout,
 						setInterval: setInterval,
 						clearInterval: clearInterval,
+						broadcast: broadcast,
 						console: console,
+						working_dir: working_dir + app + '/',
 						Playbox: Playbox
 					};
 					
-					vm.runInNewContext(code, context, app);
-					
-					if(context.exports) {
-						apps[app] = context.exports;
-						if(typeof context.exports.init === 'function') {
-							if(app === "poem") {
-								init.Poem = Poem;
-							}
-							
-							context.exports.init(init);
-						}
-						
-						if(!context.exports.http) {
-							context.exports.http = http_router(app, ext2mime);
-						}
-						
-					} else {
-						throw new Error("application does not export anything");
+					if(app === "playbox") {
+						context.process = process;
 					}
+					
+					if(app === "poem") {
+						context.Poem = Poem;
+					}
+					
+					Fs.mkdirs(context.working_dir, '755', function(err) {
+						if(err) throw err;
+						
+						vm.runInNewContext(code, context, "apps/"+app+"/"+app+".js");
+
+						if(context.exports) {
+							apps[app] = context.exports;
+							if(!context.exports.http) {
+								context.exports.http = http_router(app, ext2mime);
+							}
+
+						} else {
+							throw new Error("application does not export anything");
+						}
+					})
 				};
 			}(app));
 			
@@ -322,7 +317,7 @@ function add_file(path, vpath, mime, literal) {
 		vpath = '/'+vpath;
 	}
 	
-	fs.readFile(path, function(err, content) {
+	Fs.readFile(path, function(err, content) {
 		if(err) throw err;
 		
 		if(mime.indexOf("text/") !== -1 || mime.indexOf("application/") !== -1) {
@@ -371,7 +366,7 @@ function add_file(path, vpath, mime, literal) {
 		
 		global.static_files_mime[vpath] = mime;
 		
-		fs.watchFile(path, function(path, vpath, mime, literal) {
+		Fs.watchFile(path, function(path, vpath, mime, literal) {
 			return function(curr, prev) {
 				add_file(path, vpath, mime, literal);
 			};
@@ -391,14 +386,14 @@ function add_dir(dir, vdir) {
 		vdir = vdir.substr(0, vdir.length - 1);
 	}
 	
-	fs.readdir(dir, function(err, files) {
+	Fs.readdir(dir, function(err, files) {
 		if(err) throw err;
 		
 		files.forEach(function(file) {
 			var full_file = dir+'/'+file;
 			var full_vfile = vdir+'/'+file;
 			
-			fs.stat(full_file, function(err, stats) {
+			Fs.stat(full_file, function(err, stats) {
 				if(err) throw err;
 				
 				if(stats.isDirectory()) {
@@ -557,6 +552,74 @@ socket.on("connection", function(conn) {
 	});
 });
 
+
+global.static_files = {};
+global.static_files_mime = {};
+global.broadcast = function(s) {
+	return function() {
+		s.broadcast.apply(s, arguments);
+	}
+}(socket);
+
+var http_router = function(app, ext2mime) {
+	return function(c, path) {
+		switch(path) {
+			case "/":
+				c.file("text/html; charset=utf-8", "./apps/"+app+"/public/"+app+".html");
+				break;
+			
+			default:
+				var mime = ext2mime(Path.extname(path)) || "text/plain";
+				c.file(mime, "./apps/"+app+"/public/"+path);
+				return;
+		}
+	};
+};
+
+try {
+	Fs.readFile('config.json', function(err, content) {
+		if(err) throw err;
+		config = JSON.parse(content);
+	});
+} catch(e) {
+	Log.error("could not load config.json");
+}
+
+try {
+	Fs.readFile('applist.json', function(err, content) {
+		if(err) throw err;
+		applist = JSON.parse(content);
+	});
+} catch(e) {
+	Log.error("could not load applist.json");
+}
+
+
+Fs.mkdirs(working_dir.substr(0, working_dir.length-1), '755', function(err) {
+	if(err) throw err;
+	
+	Log.info("Initializing: " + working_dir);
+	Edb.init(working_dir+".edb/", function() {
+		Log.info("Edb initialized");
+
+		Edb.get("applist", function(key, value) {
+			if(typeof value === 'undefined') {
+				// running the playbox for the very first time
+				// do more first time stuff, like loading the local library
+				Edb.set("applist", applist);
+			} else {
+				Mixin(applist, value);
+			}
+		});
+		
+		init();
+	});
+});
+
+
+
+
+
 // crossdomain policy server 
 Net.createServer(function(s) {
 	s.write('<?xml version="1.0"?>'+
@@ -578,7 +641,5 @@ ast = pro.ast_squeeze(ast);
 console.log(ast[1][0][3]);
 console.log(pro.gen_code(ast, false));
 */
-
-init();
 
 

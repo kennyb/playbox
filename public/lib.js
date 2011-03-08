@@ -1,12 +1,12 @@
 // generic lib file
 
-function $(i) {
+function $_(i) {
 	return document.getElementById(i);
 }
 
 function display(elem, show) {
 	if(!elem.style) {
-		elem = $(elem);
+		elem = $_(elem);
 	}
 	
 	elem.style.display = show ? '' : 'none';
@@ -113,7 +113,7 @@ function cE(type, opts) {
 	
 	for(field = 2; field < len; field++) {
 		value = arguments[field];
-		if(value) {
+		if(typeof value !== 'undefined') {
 			aC(e, value);
 		}
 	}
@@ -125,7 +125,7 @@ function cE(type, opts) {
 // this function is nice, because it will ensure that IE will garbage collect any references to this element.
 // I think this may break firefox though, with innerHTML things... (not sure though)
 function discard(element) {
-	var garbageBin = $('IEsucks');
+	var garbageBin = $_('IEsucks');
 	if(!garbageBin) {
 		garbageBin = document.createElement('DIV');
 		garbageBin.id = 'IEsucks';
@@ -143,14 +143,14 @@ function show(id, st) {
 		st = '';
 	}
 	
-	var elem = id.style ? id : $(id);
+	var elem = id.style ? id : $_(id);
 	if(elem) {
 		elem.style.display = st;
 	}
 }
 
 function hide(id) {
-	var elem = id.style ? id : $(id);
+	var elem = id.style ? id : $_(id);
 	if(elem) {
 		elem.style.display = 'none';
 	}
@@ -162,7 +162,7 @@ function swap(id1, id2, st) {
 }
 
 function toggle(id, st) {
-	var elem = id.style ? id : $(id);
+	var elem = id.style ? id : $_(id);
 	if(elem) {
 		if(elem.style.display === 'none') {
 			if(!st) {
@@ -247,7 +247,7 @@ STATEMANAGER = {
 			if(intercept) {
 				intercept(params);
 			} else {
-				SKIN.template(panel, params, $('content'));
+				SKIN.template(panel, params, $_('content'));
 			}
 		} else {
 			document.location.hash = '#/home';
@@ -289,7 +289,7 @@ LIB = {
 		
 	loadedLib : function(lib) {
 		var allDone = true,
-			/*l = $('loading'),*/
+			/*l = $_('loading'),*/
 			h = 9.8,
 			p = 14.25,
 			i;
@@ -345,7 +345,7 @@ LIB = {
 	},
 	removeElement : function(e, fade, callback) {
 		if(!e.style) {
-			e = $(e);
+			e = $_(e);
 		}
 		
 		if(e) {
@@ -381,17 +381,15 @@ LIB = {
 		return string;
 	},
 	trim : function(string) {
-		if(String.trim) {
+		if(typeof string.trim === 'function') {
 			// support in firefox 3.5 for this
-			string = String.trim(string);
+			string = string.trim();
 		} else {
-			string = string.replace(/^\s+/, '');
-			for (var i = string.length; i > 0; i--) {
-				if (/\S/.test(string.charAt(i-1))) {
-					string = string.substr(0, i);
-					break;
-				}
-			}
+			string = string.replace(/^\s\s*/, '');
+			var ws = /\s/,
+				i = string.length;
+			while (ws.test(string.charAt(--i)));
+			return string.slice(0, i + 1);
 		}
 
 		return string;
@@ -440,6 +438,12 @@ LIB = {
 		}
 	
 		return LIB.str_replace_array(LIB.trim(LIB.strip_accents(param)), badchars, replaces);
+	},
+	formatTime : function(time) {
+		var sec = time % 60,
+			min = Math.floor(time / 60);
+		
+		return (min > 9 ? min : '0'+min) + ":" + (sec > 9 ? sec : '0'+sec);
 	},
 	formatDate : function(date) {
 		var	diff = Math.round((new Date().getTime() - new Date(date).getTime()) / 1000),

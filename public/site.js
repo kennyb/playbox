@@ -52,7 +52,9 @@ function testing(t, d, o) {
 var SKIN = {
 	templates: {},
 	get_template : function(tpl, txt) {
-		var fn = SKIN.templates[tpl], is_panel = 0;
+		var fn = SKIN.templates[tpl],
+			is_panel = 0;
+		
 		if(typeof fn !== 'function') {
 			function arg_vars(str) {
 				str = '"'+LIB.trim(str).replace(/\{\{\{\{(.*?)\}\}\}\}/g, function(nothing, variable) {
@@ -93,7 +95,7 @@ var SKIN = {
 					var scope = [];
 					while(true) {
 						node_type = node.nodeName.toLowerCase();
-						var inner = LIB.trim(node.innerHTML);
+						var inner = LIB.trim(node.innerHTML + "");
 						if(inner.charAt(inner.length-1) === ';') {
 							inner = inner.substr(0, inner.length-1);
 						}
@@ -128,8 +130,15 @@ var SKIN = {
 					var attributes = node.attributes;
 					var children = node.childNodes;
 					for(var i = 0; i < attributes.length; i++) {
-						var a = attributes[i];
-						attrs.push(a.nodeName.toLowerCase()+":"+concat_vars(a.nodeValue));
+						var a = attributes[i],
+							attr = a.nodeName.toLowerCase();
+						
+						if(attr.substr(0, 2) === "on") {
+							// for now we'll assume this is an event
+							attrs.push(attr+":function(d){return function(){"+a.nodeValue+"}}(d)")
+						} else {
+							attrs.push(attr+":"+concat_vars(a.nodeValue));
+						}
 					}
 					
 					for(var i = 0; i < children.length; i++) {
@@ -152,9 +161,9 @@ var SKIN = {
 			// --------------
 			
 			if(typeof txt === 'undefined') {
-				if(txt = $('template_' + tpl)) {
+				if(txt = $_('template_' + tpl)) {
 					txt = txt.textContent;
-				} else if(txt = $('panel_' + tpl)) {
+				} else if(txt = $_('panel_' + tpl)) {
 					is_panel = 1;
 					txt = txt.textContent;
 				} else {
@@ -195,14 +204,13 @@ var SKIN = {
 			}
 			
 			txt = "return "+txt+';';
-			console.log(txt);
 			if(is_panel) {
 				fn = SKIN.templates[tpl] = new Function("t", "p", "o", txt);
 			} else {
 				fn = SKIN.templates[tpl] = new Function("t", "d", "o", txt);
 			}
 			
-			console.log(tpl, " :: ", fn.toString());
+			//console.log(tpl, " :: ", fn.toString());
 		}
 		
 		return fn;
@@ -263,7 +271,7 @@ var SKIN = {
 		return output; //typeof output !== 'undefined' ? new String(output).toString() : "";
 	},
 	render : function(uid) {
-		SKIN.template("sidebar", {}, $('sidebar'));
+		SKIN.template("sidebar", {}, $_('sidebar'));
 		SKIN.resize();
 	},
 	parsePanelsLang : function() {
@@ -274,7 +282,7 @@ var SKIN = {
 			xmp=xmps[i];
 			e = xmp.id.indexOf("_noLang");
 			if(e !== -1) {
-				c = xmp.innerHTML.replace(/\{\{(.*?)\}\}/g, function(a, b) { return L[b]; });
+				c = LIB.trim(xmp.innerHTML).replace(/\{\{(.*?)\}\}/g, function(a, b) { return L[b]; });
 				id = xmp.id.substr(0, e);
 				LIB.removeElement(id);
 				e = document.createElement("xmp");

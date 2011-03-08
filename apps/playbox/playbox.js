@@ -41,10 +41,6 @@ function emit_event(evt, data) {
 	});
 }
 
-var broadcast = function(msg) {
-	console.log("application not initialized with websockets enabled");
-};
-
 function add_dir(p) {
 	p = Path.normalize(p);
 	var dirs = config.directories;
@@ -107,7 +103,7 @@ function update() {
 				c++;
 			}
 			
-			if(c < 11 && status_count["PARSING"] < 1 && (path = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
+			if(status_count["PARSING"] < 1 && (path = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
 				c = true;
 				for(i in archives) {
 					t = archives[i];
@@ -180,7 +176,7 @@ playbox.on("stateChanged", function(hash, extra) {
 	emit_event("archiveResumed", archives[hash]);
 }).on("archiveLoaded", function(hash, metadata) {
 	/*if(metadata.local_file) {
-		get_metadata(metadata.local_file, playbox.library_dir + hash, function(tags) {
+		get_metadata(metadata.local_file, working_dir + hash, function(tags) {
 			archives[hash].metadata = Mixin(tags, archives[hash].metadata);
 			emit_event("archiveLoaded", archives[hash]);
 		});
@@ -221,7 +217,7 @@ function update_metadata(hash, meta) {
 		emit_event("archiveUpdated", meta);
 	} else {
 		Log.info("addded "+hash);
-		var lib_file = playbox.library_dir+hash;
+		var lib_file = working_dir+hash;
 		
 		try {
 			Fs.lstat(lib_file, function(err, st) {
@@ -236,7 +232,7 @@ function update_metadata(hash, meta) {
 					}
 				}
 				
-				Fs.symlink(meta.path, playbox.library_dir+hash, function(err) {
+				Fs.symlink(meta.path, working_dir+hash, function(err) {
 					if(err && err.code !== 'EEXIST') {
 						throw err;
 					}
@@ -327,7 +323,7 @@ function strip_metadata(file_path, callback) {
 								Fs.close(fd_w);
 								
 								if(callback) {
-									callback(dest_path+".mp3", sha1.digest(encoding="hex"), path_stat);
+									callback(dest_path+".mp3", sha1.digest("hex"), path_stat);
 								}
 							}
 							
@@ -367,42 +363,6 @@ function strip_metadata(file_path, callback) {
 		throw e;
 	}
 }
-
-exports.init = function(opts) {
-	if(opts.broadcast) {
-		broadcast = opts.broadcast;
-	}
-	
-	Log.info("playbox-2");
-	Log.info(" library_dir: "+playbox.library_dir);
-	Log.info(" torrents_dir: "+playbox.torrents_dir);
-	
-	Edb.get("config", function(key, value) {
-		if(typeof value === 'undefined') {
-			// running the playbox for the very first time
-			// do more first time stuff, like loading the local library
-			Edb.set("config", config, function() {
-				add_dir(playbox.library_dir.substr(0, playbox.library_dir.indexOf("/Library"))+"/Music");
-			});
-		} else {
-			Mixin(config, value);
-		}
-		
-		var dirs = config.directories;
-		for(var i = 0; i < dirs.length; i++) {
-			add_dir_recursive(dirs[i].path);
-		}
-	});
-	
-	Edb.list("archive.", function(key, value) {
-		if(value !== undefined) {
-			update_metadata(value.id, value);
-		}
-	});
-	
-	// start the updates
-	update_loop = setInterval(update, 100);
-};
 
 
 exports.start = function() {
@@ -450,7 +410,7 @@ exports.http = function(c, path) {
 			break;
 		
 		case 'g':
-			c.file("audio/mp3", playbox.library_dir+"/"+extra);
+			c.file("audio/mpeg", working_dir+"/"+extra);
 			return;
 			
 		case 'q':
@@ -544,3 +504,34 @@ exports.cmds = {
 		}
 	}
 };
+
+
+Log.info("playbox-v0.2");
+Log.info(" - library_dir: "+working_dir);
+
+Edb.get("config", function(key, value) {
+	if(typeof value === 'undefined') {
+		// running the playbox for the very first time
+		// do more first time stuff, like loading the local library
+		Edb.set("config", config, function() {
+			add_dir(working_dir.substr(0, working_dir.indexOf("/Library"))+"/Music");
+		});
+	} else {
+		Mixin(config, value);
+	}
+	
+	var dirs = config.directories;
+	for(var i = 0; i < dirs.length; i++) {
+		add_dir_recursive(dirs[i].path);
+	}
+});
+
+Edb.list("archive.", function(key, value) {
+	if(value !== undefined) {
+		update_metadata(value.id, value);
+	}
+});
+
+// start the updates
+update_loop = setInterval(update, 100);
+
