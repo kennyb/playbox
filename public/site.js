@@ -1,6 +1,6 @@
 
 
-///* DEBUG
+/* DEBUG
 function testing(t, d, o) {
 	return [
 		function(){
@@ -217,16 +217,21 @@ var SKIN = {
 	},
 	data_template : function(template_id, cmd, params, app) {
 		var id = SERVER.cmd(cmd, params, function(template_id) {
-			return function(err, data, id) {
-				var els = document.getElementsByClassName(template_id);
+			return function(msg) {
+				var els = document.getElementsByClassName(template_id),
+					err = msg.error,
+					data = msg.ret,
+					id = msg.id,
+					common = msg.common;
+				
 				for(var i = 0; i < els.length; i++) {
 					var e = els[i];
 					
 					if(e.id == id) {
 						if(err) {
-							SKIN.template(template_id, {"$error": err}, e);
+							SKIN.template(template_id, {"$error": err}, e, common);
 						} else {
-							SKIN.template(template_id, data, e);
+							SKIN.template(template_id, data, e, common);
 						}
 					}
 				}
@@ -235,23 +240,20 @@ var SKIN = {
 		
 		return cE("div", {c: template_id, id: id}, "Loading...");
 	},
-	template : function(template_id, data, element) {
+	template : function(template_id, data, element, common) {
 		var template_func, template, output, error, func_ret, fn_t;
 		
 		if(data === null) {
 			output = cE("error", 0, "data is not reachable");
 		} else if(typeof data === 'object' && typeof (error = data["$error"]) !== 'undefined') {
+			data = Mixin(data, common);
 			output = cE("error", 0, error);
 		} else if(data instanceof Array && data.length) {
 			output = [];
 			//TODO add paging? - lol
-			for(var i = 0; i < data.length; i++) {
-				/*func_ret = function(template_id1, data1) {
-					return function() {
-						return SKIN.template(template_id1, data1);
-					};
-				}(template_id, data[i]) ();*/
-				func_ret = SKIN.template(template_id, data[i]);
+			for(var i = 0, d; i < data.length; i++) {
+				d = Mixin(data[i], common);
+				func_ret = SKIN.template(template_id, d);
 				if(typeof(func_ret) !== 'undefined') {
 					output.push(func_ret);
 				}

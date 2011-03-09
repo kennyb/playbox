@@ -295,7 +295,7 @@ function load_apps() {
 						} else {
 							throw new Error("application does not export anything");
 						}
-					})
+					});
 				};
 			}(app));
 			
@@ -532,7 +532,14 @@ socket.on("connection", function(conn) {
 					throw new Error("cmd ("+cmd+"): function not defined");
 				}
 				
-				conn.send({id: id, ret: cmd_f(params)});
+				cmd_f(params, function(ret, common) {
+					var msg = {id: id, ret: ret};
+					if(common) {
+						msg.common = common;
+					}
+					
+					conn.send(msg);
+				});
 			} catch(e) {
 				conn.send({id: id, error: e.toString()});
 			}

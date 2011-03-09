@@ -121,6 +121,18 @@ function cE(type, opts) {
 	return e;
 }
 
+function Mixin(target, source) {
+	if(typeof source === "object") {
+		for(var key in source) {
+			if(source.hasOwnProperty(key)){
+				target[key] = source[key];
+			}
+		}
+	}
+	
+	return target;
+}
+
 
 // this function is nice, because it will ensure that IE will garbage collect any references to this element.
 // I think this may break firefox though, with innerHTML things... (not sure though)
@@ -189,10 +201,10 @@ SERVER = {
 			console.log("connected");
 		});
 		
-		SERVER.socket.on('message', function(d) {
-			console.log("message", d);
-			var c = SERVER.callbacks[d.id];
-			c && c(d.error, d.ret, d.id);
+		SERVER.socket.on('message', function(msg) {
+			console.log("message", msg);
+			var c = SERVER.callbacks[msg.id];
+			c && c(msg);
 		});
 		
 		SERVER.socket.on('disconnect', function(){
