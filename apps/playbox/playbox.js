@@ -446,7 +446,7 @@ exports.http = function(c, path) {
 };
 
 exports.cmds = {
-	query: function(params) {
+	query: function(params, callback) {
 		if(!params) params = {};
 		
 		var ret = [],
@@ -472,12 +472,12 @@ exports.cmds = {
 			}
 		}
 		
-		return ret;
+		callback(ret);
 	},
-	get_dirs: function(params) {
-		return config.directories;
+	get_dirs: function(params, callback) {
+		callback(config.directories);
 	},
-	add_dir: function(params) {
+	add_dir: function(params, callback) {
 		var path = params.path;
 		if(!path) {
 			throw new Error("'path' not defined");
@@ -486,7 +486,7 @@ exports.cmds = {
 		// throw event
 		add_dir(path);
 	},
-	rm_dir: function(params) {
+	rm_dir: function(params, callback) {
 		var dirs = config.directories,
 			path = params.path;
 		
@@ -502,6 +502,34 @@ exports.cmds = {
 				break;
 			}
 		}
+	},
+	list_dir: function(params, callback) {
+		var root = Path.normalize(params && params.root || "/"),
+			dirs = [];
+		
+		Fs.readdir(root, function(err, files) {
+			if(err) throw err;
+			
+			if(root.substr(-1) !== "/") {
+				root += "/";
+			}
+			
+			//TODO: need a generic function to list directories and not smoke the disk...
+			// it should have have an optional variable to define how many files it should stat at once
+			// porque si no, fumas todo el disco en una carpeta que tenga mil carpetas dentro... jaja
+			// hotfix... fs.statSync :)
+			
+			var i = files.length-1;
+			if(i >= 0) {
+				do {
+					var file = files[i];
+					if(Fs.statSync(root+"/"+file).isDirectory() && file.charAt(0) !== '.') {
+						dirs.push({dir: file});
+					}
+				} while(i--);
+				callback(dirs, {root: root});
+			}
+		});
 	}
 };
 

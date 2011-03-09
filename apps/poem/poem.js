@@ -11,7 +11,7 @@ exports.cmds = {
 			used_cache: 0
 		}
 	},
-	list: function(params) {
+	list: function(params, callback) {
 		/*
 		var ret = [];
 		for(var i in app_status) {
@@ -21,7 +21,7 @@ exports.cmds = {
 		return ret;
 		*/
 		
-		return [
+		callback([
 			{
 				id: "poem",
 				desc: "system",
@@ -38,7 +38,7 @@ exports.cmds = {
 				max_cache: 1024 * 100,
 				used_cache: 0
 			},
-		];
+		]);
 	},
 	start: function(params) {
 		throw new Error("not yet implemented");

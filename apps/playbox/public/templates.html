@@ -43,6 +43,19 @@
 				<div>
 					playbox-0.2 - preview version
 				</div>
+				<?=SKIN.data_template("dir_entry", "list_dir", {})?>
+			</xmp>
+			
+			<xmp id="template_dir_entry">
+				<div onclick='this.appendChild(SKIN.data_template("dir_entry", "list_dir", {root:d.root+d.dir}))'>
+					d: <?=d.root+d.dir?>
+				</div>
+			</xmp>
+			
+			<xmp id="template_test">
+				<div>
+					test panel
+				</div>
 				<?
 				for(var i = 0; i < 5; i++) {
 					?><div><?
