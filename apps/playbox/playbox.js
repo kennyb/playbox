@@ -12,6 +12,7 @@ var playbox = new Playbox(),
 	add_archive_queue = [],
 	load_metadata_queue = [],
 	update_loop = null,
+	tmp_file_id = 0,
 	archives = {},
 	last_idle = 0,
 	status_count = {
@@ -254,10 +255,9 @@ function update_metadata(hash, meta) {
 }
 
 
-var tmp_file_id = 0;
 function strip_metadata(file_path, callback) {
 	try {
-		var dest_path = playbox.tmp_path+"strip."+(tmp_file_id++);
+		var dest_path = tmp_dir+"strip."+(tmp_file_id++);
 		var sha1 = Crypto.createHmac("sha1", "human-evolution");
 
 		Fs.open(file_path, 'r', function(err, fd_r) {

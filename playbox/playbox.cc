@@ -57,10 +57,6 @@ static std::string xml_special_chars(std::string str);
 
 // static vars
 static libtorrent::session cur_session;
-static std::string library_dir;
-static std::string torrents_dir;
-static std::string tmp_path;
-//static std::map<std::string, libtorrent::lazy_entry> torrents_metadata;
 static Playbox *playbox;
 
 // events
@@ -81,18 +77,6 @@ static Handle<Value> VException(const char *msg) {
 	HandleScope scope;
 	return ThrowException(Exception::Error(String::New(msg)));
 };
-
-static Handle<Value> __library_dir(Local<String> property, const AccessorInfo& info) {
-	return String::New(library_dir.c_str());
-}
-
-static Handle<Value> __torrents_dir(Local<String> property, const AccessorInfo& info) {
-	return String::New(torrents_dir.c_str());
-}
-
-static Handle<Value> __tmp_path(Local<String> property, const AccessorInfo& info) {
-	return String::New(tmp_path.c_str());
-}
 
 // unused at the moment...
 class Archive : public EventEmitter {
@@ -165,10 +149,6 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	// run an update pass
 	NODE_SET_PROTOTYPE_METHOD(t, "update", update);
 	
-	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("library_dir"), __library_dir);
-	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("torrents_dir"), __torrents_dir);
-	t->PrototypeTemplate()->SetAccessor(String::NewSymbol("tmp_path"), __tmp_path);
-	
 	target->Set(String::NewSymbol("Playbox"), t->GetFunction());
 	
 	// avformat
@@ -178,37 +158,6 @@ void Playbox::Initialize(v8::Handle<v8::Object> target)
 	// ----------------
 	
 	playbox = new Playbox();
-	
-	// ----------------
-	
-	uid_t uid = getuid();
-	struct passwd* user_passwd = getpwuid(uid);
-	
-	if(user_passwd) {
-		library_dir = user_passwd->pw_dir;
-		library_dir += "/Library/";
-		filesystem::create_directory(filesystem::path(::library_dir));
-		
-		library_dir += "playbox/";
-		filesystem::create_directory(filesystem::path(::library_dir));
-		// now, chroot to the dir
-		
-		::torrents_dir = std::string(::library_dir).append(".torrents/");
-		filesystem::path p(::torrents_dir);
-		if(!filesystem::exists(p)) {
-			filesystem::create_directory(p);
-		}
-		
-		::tmp_path = std::string(::library_dir).append(".tmp/");
-		p = filesystem::path(::tmp_path);
-		if(!filesystem::exists(p)) {
-			filesystem::create_directory(p);
-		}
-		
-	} else {
-		// todo: move most of this into the constructor, and separate the static functions from the methods
-		//return VException("playbox could not find the user's home directory! HUGE FAIL");
-	}
 }
 
 // Create a new instance of BSON and assing it the existing context
@@ -408,13 +357,14 @@ Handle<Value> Playbox::make_torrent(const Arguments &args)
 
 Handle<Value> Playbox::load_torrent(const Arguments &args)
 {
-	if(args.Length() != 1 || !args[0]->IsString()) {
-		return ThrowException(Exception::Error(String::NewSymbol("load_torrent expects a bencoded string")));
+	if(args.Length() != 2 || !args[0]->IsString() || !args[1]->IsString()) {
+		return ThrowException(Exception::Error(String::NewSymbol("load_torrent(bencoded_string, library_directory)")));
 	}
 	
 	libtorrent::lazy_entry metadata;
 	libtorrent::error_code ec;
 	String::Utf8Value bencoded_string(args[0]->ToString());
+	String::Utf8Value library_dir_utf8(args[1]->ToString());
 	int pos;
 	
 	if(*bencoded_string == NULL || libtorrent::lazy_bdecode(*bencoded_string, (*bencoded_string) + bencoded_string.length(), metadata, ec, &pos, 55, 1111) != 0) {
@@ -428,6 +378,8 @@ Handle<Value> Playbox::load_torrent(const Arguments &args)
 		// add_torrent parameters
 		std::string hash;
 		std::string local_file;
+		std::string library_dir(*library_dir_utf8);
+		
 		libtorrent::add_torrent_params params;
 		params.duplicate_is_error = false;
 		params.storage_mode = libtorrent::storage_mode_allocate;

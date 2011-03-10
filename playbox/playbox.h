@@ -55,7 +55,7 @@ std::string& trim(std::string &str)
 }
 std::string& ltrim(std::string &str)
 {
-    int i,j,start,end;
+    int i,start;
 
     for (i=0; (str[i]!=0 && str[i]<=32); )
         i++;
@@ -66,7 +66,7 @@ std::string& ltrim(std::string &str)
 }
 std::string& rtrim(std::string &str)
 {
-    int i,j,start,end;
+    int i,j,end;
 
     for(i=0,j=0; str[i]!=0; i++)
         j = ((str[i]<=32)? j+1 : 0);

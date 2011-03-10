@@ -118,6 +118,7 @@ global.Log = {
 var config = {},
 	applist = {},
 	working_dir = process.env["HOME"] + "/Library/poem/",
+	tmp_dir = working_dir + ".tmp/",
 	apps = Poem.apps,
 	server = http.createServer(function(req, res) {
 		new Connection(req, res);
@@ -270,6 +271,7 @@ function load_apps() {
 						broadcast: broadcast,
 						console: console,
 						working_dir: working_dir + app + '/',
+						tmp_dir: working_dir + app + "/.tmp/",
 						Playbox: Playbox
 					};
 					
@@ -281,7 +283,7 @@ function load_apps() {
 						context.Poem = Poem;
 					}
 					
-					Fs.mkdirs(context.working_dir, '755', function(err) {
+					Fs.mkdirs(context.tmp_dir, '755', function(err) {
 						if(err) throw err;
 						
 						vm.runInNewContext(code, context, "apps/"+app+"/"+app+".js");
@@ -604,7 +606,7 @@ try {
 }
 
 
-Fs.mkdirs(working_dir.substr(0, working_dir.length-1), '755', function(err) {
+Fs.mkdirs(tmp_dir.substr(0, tmp_dir.length-1), '755', function(err) {
 	if(err) throw err;
 	
 	Log.info("Initializing: " + working_dir);
