@@ -52,18 +52,20 @@ function add_dir(p) {
 		}
 	}
 	
+	add_dir_recursive(p, p);
+	
 	config.directories.push({path: p});
 	Edb.set("config", config);
 }
 
-function add_dir_recursive(p) {
+function add_dir_recursive(p, root) {
 	var num = 0;
 
 	Fs.stat(p, function(err, st) {
 		if(err) throw err;
 		
 		if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
-			add_archive_queue.push(p);
+			add_archive_queue.push({path: p, root: root});
 			num++;
 		} else if(st.isDirectory()) {
 			
@@ -73,7 +75,7 @@ function add_dir_recursive(p) {
 				var i = files.length-1;
 				if(i >= 0) {
 					do {
-						add_dir_recursive(p+"/"+files[i].toString());
+						add_dir_recursive(p+"/"+files[i].toString(), root);
 					} while(i--);
 				}
 			});
@@ -97,13 +99,14 @@ function update() {
 			playbox.add_archive_metadata(path);
 		} else if(add_archive_queue.length && load_metadata_queue.length === 0) {
 			var c = 0,
-				i, t, meta;
+				i, t, a, meta;
 			
 			for(i in archives) {
 				c++;
 			}
 			
-			if(status_count["PARSING"] < 1 && (path = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
+			if(status_count["PARSING"] < 1 && (a = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
+				path = a.path;
 				c = true;
 				for(i in archives) {
 					t = archives[i];
@@ -128,6 +131,7 @@ function update() {
 									id: playbox_hash,
 									name: meta.name,
 									path: path,
+									root: a.root,
 									ctime: st.ctime,
 									mtime: st.mtime,
 									size: st.size,
@@ -503,12 +507,12 @@ exports.cmds = {
 			}
 		}
 	},
-	list_dir: function(params, callback) {
+	list_dir: function(params, callback, error) {
 		var root = Path.normalize(params && params.root || "/"),
 			dirs = [];
 		
 		Fs.readdir(root, function(err, files) {
-			if(err) throw err;
+			if(err) error(err);
 			
 			if(root.substr(-1) !== "/") {
 				root += "/";
@@ -523,7 +527,8 @@ exports.cmds = {
 			if(i >= 0) {
 				do {
 					var file = files[i];
-					if(Fs.statSync(root+"/"+file).isDirectory() && file.charAt(0) !== '.') {
+					var st = Fs.statSync(root+"/"+file);
+					if(st && st.isDirectory() && file.charAt(0) !== '.') {
 						dirs.push({dir: file});
 					}
 				} while(i--);

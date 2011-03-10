@@ -539,6 +539,8 @@ socket.on("connection", function(conn) {
 					}
 					
 					conn.send(msg);
+				}, function(error) {
+					conn.send({id: id, error: error.toString()});
 				});
 			} catch(e) {
 				conn.send({id: id, error: e.toString()});

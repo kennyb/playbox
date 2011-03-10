@@ -17,12 +17,14 @@
 		<div id="templates" style="display:none">
 			
 			<xmp id="template_loading">
-				<h1>loading...</h1>
+				<div>loading...</div>
 			</xmp>
 			
 			<xmp id="template_sidebar">
-				<h3><a href="#/library">library</a></h3>
-				<h3><a href="#/config">config</a></h3>
+				<ul>
+					<li><a href="#/library">library</a></li>
+					<li><a href="#/config">config</a></li>
+				</ul>
 			</xmp>
 			
 			<xmp id="template_footer">
@@ -47,8 +49,10 @@
 			</xmp>
 			
 			<xmp id="template_dir_entry">
-				<div onclick='this.appendChild(SKIN.data_template("dir_entry", "list_dir", {root:d.root+d.dir}))'>
-					d: <?=d.root+d.dir?>
+				<div>
+					<a href="javascript:;" onclick='dir_item(this, d.root+d.dir)'>
+						[+] <?=d.root+d.dir?>
+					</a>
 				</div>
 			</xmp>
 			
@@ -58,17 +62,19 @@
 				</div>
 				<?
 				for(var i = 0; i < 5; i++) {
-					?><div><?
-					
-					if(i == 1) {
-						?>one<?
-					} else if(i == 2) {
-						?>two<?
-					} else if(i > 2) {
-						?>i:<?=i?><?
-					}
-					
-					?></div><?
+					?>
+					<div>
+						<?
+						if(i == 1) {
+							?>one<?
+						} else if(i == 2) {
+							?>two<?
+						} else if(i > 2) {
+							?>i:<?=i?><?
+						}
+						?>
+					</div>
+					<?
 				}
 				?>
 			</xmp>
@@ -81,7 +87,7 @@
 			</xmp>
 			
 			<xmp id="template_library_entry">
-				<div onclick="$('#jplayer_1').jPlayer('setMedia', {mp3: 'http://localhost:1155/playbox/g/'+d.id}).jPlayer('play')">
+				<div onclick="play_song(d.id)">
 					<?=d.name?> | <?=LIB.formatTime(d.time)?>
 				</div>
 			</xmp>
