@@ -104,7 +104,7 @@ var SKIN = {
 							if(node_type === "code") {
 								scope.push(cE("x", {innerHTML: inner}).firstChild.data);
 							} else {
-								scope.push("\no.push("+print_node(node)+")\n");
+								scope.push("o.push("+print_node(node)+")");
 							}
 						}
 						
@@ -121,7 +121,7 @@ var SKIN = {
 						}
 					}
 					
-					return "function(){\nvar o=[];\n"+scope.join('')+";return o}()";
+					return "function(){var o=[];"+scope.join('')+";return o}()";
 				} else if(node_type === "#text") {
 					return arg_vars(node.nodeValue);
 				} else {
@@ -151,7 +151,7 @@ var SKIN = {
 					}
 					
 					if(child_funcs.length) {
-						child_funcs = ',\n\t'+child_funcs.join(',')+"\n";
+						child_funcs = ','+child_funcs.join(',');
 					}
 					
 					return "cE('"+node_type+"',{"+attrs.join(',')+"}"+child_funcs+")";
@@ -198,7 +198,7 @@ var SKIN = {
 				}
 			}
 			
-			txt = top_level.join(',\n');
+			txt = LIB.str_replace(top_level.join(','), ',""', '');
 			if(top_level.length > 1) {
 				txt = "["+txt+"]";
 			}
