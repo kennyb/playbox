@@ -117,7 +117,7 @@ def build_playbox(bld):
 		playbox.linkflags = ['./lib/libtorrent.so', './lib/libavformat.so']
   
 	playbox.source = ["playbox/playbox.cc"]
-	playbox.includes = ['libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
+	playbox.includes = ['deps/libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
 	playbox.cflags = ['-Wall']
 	playbox.cxxflags = ['-Wall']
 
@@ -149,12 +149,12 @@ def install_libs(bld):
 		copy2(abspath('deps/ffmpeg/libavutil/libavutil.dylib'), 'build/lib/libavutil.dylib')
 
 def build_libtorrent(bld):
-	libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="libtorrent.def")
+	libtorrent = bld.new_task_gen("cxx", "shlib", install_path=None, target="torrent", defs="deps/libtorrent.def")
 	libtorrent.name = "torrent"
 	libtorrent.target = "torrent"
-	libtorrent.cxxflags = ["-I../libtorrent/include"]
-	libtorrent.cflags = ["-I../libtorrent/include", "-fPIC", "-fvisibility=hidden"]
-	libtorrent.includes = ['libtorrent/include', '/opt/local/include']
+	libtorrent.cxxflags = ["-I../deps/libtorrent/include"]
+	libtorrent.cflags = ["-I../deps/libtorrent/include", "-fPIC", "-fvisibility=hidden"]
+	libtorrent.includes = ['deps/libtorrent/include', '/opt/local/include']
 	libtorrent.uselib = 'BOOST_THREAD BOOST_SYSTEM BOOST_FILESYSTEM PTHREAD'
 	libtorrent.libpath = ['/usr/lib', '/usr/local/lib', '/opt/local/lib']
 	libtorrent.defines = [
@@ -169,84 +169,84 @@ def build_libtorrent(bld):
 		"BOOST_ASIO_ENABLE_CANCELIO"
 	]
 	libtorrent.source = [
-		"libtorrent/src/GeoIP.c",
-		"libtorrent/src/mpi.c",
-		"libtorrent/src/ConvertUTF.cpp",
-		"libtorrent/src/alert.cpp",
-		"libtorrent/src/allocator.cpp",
-		"libtorrent/src/assert.cpp", # compile me without asserts?
-		"libtorrent/src/bandwidth_limit.cpp",
-		"libtorrent/src/bandwidth_manager.cpp",
-		"libtorrent/src/bandwidth_queue_entry.cpp",
-		"libtorrent/src/broadcast_socket.cpp",
-		"libtorrent/src/bt_peer_connection.cpp",
-		"libtorrent/src/connection_queue.cpp",
-		"libtorrent/src/create_torrent.cpp",
-		"libtorrent/src/disk_buffer_holder.cpp",
-		"libtorrent/src/disk_io_thread.cpp",
-		"libtorrent/src/entry.cpp",
-		"libtorrent/src/enum_net.cpp",
-		"libtorrent/src/error_code.cpp",
-		"libtorrent/src/escape_string.cpp",
-		"libtorrent/src/file.cpp",
-		"libtorrent/src/file_pool.cpp",
-		"libtorrent/src/file_storage.cpp",
-		"libtorrent/src/gzip.cpp",
-		"libtorrent/src/http_connection.cpp",
-		"libtorrent/src/http_parser.cpp",
-		"libtorrent/src/http_seed_connection.cpp",
-		"libtorrent/src/http_stream.cpp",
-		"libtorrent/src/http_tracker_connection.cpp",
-		"libtorrent/src/i2p_stream.cpp",
-		"libtorrent/src/identify_client.cpp",
-		"libtorrent/src/instantiate_connection.cpp",
-		"libtorrent/src/ip_filter.cpp",
-		"libtorrent/src/lazy_bdecode.cpp",
-		"libtorrent/src/logger.cpp",
-		"libtorrent/src/lsd.cpp",
-		"libtorrent/src/lt_trackers.cpp",
-		"libtorrent/src/magnet_uri.cpp",
-		"libtorrent/src/metadata_transfer.cpp",
-		"libtorrent/src/natpmp.cpp",
-		"libtorrent/src/parse_url.cpp",
-		"libtorrent/src/pe_crypto.cpp",
-		"libtorrent/src/peer_connection.cpp",
-		"libtorrent/src/piece_picker.cpp",
-		"libtorrent/src/policy.cpp",
-		"libtorrent/src/puff.cpp",
-		"libtorrent/src/session.cpp",
-		"libtorrent/src/session_impl.cpp",
-		"libtorrent/src/settings.cpp",
-		"libtorrent/src/sha1.cpp",
-		"libtorrent/src/smart_ban.cpp",
-		"libtorrent/src/socket_io.cpp",
-		"libtorrent/src/socket_type.cpp",
-		"libtorrent/src/socks5_stream.cpp",
-		"libtorrent/src/stat.cpp",
-		"libtorrent/src/storage.cpp",
-		"libtorrent/src/thread.cpp",
-		"libtorrent/src/time.cpp",
-		"libtorrent/src/torrent.cpp",
-		"libtorrent/src/torrent_handle.cpp",
-		"libtorrent/src/torrent_info.cpp",
-		"libtorrent/src/tracker_manager.cpp",
-		"libtorrent/src/udp_socket.cpp",
-		"libtorrent/src/udp_tracker_connection.cpp", # compile me?
-		"libtorrent/src/upnp.cpp",
-		"libtorrent/src/ut_metadata.cpp",
-		"libtorrent/src/ut_pex.cpp",
-		"libtorrent/src/web_connection_base.cpp",
-		"libtorrent/src/web_peer_connection.cpp",
-		"libtorrent/src/kademlia/dht_tracker.cpp",
-		"libtorrent/src/kademlia/find_data.cpp",
-		"libtorrent/src/kademlia/node.cpp",
-		"libtorrent/src/kademlia/node_id.cpp",
-		"libtorrent/src/kademlia/refresh.cpp",
-		"libtorrent/src/kademlia/routing_table.cpp",
-		"libtorrent/src/kademlia/rpc_manager.cpp",
-		"libtorrent/src/kademlia/traversal_algorithm.cpp"
+		"deps/libtorrent/src/GeoIP.c",
+		"deps/libtorrent/src/mpi.c",
+		"deps/libtorrent/src/ConvertUTF.cpp",
+		"deps/libtorrent/src/alert.cpp",
+		"deps/libtorrent/src/allocator.cpp",
+		"deps/libtorrent/src/assert.cpp", # compile me without asserts?
+		"deps/libtorrent/src/bandwidth_limit.cpp",
+		"deps/libtorrent/src/bandwidth_manager.cpp",
+		"deps/libtorrent/src/bandwidth_queue_entry.cpp",
+		"deps/libtorrent/src/broadcast_socket.cpp",
+		"deps/libtorrent/src/bt_peer_connection.cpp",
+		"deps/libtorrent/src/connection_queue.cpp",
+		"deps/libtorrent/src/create_torrent.cpp",
+		"deps/libtorrent/src/disk_buffer_holder.cpp",
+		"deps/libtorrent/src/disk_io_thread.cpp",
+		"deps/libtorrent/src/entry.cpp",
+		"deps/libtorrent/src/enum_net.cpp",
+		"deps/libtorrent/src/error_code.cpp",
+		"deps/libtorrent/src/escape_string.cpp",
+		"deps/libtorrent/src/file.cpp",
+		"deps/libtorrent/src/file_pool.cpp",
+		"deps/libtorrent/src/file_storage.cpp",
+		"deps/libtorrent/src/gzip.cpp",
+		"deps/libtorrent/src/http_connection.cpp",
+		"deps/libtorrent/src/http_parser.cpp",
+		"deps/libtorrent/src/http_seed_connection.cpp",
+		"deps/libtorrent/src/http_stream.cpp",
+		"deps/libtorrent/src/http_tracker_connection.cpp",
+		"deps/libtorrent/src/i2p_stream.cpp",
+		"deps/libtorrent/src/identify_client.cpp",
+		"deps/libtorrent/src/instantiate_connection.cpp",
+		"deps/libtorrent/src/ip_filter.cpp",
+		"deps/libtorrent/src/lazy_bdecode.cpp",
+		"deps/libtorrent/src/logger.cpp",
+		"deps/libtorrent/src/lsd.cpp",
+		"deps/libtorrent/src/lt_trackers.cpp",
+		"deps/libtorrent/src/magnet_uri.cpp",
+		"deps/libtorrent/src/metadata_transfer.cpp",
+		"deps/libtorrent/src/natpmp.cpp",
+		"deps/libtorrent/src/parse_url.cpp",
+		"deps/libtorrent/src/pe_crypto.cpp",
+		"deps/libtorrent/src/peer_connection.cpp",
+		"deps/libtorrent/src/piece_picker.cpp",
+		"deps/libtorrent/src/policy.cpp",
+		"deps/libtorrent/src/puff.cpp",
+		"deps/libtorrent/src/session.cpp",
+		"deps/libtorrent/src/session_impl.cpp",
+		"deps/libtorrent/src/settings.cpp",
+		"deps/libtorrent/src/sha1.cpp",
+		"deps/libtorrent/src/smart_ban.cpp",
+		"deps/libtorrent/src/socket_io.cpp",
+		"deps/libtorrent/src/socket_type.cpp",
+		"deps/libtorrent/src/socks5_stream.cpp",
+		"deps/libtorrent/src/stat.cpp",
+		"deps/libtorrent/src/storage.cpp",
+		"deps/libtorrent/src/thread.cpp",
+		"deps/libtorrent/src/time.cpp",
+		"deps/libtorrent/src/torrent.cpp",
+		"deps/libtorrent/src/torrent_handle.cpp",
+		"deps/libtorrent/src/torrent_info.cpp",
+		"deps/libtorrent/src/tracker_manager.cpp",
+		"deps/libtorrent/src/udp_socket.cpp",
+		"deps/libtorrent/src/udp_tracker_connection.cpp", # compile me?
+		"deps/libtorrent/src/upnp.cpp",
+		"deps/libtorrent/src/ut_metadata.cpp",
+		"deps/libtorrent/src/ut_pex.cpp",
+		"deps/libtorrent/src/web_connection_base.cpp",
+		"deps/libtorrent/src/web_peer_connection.cpp",
+		"deps/libtorrent/src/kademlia/dht_tracker.cpp",
+		"deps/libtorrent/src/kademlia/find_data.cpp",
+		"deps/libtorrent/src/kademlia/node.cpp",
+		"deps/libtorrent/src/kademlia/node_id.cpp",
+		"deps/libtorrent/src/kademlia/refresh.cpp",
+		"deps/libtorrent/src/kademlia/routing_table.cpp",
+		"deps/libtorrent/src/kademlia/rpc_manager.cpp",
+		"deps/libtorrent/src/kademlia/traversal_algorithm.cpp"
 	]
-	libtorrent.source = bld.path.ant_glob('libtorrent/src/*.c')+' '+bld.path.ant_glob('libtorrent/src/*.cpp')+' '+bld.path.ant_glob('libtorrent/src/kademlia/*.cpp')+' '+bld.path.ant_glob('libtorrent/include/*')
+	libtorrent.source = bld.path.ant_glob("deps/libtorrent/src/*.c")+' '+bld.path.ant_glob("deps/libtorrent/src/*.cpp")+' '+bld.path.ant_glob("deps/libtorrent/src/kademlia/*.cpp")+' '+bld.path.ant_glob("deps/libtorrent/include/*")
 	
 	#bld.install_files('build/release/libs', 'build/default/libtorrent.so')
 	#bld.install_files('${PREFIX}/include/libtorrent/', 'libtorrent/include/libtorrent/*.hpp')
