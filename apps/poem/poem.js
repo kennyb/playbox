@@ -1,6 +1,7 @@
 "use strict";
 
 var Path = require('path'),
+    Fs = require('fs'),
 	ext2mime = require('lib/http').ext2mime;
 
 exports.cmds = {
@@ -11,7 +12,7 @@ exports.cmds = {
 			used_cache: 0
 		}
 	},
-	list: function(params, callback) {
+	applist: function(params, callback) {
 		/*
 		var ret = [];
 		for(var i in app_status) {
@@ -59,6 +60,10 @@ exports.cmds = {
 		throw new Error("not yet implemented");
 	}
 };
+
+
+
+
 /*
 apps["poem"] = {
 	cmds: exports.cmds
