@@ -5,7 +5,6 @@
 		<meta name="ROBOTS" content="NONE" />
 		<script type="text/javascript">
 			/*<![CDATA[*/
-			//document.domain = 'gatunes.com';
 			top.LIB.addEvent('load', function() {
 				top.document.getElementsByTagName("body")[0].appendChild(top.document.importNode(document.getElementById("templates"), true));
 				top.LIB.loadedLib({templates: true});
@@ -79,7 +78,12 @@
 			
 			<xmp id="template_library_entry">
 				<div onclick="play_song(d.id)">
-					<?=d.name?> | <?=LIB.formatTime(d.time)?>
+					<div style="display:inline">
+						<?=d.name?>
+					</div>
+					<div style="display:inline;float:right">
+						<?=LIB.formatTime(d.time)?>
+					</div>
 				</div>
 			</xmp>
 			
