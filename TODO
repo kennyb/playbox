@@ -1,6 +1,7 @@
 node-inspector - http://localhost:8080/debug?port=5858
 
 current:
+make a class called "cmd" which is called and must return after a while
 subscribe to events + centralized event emitter
 assign lib files with a parent dir
 keep track of parent dirs (when removing a parent dir, simply disable it, cause it could have an assigned lib file). parent dirs should actually have a count of lib files inside
