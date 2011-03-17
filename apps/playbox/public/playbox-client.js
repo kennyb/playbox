@@ -7,8 +7,13 @@ function play_song(id) {
 function dir_item(e, root) {
 	var sibling = e.nextSibling;
 	if(sibling) {
-		toggle(sibling);
+		if(toggle(sibling)) {
+			e.firstChild.innerHTML = '-';
+		} else {
+			e.firstChild.innerHTML = '+';
+		}
 	} else {
 		e.parentNode.appendChild(SKIN.data_template("dir_entry", "list_dir", {root: root}));
+		e.firstChild.innerHTML = '-';
 	}
 }

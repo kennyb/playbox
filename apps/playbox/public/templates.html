@@ -45,15 +45,6 @@
 				<div>
 					playbox-0.2 - preview version
 				</div>
-				<?=SKIN.data_template("dir_entry", "list_dir", {})?>
-			</xmp>
-			
-			<xmp id="template_dir_entry">
-				<div>
-					<a href="javascript:;" onclick='dir_item(this, d.root+d.dir)'>
-						[+] <?=d.root+d.dir?>
-					</a>
-				</div>
 			</xmp>
 			
 			<xmp id="template_test">
@@ -109,16 +100,37 @@
 					directories
 				</h4>
 				<?=SKIN.data_template("directory_entry", "get_dirs", {})?>
-				<div>
-					<input type="button" value="add" />
-				</div>
+				<hr />
+				<?=SKIN.data_template("dir_entry", "list_dir", {})?>
 				<h4>
 					cache
 				</h4>
 			</xmp>
 			
+			<xmp id="template_dir_entry">
+				<div>
+					<?
+					if(d.dir) {
+						?>
+						<button onclick="alert('not yet implemented')">add</button>
+						<a href="javascript:;" onclick="dir_item(this, d.root+d.dir)">
+							<button>+</button> <?=d.root+d.dir?>
+						</a>
+						<?
+					} else {
+						?>
+						<em>empty</em>
+						<?
+					}
+					?>
+				</div>
+			</xmp>
+			
 			<xmp id="template_directory_entry">
-				<div><?=d.path?></div>
+				<div>
+					<button onclick="alert('not yet implemented')">remove</button>
+					<em><?=d.path?></em>
+				</div>
 			</xmp>
 			
 			<xmp id="template_app_button">

@@ -104,7 +104,7 @@ var SKIN = {
 							if(node_type === "code") {
 								scope.push(cE("x", {innerHTML: inner}).firstChild.data);
 							} else {
-								scope.push("o.push("+print_node(node)+")");
+								scope.push("o.push("+print_node(node)+");");
 							}
 						}
 						
@@ -203,11 +203,16 @@ var SKIN = {
 				txt = "["+txt+"]";
 			}
 			
+			//console.log(tpl, "fn::", txt);
 			txt = "return "+txt+';';
-			if(is_panel) {
-				fn = SKIN.templates[tpl] = new Function("t", "p", "o", txt);
-			} else {
-				fn = SKIN.templates[tpl] = new Function("t", "d", "o", txt);
+			try {
+				if(is_panel) {
+					fn = SKIN.templates[tpl] = new Function("t", "p", "o", txt);
+				} else {
+					fn = SKIN.templates[tpl] = new Function("t", "d", "o", txt);
+				}
+			} catch(e) {
+				console.log("template error:", e);
 			}
 			
 			//console.log(tpl, " :: ", fn.toString());

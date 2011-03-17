@@ -269,6 +269,21 @@ function load_apps() {
 						setInterval: setInterval,
 						clearInterval: clearInterval,
 						broadcast: broadcast,
+						emit_event: function(app, broadcast) {
+							return function(evt, data) {
+								data = data || {};
+								
+								// TODO: add functionality here to check to see which clients have 'subscribed' to the events
+								// or rather, that they are listening to the events (and also automatically export the functions
+								// to add / remove event listeners
+								broadcast({
+									app: app,
+									func: "event",
+									args: evt,
+									data: data
+								});
+							};
+						}(app, broadcast),
 						console: console,
 						working_dir: working_dir + app + '/',
 						tmp_dir: working_dir + app + "/.tmp/",

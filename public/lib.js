@@ -182,8 +182,10 @@ function toggle(id, st) {
 			}
 			
 			elem.style.display = st;
+			return true;
 		} else {
 			elem.style.display = 'none';
+			return false;
 		}
 	}
 }
