@@ -31,17 +31,6 @@ var playbox = new Playbox(),
 	};
 
 
-function emit_event(evt, data) {
-	data = data || {};
-	
-	broadcast({
-		app: "playbox",
-		func: "event",
-		args: evt,
-		data: data
-	});
-}
-
 function add_dir(p) {
 	p = Path.normalize(p);
 	var dirs = config.directories;
@@ -128,7 +117,7 @@ function update() {
 							var torrent = playbox.make_torrent(stripped_archive_path);
 							//if(torrent) {
 								meta.id = playbox_hash;
-								var a = {
+								var a2 = {
 									id: playbox_hash,
 									name: meta.name,
 									path: path,
@@ -145,7 +134,7 @@ function update() {
 								//console.log("end", b.length, b);
 								
 								//playbox.load_torrent(bencode.encode(torrent));
-								update_metadata(playbox_hash, a);
+								update_metadata(playbox_hash, a2);
 							//}
 							
 							Fs.unlink(stripped_archive_path);
@@ -488,7 +477,7 @@ exports.cmds = {
 		}
 		
 		// throw event
-		add_dir(path);
+		add_dir(path, Path.dirname(path));
 	},
 	rm_dir: function(params, callback) {
 		var dirs = config.directories,
@@ -512,7 +501,7 @@ exports.cmds = {
 			dirs = [];
 		
 		Fs.readdir(root, function(err, files) {
-			if(err) error(err);
+			if(err) return error(err);
 			
 			if(root.substr(-1) !== "/") {
 				root += "/";
@@ -524,15 +513,17 @@ exports.cmds = {
 			// hotfix... fs.statSync :)
 			
 			var i = files.length-1;
-			if(i >= 0) {
-				do {
+			if(files.length) {
+				for(var i = 0, len = files.length; i < len; i++) {
+					//files = files.sort();
 					var file = files[i];
 					var st = Fs.statSync(root+"/"+file);
 					if(st && st.isDirectory() && file.charAt(0) !== '.') {
 						dirs.push({dir: file});
 					}
-				} while(i--);
-				callback(dirs, {root: root});
+				}
+				
+				callback(dirs, {root: root});					
 			}
 		});
 	}
