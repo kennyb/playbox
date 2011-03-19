@@ -101,8 +101,10 @@ function symlink(src, dest, callback) {
 	Fs.lstat(dest, function(err, dest_st) {
 		if(err) {
 			if(err.code === 'ENOENT') {
-				Fs.symlink(dest, src, callback);
-			} else callback(err);
+				Fs.symlink(src, dest, callback);
+			} else {
+				callback(err);
+			}
 		} else if(dest_st.isSymbolicLink()) {
 			callback(Fs.readlinkSync(dest) == src ? null : new Error("symlink exists and points to something else"));
 		} else {
@@ -150,60 +152,59 @@ switch(mode) {
 		break;
 	
 	case "--make-release":
-		mkdirs('build/release/lib');
-		// build node
-		copy('deps/node/build/default/node', 'build/release/node')
+		mkdirs('build/release/lib', function(err) {
+			// build libs
+			copy_dll('build/lib/libtorrent.so', 'build/release/lib/libtorrent.so');
+			copy_dll('build/lib/libavformat.so', 'build/release/lib/libavformat.so');
+			copy_dll('build/lib/libavcodec.so', 'build/release/lib/libavcodec.so');
+			copy_dll('build/lib/libavutil.so', 'build/release/lib/libavutil.so');
 
-		// build libs
-		copy_dll('build/lib/libtorrent.so', 'build/release/lib/libtorrent.so');
-		copy_dll('build/lib/libavformat.so', 'build/release/lib/libavformat.so');
-		copy_dll('build/lib/libavcodec.so', 'build/release/lib/libavcodec.so');
-		copy_dll('build/lib/libavutil.so', 'build/release/lib/libavutil.so');
+			// node libs
+			copy('build/default/playbox.node', 'build/release/lib/playbox.node');
+			
+			// js libs
+			symlink('deps/socket.io', 'build/release/lib/socket.io');
+			symlink('deps/async.js/lib', 'build/release/lib/async.js');
+			symlink('deps/node-id3/lib/id3', 'build/release/lib/node-id3'); //TODO: change this over to music-metadata (or whatever it was)
+			symlink('deps/node-strtok/lib', 'build/release/lib/node-strtok');
+			symlink('deps/sha1_stream/sha1_stream.js', 'build/release/lib/sha1_stream.js');
+			//symlink('deps/long-stack-traces/lib/long-stack-traces.js', 'build/release/lib/long-stack-traces.js');
+			symlink('deps/requirejs/require.js', 'build/release/require.js');
+			symlink('deps/requirejs/require', 'build/release/require');
+			
+			symlink('public', 'build/release/public');
 
-		// node libs
-		copy('build/default/playbox.node', 'build/release/lib/playbox.node');
-		//copy('deps/node-iconv/iconv.node', 'build/release/lib/iconv.node');
+			// main app
+			symlink('main.js', 'build/release/main.js');
+			symlink('connection.js', 'build/release/connection.js');
+			symlink('edb.js', 'build/release/lib/edb.js');
+			symlink('lib/bencode.js', 'build/release/lib/bencode.js');
+			symlink('lib/http.js', 'build/release/lib/http.js');
 
-
-		symlink('public', 'build/release/public');
-
-		// js libs
-		symlink('deps/socket.io', 'build/release/lib/socket.io');
-		symlink('deps/async.js/lib', 'build/release/lib/async.js');
-		symlink('deps/node-id3/lib/id3', 'build/release/lib/node-id3'); //TODO: change this over to music-metadata (or whatever it was)
-		symlink('deps/node-strtok/lib', 'build/release/lib/node-strtok');
-		symlink('deps/sha1_stream/sha1_stream.js', 'build/release/lib/sha1_stream.js');
-		//symlink('deps/long-stack-traces/lib/long-stack-traces.js', 'build/release/lib/long-stack-traces.js');
-		symlink('deps/requirejs/require.js', 'build/release/require.js');
-		symlink('deps/requirejs/require', 'build/release/require');
-
-
-		symlink('main.js', 'build/release/main.js');
-		symlink('connection.js', 'build/release/connection.js');
-		symlink('edb.js', 'build/release/lib/edb.js');
-		symlink('lib/bencode.js', 'build/release/lib/bencode.js');
-		symlink('lib/http.js', 'build/release/lib/http.js');
-
-		symlink('config.json', 'build/release/config.json');
-		symlink('applist.json', 'build/release/applist.json');
+			symlink('config.json', 'build/release/config.json');
+			symlink('applist.json', 'build/release/applist.json');
+		});
 
 		// default apps
-		mkdirs('build/release/apps');
+		mkdirs('build/release/apps', function(err) {
+			symlink('apps/poem', 'build/release/apps/poem');
+			symlink('apps/playbox', 'build/release/apps/playbox');
 
-		symlink('apps/poem', 'build/release/apps/poem');
-		symlink('apps/playbox', 'build/release/apps/playbox');
+			// js lib: APF (ajax.org)
+			mkdirs('build/release/apps/apf/public', function(err) {
+				symlink('deps/apf/apf.js', 'build/release/apps/apf/public/apf.js');
+				symlink('deps/apf/loader.js', 'build/release/apps/apf/public/loader.js');
+				symlink('deps/apf/core', 'build/release/apps/apf/public/core');
+				symlink('deps/apf/elements', 'build/release/apps/apf/public/elements');
+				symlink('deps/apf/processinginstructions', 'build/release/apps/apf/public/processinginstructions');
+			});
 
-		// js lib: APF (ajax.org)
-		mkdirs('build/release/apps/apf/public');
-		symlink('deps/apf/apf.js', 'build/release/apps/apf/public/apf.js');
-		symlink('deps/apf/loader.js', 'build/release/apps/apf/public/loader.js');
-		symlink('deps/apf/core', 'build/release/apps/apf/public/core');
-		symlink('deps/apf/elements', 'build/release/apps/apf/public/elements');
-		symlink('deps/apf/processinginstructions', 'build/release/apps/apf/public/processinginstructions');
-
-		// js lib: jPlayer (http://www.jplayer.org)
-		mkdirs('build/release/apps/jPlayer/public');
-		symlink('deps/jPlayer/jquery.jplayer/jquery.jplayer.js', 'build/release/apps/jPlayer/public/jplayer.js');
-		symlink('deps/jPlayer/jquery.jplayer/Jplayer.swf', 'build/release/apps/jPlayer/public/Jplayer.swf');
+			// js lib: jPlayer (http://www.jplayer.org)
+			mkdirs('build/release/apps/jPlayer/public', function(err) {
+				symlink('deps/jPlayer/jquery.jplayer/jquery.jplayer.js', 'build/release/apps/jPlayer/public/jplayer.js');
+				symlink('deps/jPlayer/jquery.jplayer/Jplayer.swf', 'build/release/apps/jPlayer/public/Jplayer.swf');
+			});
+		});
+		
 		break;
 }
