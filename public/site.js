@@ -1,53 +1,5 @@
 
 
-/* DEBUG
-function testing(t, d, o) {
-	return [
-		function(){
-			o=[];
-			d.d_end = LIB.formatDate(d.d_end);
-			d.desc_a = d.desc[0];
-			d.desc_b = d.desc[1];
-			d.img_a = d.img[0];
-			d.img_b = d.img[1]
-			return o
-		}(),
-		cE('h1',{}, d.title ),
-		cE('div',{},
-			cE('div',{style:"float: left;"},
-			cE('input',{type:"button",value:"vote a"}) ),
-			cE('div',{style:"float: left;",id:"debate_time_remaining"}, d.d_end ),
-			cE('div',{style:"float: left;"},
-				cE('input',{type:"button",value:"vote b"})
-			)
-		),
-		cE('div',{},
-			cE('div',{style:"float: left;",id:"debate_desc_a"},
-				cE('div',{},
-					function() {
-						var a = [];
-						//for(sdsdf)  {
-						//	cE('img',{width:"50",height:"50",src:d.img_a})
-						return a;
-					}()
-				),
-				cE('div',{}, d.desc_a )
-			),
-			cE('div',{style:"float: left;",id:"debate_pot"}, "current pot!" ),
-			cE('div',{style:"float: left;",id:"debate_desc_b"},
-				cE('div',{},
-					cE('img',{src:d.img_b})
-				),
-				cE('div',{}, d.desc_b )
-			)
-		),
-		cE('div',{id:"debate_comments"},
-		cE('div',{}, "total: "+d.comments.length ),
-			SKIN.template("debate_comments", d.comments)
-		)
-	];
-}
-//DEBUG */
 
 var SKIN = {
 	templates: {},
@@ -125,13 +77,15 @@ var SKIN = {
 				} else if(node_type === "#text") {
 					return arg_vars(node.nodeValue);
 				} else {
-					var attrs = [];
-					var child_funcs = [];
-					var attributes = node.attributes;
-					var children = node.childNodes;
-					for(var i = 0; i < attributes.length; i++) {
-						var a = attributes[i],
-							attr = a.nodeName.toLowerCase();
+					var i = 0, a, attr, n,
+						attrs = [],
+						child_funcs = [],
+						attributes = node.attributes,
+						children = node.childNodes;
+						
+					for(; i < attributes.length; i++) {
+						a = attributes[i];
+						attr = a.nodeName.toLowerCase();
 						
 						if(attr.substr(0, 2) === "on") {
 							// for now we'll assume this is an event
@@ -141,8 +95,8 @@ var SKIN = {
 						}
 					}
 					
-					for(var i = 0; i < children.length; i++) {
-						var n = children[i];
+					for(i = 0; i < children.length; i++) {
+						n = children[i];
 						child_funcs.push(print_node(n));
 						if(n.nodeName.toLowerCase() === "code") {
 							i = children.length;
@@ -185,12 +139,13 @@ var SKIN = {
 				}
 			});
 			
-			var div = cE("div", {html: txt});
-			var code_blocks = div.childNodes;
-			var top_level = [];
+			var div = cE("div", {html: txt}),
+				code_blocks = div.childNodes,
+				top_level = [],
+				i = 0, n;
 			
-			for(var i = 0; i < code_blocks.length; i++) {
-				var n = code_blocks[i];
+			for(; i < code_blocks.length; i++) {
+				n = code_blocks[i];
 				top_level.push(print_node(n));
 				if(n.nodeName.toLowerCase() === "code") {
 					i = code_blocks.length;
@@ -223,16 +178,17 @@ var SKIN = {
 	data_template : function(template_id, cmd, params, app) {
 		var id = SERVER.cmd(cmd, params, function(template_id) {
 			return function(msg) {
-				var els = document.getElementsByClassName(template_id),
+				var els = document.getElementsByClassName("cmd_"+template_id),
 					err = msg.error,
 					data = msg.ret,
 					id = msg.id,
-					common = msg.common;
+					common = msg.common,
+					i = 0, e;
 				
-				for(var i = 0; i < els.length; i++) {
-					var e = els[i];
+				for(; i < els.length; i++) {
+					e = els[i];
 					
-					if(e.id == id) {
+					if(e.i === id) {
 						if(err) {
 							SKIN.template(template_id, {"$error": err}, e, common);
 						} else {
@@ -243,7 +199,7 @@ var SKIN = {
 			};
 		}(template_id), app);
 		
-		return cE("div", {c: template_id, id: id}, "Loading...");
+		return cE("div", {c: "cmd_"+template_id, i: id}, "Loading...");
 	},
 	template : function(template_id, data, element, common) {
 		var template_func, template, output, error, func_ret, fn_t;
