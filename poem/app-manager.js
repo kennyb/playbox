@@ -67,8 +67,6 @@ exports.init = function(opts) {
 };
 
 
-
-
 function load_apps() {
     //TODO move all this over to poem
 	Fs.readdir("apps", function(err, files) {
