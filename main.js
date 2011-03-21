@@ -30,17 +30,18 @@ require.paths.unshift("../../lib");
 */
 
 var http = require("http"),
+	Fs = require("fs"),
 	Module = require("module"),
 	Net = require("net"),
 	Path = require("path"),
 	Sys = require("sys"),
 	Edb = require("lib/edb"),
 	Poem = require("./poem/app-manager"),
-	Fs = require("fs"),
 	io = require("./deps/socket.io"),
 	async = require("lib/async.js/async"),
 	buffer = require("buffer"),
 	Connection = require('./connection').Connection,
+	Cmd = require("./lib/poem").Cmd,
 	ext2mime = require('./lib/http').ext2mime;
 	//cookie = require( "./lib/cookie");
 
@@ -391,27 +392,17 @@ socket.on("connection", function(conn) {
 					throw new Error("message cmd not defined");
 				}
 				
+				// I may relax this and instead make it an empty object
 				if(!params) {
 					throw new Error("params not defined");
 				}
 				
 				if(!app) {
-					throw new Error("app not installed");
+					throw new Error("app not specified");
 				}
 				
 				console.log("cmd("+id+"): "+app+"."+cmd+" "+Sys.inspect(params));
-				
-				app = Poem.apps[app];
-				if(!app.cmds) {
-					throw new Error("app does not have any cmds");
-				}
-				
-				var cmd_f = app.cmds[cmd];
-				if(typeof cmd_f !== 'function') {
-					throw new Error("cmd ("+cmd+"): function not defined");
-				}
-				
-				cmd_f(params, function(ret, common) {
+				var c = new Cmd(app, cmd, params, function(ret, common) {
 					var msg = {id: id, ret: ret};
 					if(common) {
 						msg.common = common;
