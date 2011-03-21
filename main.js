@@ -1,17 +1,8 @@
-/*
-
-
-
-*/
-
-// download this for testing:
-// http://github.com/cloudhead/vows
 "use strict";
 
 global.start_time = new Date();
 
 // global error handler
-
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		console.log(" [ERROR] "+err.toString()+"\n"+(err.stack));
@@ -23,11 +14,6 @@ require.paths.unshift(".");
 
 //TODO fixme~!!!
 require.paths.unshift("lib/node-strtok");
-/*
-
-require.paths.unshift("lib");
-require.paths.unshift("../../lib");
-*/
 
 var http = require("http"),
 	Fs = require("fs"),
@@ -45,7 +31,7 @@ var http = require("http"),
 	ext2mime = require('./lib/http').ext2mime;
 	//cookie = require( "./lib/cookie");
 
-// lame hack, lol...
+// I needed a mkdirs function, so I put it here... needs to be moved
 Fs.mkdirs = function (dirname, mode, callback) {
 	if (typeof mode === 'function') {
 		callback = mode;
@@ -119,13 +105,13 @@ var config = {},
 	server = http.createServer(function(req, res) {
 		new Connection(req, res);
 	}),
-	socket = io.listen(server, {flashPolicyServer: false});
+	socket = io.listen(server, {flashPolicyServer: false}); // TODO: patch socket.io to let the flash policy server to be located on a different port
 
 //TODO lib func, move me
 global.Mixin = function(target, source) {
 	if(typeof source === "object") {
 		for(var key in source) {
-			if(source.hasOwnProperty(key)){
+			if(source.hasOwnProperty(key)) {
 				target[key] = source[key];
 			}
 		}
@@ -142,6 +128,7 @@ function init() {
 	// -- WARNING --
 	// at the moment this is the mayor chapuza of the app code
 	// I will be spawning separate node processes for each application in the future, jailing them into a directory...
+	// this will be done reusing a lot of the multi-node code (https://github.com/kriszyp/multi-node)
 	// for now, !!!COMPLETE ACCESS!!! - hehe
 	// if you wanna help out to sort this mess, let me know, I'm 110% of the way there
 	
@@ -204,6 +191,7 @@ function add_file(path, vpath, mime, literal) {
 			var txt = content.toString();
 			var old_txt = global.static_files["/" + path];
 			//TODO: this can all be done in parallel
+			//TODO: update this with the updated templates on the client side
 			if(!literal && typeof txt === 'string' && txt.indexOf("<?") !== -1) {
 				txt = 'o=o||"";o+="'+txt.str_replace_array(['"', "\n", "\t", "  "], ['\\"', "", " ", " "]).trim();
 				txt = txt.trim().replace(/<\?(.*?)\?\>/g, function(nothing, variable) {
