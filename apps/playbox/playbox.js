@@ -6,6 +6,7 @@ var Sys = require("sys"),
 	Crypto = require("crypto"),
 	ID3File = require("lib/node-id3"),
 	bencode = require("lib/bencode"),
+	DataStore = require("lib/poem").DataStore, //TODO: move DataStore over to be a global in the context
 	ext2mime = require('lib/http').ext2mime;
 
 var playbox = new Playbox(),
@@ -13,137 +14,214 @@ var playbox = new Playbox(),
 	load_metadata_queue = [],
 	update_loop = null,
 	tmp_file_id = 0,
-	archives = {},
 	last_idle = 0,
-	status_count = {
-		"PARSING": 0,
-		"METADATA": 0,
-		"DOWNLOADING_METADATA": 0,
-		"CHECKING": 0,
-		"DOWNLOADING": 0,
-		"OK": 0
-	},
 	config = {
-		// config default values
-		directories: [],
-		read_kb_speed: 5000,
-		write_kb_speed: 3000
+		read_kb_speed: 50000,
+		write_kb_speed: 30000
 	};
 
-
-function add_dir(p) {
-	p = Path.normalize(p);
-	var dirs = config.directories;
-	
-	for(var i = 0; i < dirs.length; i++) {
-		var d = dirs[i];
-		if(d.path.indexOf(p) === 0) {
-			throw new Error("path already exists or is a subdirectory of an existing path");
-		}
-	}
-	
-	add_dir_recursive(p, p);
-	
-	config.directories.push({path: p});
-	Edb.set("config", config);
-}
-
-function add_dir_recursive(p, root) {
-	var num = 0;
-
-	Fs.stat(p, function(err, st) {
-		if(err) throw err;
-		
-		if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 8 * 1024 * 1024) {
-			add_archive_queue.push({path: p, root: root});
-			num++;
-		} else if(st.isDirectory()) {
-			
-			Fs.readdir(p, function(err, files) {
-				if(err) throw err;
-				
-				var i = files.length-1;
-				if(i >= 0) {
-					do {
-						add_dir_recursive(p+"/"+files[i].toString(), root);
-					} while(i--);
-				}
-			});
-		}
+var Directory = function() {
+	var ds = new DataStore("playbox.dir");
+	ds.on("load", function(d) {
+		(new Directory(d._id)).update({"$concat": {queued: d.archives.concat(d.processing)}, processing: [], archives:[]});
+	}).on("add", function(d) {
+		emit_event("dir_added", d.meta);
+	}).on("remove", function(id) {
+		emit_event("dir_removed", id);
+	}).on("update", function(d) {
+		emit_event("dir_updated", d.meta);
 	});
 	
-	return num;
-}
+	var add_dir_recursive = function(p, root) {
+		//console.log("add_dir_recursive", p, root);
+		Fs.stat(p, function(err, st) {
+			if(err) throw err;
+			
+			if(st.isFile() && Path.extname(p) === ".mp3" && st.size < 11 * 1024 * 1024) {
+				ds.update(root, {"$push": {queued: p}});
+			} else if(st.isDirectory()) {
+				Fs.readdir(p, function(err, files) {
+					if(err) throw err;
+					
+					var i = files.length-1;
+					if(i >= 0) {
+						do {
+							add_dir_recursive(p+"/"+files[i], root);
+						} while(i--);
+					}
+				});
+			}
+		});
+	};
+	
+	var Directory = function(path) {
+		console.log("new Directory", path);
+		path = Path.normalize(path);
+		var self = this;
+		
+		var dir = ds.findOne({"_id": function(v) {return typeof v === 'string' && v.indexOf(path) === 0}});
+		if(!dir) {
+			ds.add(path, {
+				queued: [],
+				archives: [],
+				processing: []
+			});
+			
+			add_dir_recursive(path, path);
+		}
+		
+		self.update = function(data) {
+			return ds.update(path, data);
+		};
+		
+		self.remove = function() {
+			return ds.remove(path);
+		};
+		
+		return self;
+	};
+	
+	Directory.find = ds.find;
+	Directory.findOne = ds.findOne;
+	Directory.forEach = ds.forEach;
+	
+	Util.inherits(Directory, EventEmitter);
+	return Directory;
+}();
 
+var Archive = function() {
+	var ds = new DataStore("playbox.archive");
+	ds.on("load", function(d) {
+		console.log(d);
+		//(new Directory(d.dir)).update({"$push": {queued: d.path}});
+	}).on("add", function(d) {
+		emit_event("archive_added", d.meta);
+	}).on("remove", function(id) {
+		emit_event("archive_removed", id);
+	}).on("update", function(d) {
+		emit_event("archive_updated", d.meta);
+	});
+	
+	var Archive = function(dir_id, path) {
+		console.log("new Archive", dir_id, path);
+		path = Path.normalize(path);
+		var self = this,
+			a = ds.findOne({"path": path}),
+			dir = new Directory(dir_id),
+			meta;
+		
+		self.id = null;
+		dir.update({"$push": {processing: path}, "$update": {queued: function(d) {
+			//console.log(d.indexOf(path), d[d.indexOf(path)]);
+			d.splice(d.indexOf(path), 1);
+			return d;
+		}}});
+		
+		if(a) {
+			// check archive is not modified
+			Log.info(a._id+" already in library ("+path+")");
+			dir.update({"$update": {processing: function(d) {
+				d.splice(d.indexOf(path), 1);
+				return d;
+			}, queued: function(d) {console.log(d)}}});
+		} else if((meta = playbox.get_metadata(path)) !== false) {
+			strip_metadata(path, function(stripped_archive_path, playbox_hash, st) {
+				if(stripped_archive_path) {
+					meta.id = playbox_hash;
+					//TODO: move make_torrent over to javascript (evented) - to not be blocking anything
+					var torrent = playbox.make_torrent(stripped_archive_path);
+					var a2 = {
+						id: playbox_hash,
+						name: meta.name,
+						path: path,
+						dir: dir_id,
+						ctime: st.ctime,
+						mtime: st.mtime,
+						size: st.size,
+					//	torrent: torrent,
+						meta: meta
+					};
+						
+					//console.log("begin", a);
+					//var b = bencode.encode(a);
+					//console.log("end", b.length, b);
+					
+					//playbox.load_torrent(bencode.encode(torrent));
+					
+					Log.info("addded "+playbox_hash);
+					var lib_file = working_dir+playbox_hash;
+					
+					Fs.lstat(lib_file, function(err, st) {
+						if(err) {
+							if(err.code !== 'ENOENT') {
+								throw err;
+							}
+							// fall through
+						} else {
+							if(st.isSymbolicLink() && Fs.readlinkSync(lib_file) === meta.path) {
+								Fs.unlinkSync(lib_file);
+							}
+						}
+						
+						Fs.symlink(path, working_dir+playbox_hash, function(err) {
+							if(err && err.code !== 'EEXIST') {
+								dir.update({"$update": {processing: function(d) {
+									d.splice(d.indexOf(path), 1);
+									return d;
+								}}});
+								
+								throw err;
+							}
+							
+							ds.add(playbox_hash, a2);
+							dir.update({"$push": {archives: path}, "$update": {processing: function(d) {
+								d.splice(d.indexOf(path), 1);
+								return d;
+							}}});
+						});
+					});
+					
+					Fs.unlink(stripped_archive_path);
+				}
+			});
+		} else {
+			// for now, this will make improper results if more than one path is processed at once
+			Log.info(path+": not a media file");
+			dir.update({"$update": {processing: function(d) {
+				d.splice(d.indexOf(path), 1);
+				return d;
+			}}});
+		}
+		
+		return self;
+	};
+	
+	Archive.find = ds.find;
+	Archive.findOne = ds.findOne;
+	Archive.forEach = ds.forEach;
+	
+	//Util.inherits(Archive, EventEmitter);
+	return Archive;
+}();
 
 function update() {
 	var path;
 	
 	playbox.update();
 	
+	// this is the new format for things using objects... it's a million times cleaner
 	//TODO: control read / write events
 	//TODO: put limits.. no fumes discos duros
-	if(!status_count["CHECKING"]) {
-		if(load_metadata_queue.length && status_count["CHECKING"] < 2) {
-			path = load_metadata_queue.shift();
-			playbox.add_archive_metadata(path);
-		} else if(add_archive_queue.length && load_metadata_queue.length === 0) {
-			var c = 0,
-				i, t, a, meta;
-			
-			for(i in archives) {
-				c++;
-			}
-			
-			if(status_count["PARSING"] < 1 && (a = add_archive_queue.shift())) { // && path.indexOf('04. The American Way') !== -1
-				path = a.path;
-				c = true;
-				for(i in archives) {
-					t = archives[i];
-					if(t.path === path) {
-						// already loaded
-						Log.info(t.id+" already in library");
-						c = false;
-						break;
-					}
-				}
-				
-				if(c && (meta = playbox.get_metadata(path)) !== false) {
-					status_count["PARSING"]++;
-					strip_metadata(path, function(stripped_archive_path, playbox_hash, st) {
-						status_count["PARSING"]--;
-						
-						if(stripped_archive_path) {
-							var torrent = playbox.make_torrent(stripped_archive_path);
-							//if(torrent) {
-								meta.id = playbox_hash;
-								var a2 = {
-									id: playbox_hash,
-									name: meta.name,
-									path: path,
-									root: a.root,
-									ctime: st.ctime,
-									mtime: st.mtime,
-									size: st.size,
-								//	torrent: torrent,
-									meta: meta
-								};
-								
-								//console.log("begin", a);
-								//var b = bencode.encode(a);
-								//console.log("end", b.length, b);
-								
-								//playbox.load_torrent(bencode.encode(torrent));
-								update_metadata(playbox_hash, a2);
-							//}
-							
-							Fs.unlink(stripped_archive_path);
-						}
-					});
-				}
-			}
-		} else {
-			last_idle = new Date();
+	//TODO: make this work:
+	//var dirs = Directory.find({"queue.length": {"$gt": 0}});
+	var dirs = Directory.find();
+	for(var i = 0; i < dirs.length; i++) {
+		var dir = dirs[i];
+		console.log(dir.queued.length, dir.processing.length);
+		
+		if(dir.queued.length && dir.processing.length < 1) {
+			new Archive(dir._id, dir.queued[0]);
+			break;
 		}
 	}
 }
@@ -152,7 +230,7 @@ function update() {
 
 
 
-
+/*
 playbox.on("stateChanged", function(hash, extra) {
 	console.log(hash, "changed state "+extra.prev_state+" -> "+extra.state);
 	//archives[hash].status = extra.state;
@@ -169,13 +247,12 @@ playbox.on("stateChanged", function(hash, extra) {
 	//archives[hash].active = true;
 	emit_event("archiveResumed", archives[hash]);
 }).on("archiveLoaded", function(hash, metadata) {
-	/*if(metadata.local_file) {
-		get_metadata(metadata.local_file, working_dir + hash, function(tags) {
-			archives[hash].metadata = Mixin(tags, archives[hash].metadata);
-			emit_event("archiveLoaded", archives[hash]);
-		});
-	}
-	*/
+	//if(metadata.local_file) {
+	//	get_metadata(metadata.local_file, working_dir + hash, function(tags) {
+	//		archives[hash].metadata = Mixin(tags, archives[hash].metadata);
+	//		emit_event("archiveLoaded", archives[hash]);
+	//	});
+	//}
 	
 	status_count["CHECKING"]++;
 	//archives[hash] = {status:"METADATA", downloaded: -1, metadata: metadata};
@@ -201,49 +278,16 @@ playbox.on("stateChanged", function(hash, extra) {
 }).on("listeningFailed", function(details) {
 	console.log("LISTENING_FAILED", details);
 });
+*/
 
 
-
-function update_metadata(hash, meta) {
-	if(typeof archives[hash] !== 'undefined') {
-		Log.info("updated "+hash);
-		archives[hash] = meta = Mixin(archives[hash], meta);
-		emit_event("archiveUpdated", meta);
-	} else {
-		Log.info("addded "+hash);
-		var lib_file = working_dir+hash;
-		
-		try {
-			Fs.lstat(lib_file, function(err, st) {
-				if(err) {
-					if(err.code !== 'ENOENT') {
-						throw err;
-					}
-					// fall through
-				} else {
-					if(st.isSymbolicLink() && Fs.readlinkSync(lib_file) === meta.path) {
-						Fs.unlinkSync(lib_file);
-					}
-				}
-				
-				Fs.symlink(meta.path, working_dir+hash, function(err) {
-					if(err && err.code !== 'EEXIST') {
-						throw err;
-					}
-					
-					archives[hash] = meta;
-					emit_event("archiveAdded", meta);
-				});
-			});
-		} catch(e) {
-			throw e;
-		}
-	}
-	
-	Edb.set("archive."+hash, meta);
-}
-
-
+//TODO: write tests for this function...
+// I'm 95% sure that there is a bug somewhere, because the throttle doesn't work.
+// it *appears* to generate the correct file, though
+// actually, I just found the bug... if one tries to write too quickly, it'll keep writing the same part multiple times
+// this actually needs to be converted to a WritableStream
+// FUCK!!!
+// additionally, node can't guarantee the order of the write calls (see bug #???)
 function strip_metadata(file_path, callback) {
 	try {
 		var dest_path = tmp_dir+"strip."+(tmp_file_id++);
@@ -269,7 +313,7 @@ function strip_metadata(file_path, callback) {
 					var interval = setInterval(function() {
 						var chunk_size = 64 * 1024;
 						var buf_size   = 1024 * 1024;
-						var min_id3    = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly
+						var min_id3    = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly 
 						var buf = new Buffer(buf_size);
 						
 						var tail = 0;
@@ -344,7 +388,7 @@ function strip_metadata(file_path, callback) {
 								do_write();
 							}
 						};	
-					}(), 100);
+					}(), 1);
 				});
 			});
 		});
@@ -395,19 +439,20 @@ exports.http = function(c, path) {
 		};
 		
 	switch(func) {
-		case '?':
-			output.ret = {
-				online: update_loop !== null ? true : false,
-				archives: status_count
-			};
-			break;
-		
 		case 'g':
 			c.file("audio/mpeg", working_dir+"/"+extra);
 			return;
 			
 		case 'q':
 			output.ret = query(args);
+			break;
+		
+		/*
+		case '?':
+			output.ret = {
+				online: update_loop !== null ? true : false,
+				archives: status_count
+			};
 			break;
 			
 		case 'i':
@@ -421,6 +466,7 @@ exports.http = function(c, path) {
 			output.ret = t;
 			//output.ret = playbox.archive(path);
 			break;
+		*/
 			
 		case '/':
 			//c.file("application/xhtml+xml", "./apps/playbox/public/index.html");
@@ -440,35 +486,32 @@ exports.http = function(c, path) {
 
 exports.cmds = {
 	query: function(params, callback) {
-		if(!params) params = {};
-		
-		var ret = [],
-			name = params.name ? params.name.toLowerCase() : false,
-			offset = params.offset || 0,
-			limit = params.limit || 100,
-			noparams = !name ? true : false,
-			i = 0,
-			count = 0;
-		
-		for(var hash in archives) {
-			var a = archives[hash];
-			
-			if(count < limit && (
-				noparams || 
-				name && (
-					a.name.toLowerCase().indexOf(name) !== -1 ||
-					a.path.toLowerCase().indexOf(name) !== -1
-				)
-			) && i++ >= offset) {
-				ret.push(a.meta);
-				count++;
-			}
+		if(typeof params !== 'object') {
+			params = {};
 		}
 		
-		callback(ret);
+		var name = params.name ? params.name.toLowerCase() : false;
+		console.log("name", name);
+		Archive.forEach(function(d) {
+			console.log("archive", d._id);
+		});
+		var archives = (name === false ?
+				Archive.find({
+					"$limit": params.limit,
+					"$offset": params.offset
+				}) :
+				Archive.forEach(function(d) {
+					if(d.name.toLowerCase().indexOf(name) !== -1 || d.path.toLowerCase().indexOf(name) !== -1) {
+						return d.meta;
+					}
+				}, params.limit, params.offset));
+		
+		callback(archives);
 	},
 	get_dirs: function(params, callback) {
-		callback(config.directories);
+		var d = Directory.find();
+		console.log(d);
+		callback(d);
 	},
 	add_dir: function(params, callback) {
 		var path = params.path;
@@ -480,21 +523,7 @@ exports.cmds = {
 		add_dir(path, Path.dirname(path));
 	},
 	rm_dir: function(params, callback) {
-		var dirs = config.directories,
-			path = params.path;
-		
-		if(!path) {
-			throw new Error("'path' not defined");
-		}
-		
-		for(var i = 0; i < dirs.length; i++) {
-			var d = dirs[i];
-			if(d.path === path) {
-				// remove and unwatch
-				// throw event
-				break;
-			}
-		}
+		throw new Error("not yet implemented");
 	},
 	list_dir: function(params, callback, error) {
 		var root = Path.normalize(params && params.root || "/"),
@@ -532,27 +561,18 @@ exports.cmds = {
 
 Log.info("playbox-v0.2");
 Log.info(" - library_dir: "+working_dir);
+Log.info(" - tmp_dir: "+tmp_dir);
 
+//TODO: move this over to DataStore
 Edb.get("config", function(key, value) {
 	if(typeof value === 'undefined') {
 		// running the playbox for the very first time
 		// do more first time stuff, like loading the local library
 		Edb.set("config", config, function() {
-			add_dir(working_dir.substr(0, working_dir.indexOf("/Library"))+"/Music");
+			new Directory(working_dir.substr(0, working_dir.indexOf("/Library"))+"/Music");
 		});
 	} else {
 		Mixin(config, value);
-	}
-	
-	var dirs = config.directories;
-	for(var i = 0; i < dirs.length; i++) {
-		add_dir_recursive(dirs[i].path);
-	}
-});
-
-Edb.list("archive.", function(key, value) {
-	if(value !== undefined) {
-		update_metadata(value.id, value);
 	}
 });
 

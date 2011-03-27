@@ -178,8 +178,14 @@ switch(mode) {
 			symlink('main.js', 'build/release/main.js');
 			symlink('connection.js', 'build/release/connection.js');
 			symlink('edb.js', 'build/release/lib/edb.js');
+			symlink('poem', 'build/release/poem');
+			
+			// lib files
+			//TODO: traverse the directory and symlink each...
 			symlink('lib/bencode.js', 'build/release/lib/bencode.js');
 			symlink('lib/http.js', 'build/release/lib/http.js');
+			symlink('lib/poem.js', 'build/release/lib/poem.js');
+			
 
 			symlink('config.json', 'build/release/config.json');
 			symlink('applist.json', 'build/release/applist.json');

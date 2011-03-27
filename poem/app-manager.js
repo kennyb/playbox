@@ -3,6 +3,8 @@ var Fs = require('fs'),
 	Edb = require("lib/edb"),
 	vm = require('vm'),
 	Module = require("module"),
+	EventEmitter = require('events').EventEmitter,
+	Util = require('util'),
 	Path = require('path'),
 	ext2mime = require('../lib/http').ext2mime;
 
@@ -11,7 +13,7 @@ var apps = {},
 	app_status = {},
 	Poem = exports,
 	working_dir = process.env["HOME"] + "/Library/poem/",
-	tmp_dir = process.env["TMPDIR"];
+	tmp_dir = process.env["TMPDIR"] || working_dir+".tmp/";
 
 
 var default_http_router = function(app, ext2mime) {
@@ -90,7 +92,7 @@ function load_apps() {
 					}
 					
 					// this is a lame hack right now to keep an applicaton inside of an application.
-					// it's usefulness is limited the length of time that it takes me to make applications actually sandboxed in their own process
+					// its usefulness is limited to the amount of time that it takes me to make applications actually sandboxed in their own process
 					// it's obvious that I need them to run in their own thread to prevent an infinite loop from fucking everyone else (chromium vs. firefox)
 					var context = {
 						__app: app,
@@ -144,6 +146,8 @@ function load_apps() {
 						Buffer: Buffer,
 						Mixin: Mixin,
 						Path: Path,
+						EventEmitter: EventEmitter,
+						Util: Util,
 						setTimeout: setTimeout, //TODO: wrap this function so apps can't jump out of their context
 						setInterval: setInterval, //TODO: same
 						clearInterval: clearInterval, //TODO: same
@@ -183,16 +187,20 @@ function load_apps() {
 						Fs.mkdirs(context.working_dir, '755', function(err) {
 							if(err) throw err;
 						
-							vm.runInNewContext(code, context, "apps/"+app+"/"+app+".js");
+							try {
+								vm.runInNewContext(code, context, "apps/"+app+"/"+app+".js");
 
-							if(context.exports) {
-								Poem.apps[app] = context.exports;
-								if(!context.exports.http) {
-									context.exports.http = default_http_router(app, ext2mime);
+								if(context.exports) {
+									Poem.apps[app] = context.exports;
+									if(!context.exports.http) {
+										context.exports.http = default_http_router(app, ext2mime);
+									}
+
+								} else {
+									throw new Error("application does not export anything");
 								}
-
-							} else {
-								throw new Error("application does not export anything");
+							} catch(e) {
+								throw new Error("apps/"+app+"/"+app+".js:: " + e.toString());
 							}
 						});
 					});

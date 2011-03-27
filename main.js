@@ -32,54 +32,73 @@ var http = require("http"),
 	//cookie = require( "./lib/cookie");
 
 // I needed a mkdirs function, so I put it here... needs to be moved
-Fs.mkdirs = function (dirname, mode, callback) {
-	if (typeof mode === 'function') {
-		callback = mode;
-		mode = undefined;
-	}
-	if (mode === undefined) mode = 0x1ff ^ process.umask();
-	var pathsCreated = [], pathsFound = [];
-	var makeNext = function() {
-		var fn = pathsFound.pop();
-		if (!fn) {
-			if (callback) callback(null, pathsCreated);
+// the problem with this function, is if it's called multiple times on the same subdirectory, it will fail...
+// for example:
+// mkdirs("dir1/dir1/dir1");
+// mkdirs("dir1/dir1/dir2");
+// mkdirs("dir1/dir2/dir1");
+// mkdirs("dir1/dir2/dir2");
+// this is because of the async nature of nodejs
+// work on this... it's a general problem with node, but it can be worked out, by making a closure for the function, with a static variable to make sure no two directories are ever attempted to be created twice
+Fs.mkdirs = function() {
+	var allPaths = {};
+	
+	return function (dirname, mode, callback) {
+		if(typeof mode === 'function') {
+			callback = mode;
+			mode = undefined;
 		}
-		else {
-			Fs.mkdir(fn, mode, function(err) {
-				if (!err) {
-					pathsCreated.push(fn);
-					makeNext();
+		
+		if(mode === undefined) mode = (0x1ff ^ process.umask()).toString(8);
+		var pathsCreated = [], pathsFound = [];
+		var makeNext = function() {
+			var fn = pathsFound.pop();
+			if(!fn) {
+				if(callback) {
+					callback(null, pathsCreated);
 				}
-				else if (callback) {
-					callback(err);
+			} else {
+				Fs.mkdir(fn, mode, function(err) {
+					if(!--allPaths[fn]) {
+						delete allPaths[fn];
+					}
+					
+					if(!err) {
+						pathsCreated.push(fn);
+						makeNext();
+					} else if(callback) {
+						callback(err);
+					}
+				});
+			}
+		};
+		
+		var findNext = function(fn){
+			Fs.stat(fn, function(err, stats) {
+				if(err) {
+					if(err.code === 'ENOENT') {
+						if(!allPaths[fn]) {
+							allPaths[fn] = allPaths[fn] ? ++allPaths[fn] : 1;
+							pathsFound.push(fn);
+						}
+						findNext(Path.dirname(fn));
+					} else if(callback) {
+						callback(err);
+					}
+				} else if(stats.isDirectory()) {
+					// create all dirs we found up to this dir
+					makeNext();
+				} else {
+					if(callback) {
+						callback(new Error('Unable to create directory at '+fn));
+					}
 				}
 			});
-		}
-	}
-	var findNext = function(fn){
-		Fs.stat(fn, function(err, stats) {
-			if (err) {
-				if (err.code === 'ENOENT') {
-					pathsFound.push(fn);
-					findNext(Path.dirname(fn));
-				}
-				else if (callback) {
-					callback(err);
-				}
-			}
-			else if (stats.isDirectory()) {
-				// create all dirs we found up to this dir
-				makeNext();
-			}
-			else {
-				if (callback) {
-					callback(new Error('Unable to create directory at '+fn));
-				}
-			}
-		});
-	}
-	findNext(dirname);
-};
+		};
+		
+		findNext(dirname);
+	};
+}();
 
 // globals
 global.__app = "global";
@@ -120,6 +139,107 @@ global.Mixin = function(target, source) {
 	return target;
 };
 
+//TODO lib func, move me
+// one idea I have is to eventually embed mongo's bson engine
+// until I do that, I'm just going to simulate a lot of the functions of mongo's update function
+// I dunno why it's global. I guess I just didn't know where else to put it
+global.Update = function(obj, update) {
+	var updated = {};
+	if(typeof obj === 'object' && typeof update === 'object') {
+		for(var key in update) if(update.hasOwnProperty(key)) {
+			var u = update[key];
+			//TODO: refactor this, to check charAt(0) === '$' - and instead run the cmd, else update the field with the value
+			// this is also proper so we can detect if a command is not supported yet or whatever
+			switch(key) {
+				case "$dec":
+					for(key in u) if(u.hasOwnProperty(key)) {
+						if(typeof obj[key] === 'number') {
+							obj[key] -= u[key];
+							updated[key] = obj[key];
+						} else {
+							throw new Error("$inc error")
+						}
+					}
+					
+				break;
+				case "$inc":
+					for(key in u) if(u.hasOwnProperty(key)) {
+						if(typeof obj[key] === 'number') {
+							obj[key] += u[key];
+							updated[key] = obj[key];
+						} else {
+							throw new Error("$inc error")
+						}
+					}
+					
+				break;
+				case "$update":
+					for(key in u) if(u.hasOwnProperty(key)) {
+						if(typeof obj[key] === 'object' && typeof u[key] === 'function') {
+							updated[key] = obj[key] = u[key](obj[key]);
+						} else {
+							throw new Error("$update is not a function")
+						}
+					}
+					
+				break;
+				case "$concat":
+					for(key in u) if(u.hasOwnProperty(key)) {
+						if(typeof obj[key] === 'object' && typeof obj[key].concat === 'function') {
+							obj[key] = obj[key].concat(u[key]);
+							updated[key] = obj[key];
+						} else {
+							console.log("$concat error", key, obj[key], u[key], obj);
+						}
+					}
+					
+				break;
+				case "$push":
+					for(key in u) if(u.hasOwnProperty(key)) {
+						if(typeof obj[key] === 'object' && typeof obj[key].push === 'function') {
+							obj[key].push(u[key]);
+							updated[key] = obj[key];
+						} else {
+							console.log("$push error", key, obj[key], u[key], obj);
+						}
+					}
+					
+				break;
+				default:
+					if(typeof u !== 'undefined' && obj[key] !== u) {
+						obj[key] = u;
+						updated[key] = u;
+					}
+			}
+		}
+	}
+	
+	return updated;
+};
+
+//TODO lib func, move me
+global.empty = function(obj) {
+	if(typeof obj === 'object') {
+		for(var key in obj) {
+			if(obj.hasOwnProperty(key)){
+				return false;
+			}
+		}
+	}
+	
+	return true;
+};
+
+global.count = function(arr) {
+	var count = 0;
+	//TODO: add query parameters
+	
+	for(var key in arr) if(arr.hasOwnProperty(key)) {
+		count++;
+	}
+	
+	return count;
+};
 
 function init() {
 	/*
