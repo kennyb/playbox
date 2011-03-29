@@ -1,27 +1,67 @@
 "use strict";
 
-var fs = require('fs');
+var Fs = require('fs');
 
-// "db" shit... (this will be changed for a real one soon... for now it's a chusta)
+// "db" shit... (this will be changed for a real one soon... for now es una chusta)
 var edb_dir = false;
+// backlog
+
+var queue = [];
+
+function update() {
+	if(queue.length) {
+		var op;
+		while(op = queue.shift()) {
+			var key = op[1];
+			var callback = op[2];
+			
+			switch(op[0]) {
+				case "set":
+					var value = op[3];
+					Fs.writeFile(edb_dir + '/' + key, JSON.stringify({v: op[3]}), function(err, data) {
+						if(callback) {
+							callback(key, value, err);
+						} else if(err) {
+							throw err;
+						}
+					});
+					
+					break;
+				
+				case "rm":
+					Fs.unlink(edb_dir + '/' + key, function(err) {
+						if(callback) {
+							callback(err);
+						} else if(err) {
+							throw err;
+						}
+					});
+					
+					break;
+			}
+		}
+	}
+}
 
 exports.init = function(dir, callback) {
 	// todo: test dir exists
 	
 	edb_dir = dir.substr(-1, 1) === "/" ? dir.substr(0, dir.length-1) : dir;
-	fs.stat(edb_dir, function(err, s) {
-		if(err) {
+	Fs.stat(edb_dir, function(err, st) {
+		if(err && err.code === 'ENOENT') {
 			// create directory
-			fs.mkdir(edb_dir, '777', function(err) {
+			Fs.mkdir(edb_dir, '777', function(err) {
+				setInterval(update, 100);
 				if(callback) {
-					callback(err);
+					callback(err, st);
 				}
 			});
-		} else if(!s.isDirectory()) {
+		} else if(!st.isDirectory()) {
 			callback(new Error("initialized edb dir already exists"));
 		} else {
+			setInterval(update, 100);
 			if(callback) {
-				callback(err);
+				callback(err, st);
 			}
 		}
 	});
@@ -30,11 +70,17 @@ exports.init = function(dir, callback) {
 
 exports.get = function(key, callback) {
 	if(edb_dir === false) throw new Error("edb not initialized");
-	fs.readFile(edb_dir + '/' + key, function(err, data) {
+	
+	if(queue.length) {
+		update();
+	}
+	
+	Fs.readFile(edb_dir + '/' + key, function(err, data) {
 		var value;
 		try {
 			value = err ? undefined : JSON.parse(data);
 		} catch(e) {
+			console.log("error decoding value for key: "+key);
 			value = undefined;
 		}
 		
@@ -44,33 +90,25 @@ exports.get = function(key, callback) {
 			}
 			
 			callback(key, value, err);
+		} else if(err) {
+			throw err;
 		}
 	});
 };
 
 exports.set = function(key, value, callback) {
-	if(edb_dir === false) throw new Error("edb not initialized");
-	fs.writeFile(edb_dir + '/' + key, JSON.stringify({v: value}), function(err, data) {
-		if(callback) {
-			callback(key, value, err);
-		}
-	});
+	queue.push(["set", key, callback, value]);
 };
 
 exports.rm = function(key, callback) {
-	if(edb_dir === false) throw new Error("edb not initialized");
-	fs.unlink(edb_dir + '/' + key, function(err, data) {
-		if(callback) {
-			callback(err);
-		}
-	});
+	queue.push(["rm", key, callback]);
 };
 
 exports.list = function(prefix, callback) {
 	if(edb_dir === false) throw new Error("edb not initialized");
-	var prefix_len = typeof prefix === "string" ? prefix.length : 0;
 	
-	fs.readdir(edb_dir, function(err, files) {
+	var prefix_len = typeof prefix === "string" ? prefix.length : 0;
+	Fs.readdir(edb_dir, function(err, files) {
 		if(err) throw err;
 		var i = files.length-1;
 		if(i >= 0) {
