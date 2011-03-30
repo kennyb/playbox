@@ -10,6 +10,7 @@ var fs = require("fs"),
 	apps = Poem.apps,
 	conn_id = 0;
 
+//TODO: get rid of this... it's NASTY
 var Connection = function(req, res) {
 	var c = this;
 	// TODO set the encoding based on the header determined encoding

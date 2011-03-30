@@ -23,6 +23,7 @@ var playbox = new Playbox(),
 var Directory = function() {
 	var ds = new DataStore("playbox.dir");
 	ds.on("load", function(d) {
+		console.log("dir -> this shouldn't be a hash:", d._id);
 		(new Directory(d._id)).update({"$concat": {queued: d.archives.concat(d.processing)}, processing: [], archives:[]});
 	}).on("add", function(d) {
 		emit_event("dir_added", d.meta);
@@ -33,7 +34,6 @@ var Directory = function() {
 	});
 	
 	var add_dir_recursive = function(p, root) {
-		//console.log("add_dir_recursive", p, root);
 		Fs.stat(p, function(err, st) {
 			if(err) throw err;
 			
@@ -55,7 +55,6 @@ var Directory = function() {
 	};
 	
 	var Directory = function(path) {
-		console.log("new Directory", path);
 		path = Path.normalize(path);
 		var self = this;
 		
@@ -92,7 +91,6 @@ var Directory = function() {
 var Archive = function() {
 	var ds = new DataStore("playbox.archive");
 	ds.on("load", function(d) {
-		console.log(d);
 		//(new Directory(d.dir)).update({"$push": {queued: d.path}});
 	}).on("add", function(d) {
 		emit_event("archive_added", d.meta);
@@ -103,27 +101,26 @@ var Archive = function() {
 	});
 	
 	var Archive = function(dir_id, path) {
-		console.log("new Archive", dir_id, path);
 		path = Path.normalize(path);
 		var self = this,
 			a = ds.findOne({"path": path}),
 			dir = new Directory(dir_id),
+			func_remove_path = function(path) {
+				return function(d) {
+					var o = d.indexOf(path);
+					if(o !== -1) d.splice(o, 1);
+					return d;
+				};
+			}(path),
 			meta;
 		
 		self.id = null;
-		dir.update({"$push": {processing: path}, "$update": {queued: function(d) {
-			//console.log(d.indexOf(path), d[d.indexOf(path)]);
-			d.splice(d.indexOf(path), 1);
-			return d;
-		}}});
+		dir.update({"$push": {processing: path}, "$update": {queued: func_remove_path}});
 		
 		if(a) {
 			// check archive is not modified
 			Log.info(a._id+" already in library ("+path+")");
-			dir.update({"$update": {processing: function(d) {
-				d.splice(d.indexOf(path), 1);
-				return d;
-			}, queued: function(d) {console.log(d)}}});
+			dir.update({"$update": {processing: func_remove_path}});
 		} else if((meta = playbox.get_metadata(path)) !== false) {
 			strip_metadata(path, function(stripped_archive_path, playbox_hash, st) {
 				if(stripped_archive_path) {
@@ -165,19 +162,12 @@ var Archive = function() {
 						
 						Fs.symlink(path, working_dir+playbox_hash, function(err) {
 							if(err && err.code !== 'EEXIST') {
-								dir.update({"$update": {processing: function(d) {
-									d.splice(d.indexOf(path), 1);
-									return d;
-								}}});
-								
+								dir.update({"$update": {processing: func_remove_path}});
 								throw err;
 							}
 							
 							ds.add(playbox_hash, a2);
-							dir.update({"$push": {archives: path}, "$update": {processing: function(d) {
-								d.splice(d.indexOf(path), 1);
-								return d;
-							}}});
+							dir.update({"$push": {archives: path}, "$update": {processing: func_remove_path}});
 						});
 					});
 					
@@ -217,8 +207,6 @@ function update() {
 	var dirs = Directory.find();
 	for(var i = 0; i < dirs.length; i++) {
 		var dir = dirs[i];
-		console.log(dir.queued.length, dir.processing.length);
-		
 		if(dir.queued.length && dir.processing.length < 1) {
 			new Archive(dir._id, dir.queued[0]);
 			break;
@@ -284,13 +272,10 @@ playbox.on("stateChanged", function(hash, extra) {
 //TODO: write tests for this function...
 // I'm 95% sure that there is a bug somewhere, because the throttle doesn't work.
 // it *appears* to generate the correct file, though
-// actually, I just found the bug... if one tries to write too quickly, it'll keep writing the same part multiple times
-// this actually needs to be converted to a WritableStream
-// FUCK!!!
-// additionally, node can't guarantee the order of the write calls (see bug #???)
+// perhaps it'd be best to convert this to a readable stream as well... it's hard to tell...
 function strip_metadata(file_path, callback) {
 	try {
-		var dest_path = tmp_dir+"strip."+(tmp_file_id++);
+		var dest_path = tmp_dir+"strip."+(tmp_file_id++)+".mp3";
 		var sha1 = Crypto.createHmac("sha1", "human-evolution");
 
 		Fs.open(file_path, 'r', function(err, fd_r) {
@@ -304,17 +289,36 @@ function strip_metadata(file_path, callback) {
 				}
 				
 				var total = path_stat.size;
-				Fs.open(dest_path+".mp3", 'w+', '644', function(err, fd_w) {
+				Fs.open(dest_path, 'w+', '644', function(err, fd_w) {
 					if(err) {
 						Fs.close(fd_r);
 						throw err;
 					}
 					
+					//var rstream = Fs.createReadStream(file_path, {fd: fd_r, bufferSize: 64 * 1024});
+					var wstream = Fs.createWriteStream(dest_path, {fd: fd_w});
+					
+					/*
+					rstream.on('data', function(inbuf) {
+						rstream.pause();
+						wstream.write(inbuf);
+					}).on('end', function() {
+						wstream.end();
+					});
+					*/
+					
+					wstream.on('drain', function() {
+						//console.log('drain');
+					}).on('error', function(err) {
+						console.log("ERROR", err.stack);
+					});
+					
+					
 					var interval = setInterval(function() {
 						var chunk_size = 64 * 1024;
 						var buf_size   = 1024 * 1024;
 						var min_id3    = 512 * 1024; // half mega should be good for reading the id3 tag and enough buffer not to kill the hard disk if I write slowly 
-						var buf = new Buffer(buf_size);
+						var buf        = new Buffer(buf_size);
 						
 						var tail = 0;
 						var head = 0;
@@ -336,18 +340,17 @@ function strip_metadata(file_path, callback) {
 						};
 						
 						var do_write = function() {
-							if(head !== tail) {
+							if(wstream.writable && head !== tail) {
 								var offset = tail;
 								var avail = Math.min(chunk_size, head >= tail ? head - tail : buf_size - tail);
-								Fs.write(fd_w, buf, offset, avail, total_written, function(err, bytes) {
-									if(err) throw err;
-									
-									//console.log('w', bytes, '||', head, tail, head - tail);
-									sha1.update(buf.slice(offset, offset + avail));
-									total_written += bytes;
-									tail += bytes;
-									tail %= buf_size;
-								});
+								var writebuf = buf.slice(offset, offset + avail);
+								wstream.write(writebuf);
+								sha1.update(writebuf);
+								
+								//console.log('w', bytes, '||', head, tail, head - tail);
+								total_written += avail;
+								tail += avail;
+								tail %= buf_size;
 							}
 						};
 						
@@ -357,10 +360,10 @@ function strip_metadata(file_path, callback) {
 							if(total_written + skipped === total) {
 								clearInterval(interval);
 								Fs.close(fd_r);
-								Fs.close(fd_w);
+								wstream.end();
 								
 								if(callback) {
-									callback(dest_path+".mp3", sha1.digest("hex"), path_stat);
+									callback(dest_path, sha1.digest("hex"), path_stat);
 								}
 							}
 							
@@ -388,7 +391,7 @@ function strip_metadata(file_path, callback) {
 								do_write();
 							}
 						};	
-					}(), 1);
+					}(), 100);
 				});
 			});
 		});
