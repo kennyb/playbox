@@ -177,10 +177,7 @@ var Archive = function() {
 		} else {
 			// for now, this will make improper results if more than one path is processed at once
 			Log.info(path+": not a media file");
-			dir.update({"$update": {processing: function(d) {
-				d.splice(d.indexOf(path), 1);
-				return d;
-			}}});
+			dir.update({"$update": {processing: func_remove_path}});
 		}
 		
 		return self;
@@ -495,19 +492,15 @@ exports.cmds = {
 		
 		var name = params.name ? params.name.toLowerCase() : false;
 		console.log("name", name);
-		Archive.forEach(function(d) {
-			console.log("archive", d._id);
-		});
-		var archives = (name === false ?
-				Archive.find({
-					"$limit": params.limit,
-					"$offset": params.offset
-				}) :
-				Archive.forEach(function(d) {
+		var archives = Archive.forEach(name === false ?
+				function(d) {
+					return d.meta;
+				} :
+				function(d) {
 					if(d.name.toLowerCase().indexOf(name) !== -1 || d.path.toLowerCase().indexOf(name) !== -1) {
 						return d.meta;
 					}
-				}, params.limit, params.offset));
+				}, params.offset, params.limit);
 		
 		callback(archives);
 	},

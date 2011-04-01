@@ -221,7 +221,7 @@ global.Update = function(obj, update) {
 global.empty = function(obj) {
 	if(typeof obj === 'object') {
 		for(var key in obj) {
-			if(obj.hasOwnProperty(key)){
+			if(obj.hasOwnProperty(key) && typeof obj[key] !== 'undefined') {
 				return false;
 			}
 		}
