@@ -279,7 +279,9 @@ STATEMANAGER = {
 			params = [];
 		
 		if(h != STATEMANAGER.hash) {
-			if(hasparams !== -1) {
+			if(hasparams === -1) {
+				params = 0;
+			} else {
 				params = LIB.formatParams(panel.substr(hasparams + 1).split('/'));
 				panel = panel.substr(0, hasparams);
 				h = '#/' + panel + '/' + params.join('/');

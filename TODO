@@ -2,13 +2,13 @@ node-inspector - http://localhost:8080/debug?port=5858
 
 current:
 make a class called "cmd" which is called and must return after a while
-subscribe to events + centralized event emitter
+unsubscribe to events
+add / remove directories using the interface
 assign lib files with a parent dir
 keep track of parent dirs (when removing a parent dir, simply disable it, cause it could have an assigned lib file). parent dirs should actually have a count of lib files inside
 
 bugs:
 when a file is not found, it doesn't return a 404... just an error on the console
-add support for header 'Accept-Ranges' (http://www.jplayer.org/latest/developer-guide/)
 sometimes building isn't done correctly. convert most of the build script over to a node js script (after node is compiled)
 
 current:
@@ -33,6 +33,7 @@ make playbox functions static to the module
 make the module able to be 'new'ed
 
 anyone can do:
+add support for header 'Accept-Ranges' (http://www.jplayer.org/latest/developer-guide/)
 order by on queries (I will do this soon actually)
 move tmp dir over to the allocated space (env['TMPDIR']) and abstract out the file access
 

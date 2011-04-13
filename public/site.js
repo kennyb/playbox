@@ -203,7 +203,12 @@ var SKIN = {
 		
 		if(opts.add) {
 			SKIN.subscribe(opts.add, template_id, id, function(data, e) {
-				//console.log("add event", template_id, data, e);
+				//console.log("add event", template_id, e, data, e);
+				if(e.is_empty) {
+					e.is_empty = 0;
+					e.innerHTML = "";
+				}
+				
 				aC(e, SKIN.template(template_id, data));
 			});
 		}
@@ -228,33 +233,50 @@ var SKIN = {
 		var template_func, template, output, error, func_ret, fn_t,
 			i, d;
 		
-		if(data === null) {
-			output = cE("error", 0, "data is null");
-		} else if(typeof data === 'object' && typeof (error = data["$error"]) !== 'undefined') {
-			data = Mixin(data, common);
-			output = cE("error", 0, error);
-		} else if(data instanceof Array && data.length) {
-			output = [];
-			//TODO add paging? - lol
-			for(i = 0; i < data.length; i++) {
-				d = Mixin(data[i], common);
-				func_ret = SKIN.template(template_id, d);
-				if(typeof(func_ret) !== 'undefined') {
-					output.push(func_ret);
-				}
-			}
-		} else if(typeof(fn_t = SKIN.get_template(template_id)) === 'function') {
-			data = data || {};
-			output = fn_t(template_id, data);
-			if(typeof data._id !== 'undefined' && element && element._id !== data._id) {
-				element._id = data._id;
-			}
-		} else {
-			output = cE("error", 0, "template '"+template_id+"' does not exist");
+		//console.log("template", template_id, data, element, common);
+		if(typeof data !== 'object') {
+			data = {};
 		}
 		
 		if(element) {
-			//console.log("_id", element._id, output._id);
+			if(element.empty) {
+				element.is_empty = 0;
+				element.innerHTML = "";
+			}
+			
+			if(data.length == 0) {
+				element.is_empty = 1;
+			}
+			
+			if(typeof data._id !== 'undefined' && element._id !== data._id) {
+				element._id = data._id;
+			}
+		}
+		
+		if(typeof (error = data["$error"]) !== 'undefined') {
+			data = Mixin(data, common);
+			output = cE("error", 0, error);
+		} else {
+			if(data.length == 0 && (typeof(fn_t = SKIN.get_template("empty_"+template_id)) === 'function' || typeof(fn_t = SKIN.get_template("empty")) === 'function')) {
+				output = fn_t("empty", data);
+			} else if(data.length) {
+				output = [];
+				//TODO add paging? - lol
+				for(i = 0; i < data.length; i++) {
+					d = Mixin(data[i], common);
+					func_ret = SKIN.template(template_id, d);
+					if(typeof(func_ret) !== 'undefined') {
+						output.push(func_ret);
+					}
+				}
+			} else if(typeof(fn_t = SKIN.get_template(template_id)) === 'function') {
+				output = fn_t(template_id, data);
+			} else {
+				output = cE("error", 0, "template '"+template_id+"' does not exist");
+			}
+		}
+		
+		if(element) {
 			var nodes = element.childNodes;
 			if(typeof output._id === 'undefined') {
 				// replace entire
@@ -296,7 +318,7 @@ var SKIN = {
 		}(event_id, template_id, element_id, callback);
 	},
 	render : function(uid) {
-		SKIN.template("sidebar", {}, $_('sidebar'));
+		SKIN.template("sidebar", 0, $_('sidebar'));
 		SKIN.resize();
 	},
 	parsePanelsLang : function() {
