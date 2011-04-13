@@ -175,7 +175,9 @@ var SKIN = {
 		
 		return fn;
 	},
-	data_template : function(template_id, cmd, params, app) {
+	data_template : function(template_id, cmd, params, opts) {
+		if(typeof opts !== 'object') opts = {};
+		
 		var id = SERVER.cmd(cmd, params, function(template_id) {
 			return function(msg) {
 				var els = document.getElementsByClassName("cmd_"+template_id),
@@ -197,22 +199,44 @@ var SKIN = {
 					}
 				}
 			};
-		}(template_id), app);
+		}(template_id), opts.app);
+		
+		if(opts.add) {
+			SKIN.subscribe(opts.add, template_id, id, function(data, e) {
+				//console.log("add event", template_id, data, e);
+				aC(e, SKIN.template(template_id, data));
+			});
+		}
+		
+		if(opts.remove) {
+			SKIN.subscribe(opts.remove, template_id, id, function(data, e) {
+				//console.log("remove event", template_id, data, e);
+				remove_element(data._id);
+			});
+		}
+		
+		if(opts.update) {
+			SKIN.subscribe(opts.update, template_id, id, function(data, e) {
+				//console.log("update event", template_id, data, e);
+				SKIN.template(template_id, data, e);
+			});
+		}
 		
 		return cE("div", {c: "cmd_"+template_id, i: id}, "Loading...");
 	},
 	template : function(template_id, data, element, common) {
-		var template_func, template, output, error, func_ret, fn_t;
+		var template_func, template, output, error, func_ret, fn_t,
+			i, d;
 		
 		if(data === null) {
-			output = cE("error", 0, "data is not reachable");
+			output = cE("error", 0, "data is null");
 		} else if(typeof data === 'object' && typeof (error = data["$error"]) !== 'undefined') {
 			data = Mixin(data, common);
 			output = cE("error", 0, error);
 		} else if(data instanceof Array && data.length) {
 			output = [];
 			//TODO add paging? - lol
-			for(var i = 0, d; i < data.length; i++) {
+			for(i = 0; i < data.length; i++) {
 				d = Mixin(data[i], common);
 				func_ret = SKIN.template(template_id, d);
 				if(typeof(func_ret) !== 'undefined') {
@@ -222,16 +246,54 @@ var SKIN = {
 		} else if(typeof(fn_t = SKIN.get_template(template_id)) === 'function') {
 			data = data || {};
 			output = fn_t(template_id, data);
+			if(typeof data._id !== 'undefined' && element && element._id !== data._id) {
+				element._id = data._id;
+			}
 		} else {
 			output = cE("error", 0, "template '"+template_id+"' does not exist");
 		}
 		
 		if(element) {
-			element.innerHTML = "";
-			aC(element, output);
+			//console.log("_id", element._id, output._id);
+			var nodes = element.childNodes;
+			if(typeof output._id === 'undefined') {
+				// replace entire
+				element.innerHTML = "";
+				aC(element, output);
+			} else {
+				// individual replace / insert
+				replace_element(element, output, 1);
+			}
 		}
 		
 		return output; //typeof output !== 'undefined' ? new String(output).toString() : "";
+	},
+	subscribe : function(event_id, template_id, element_id, callback) {
+		SERVER.events[event_id] = function(event_id, template_id, element_id, callback) {
+			return function(msg) {
+				var els = document.getElementsByClassName("cmd_"+template_id),
+					err = msg.error,
+					data = msg.data,
+					len = els.length,
+					i = 0, e;
+				
+				if(len) {
+					for(; i < len; i++) {
+						e = els[i];
+						
+						if(e.i === element_id) {
+							if(err) {
+								callback({"$error": err}, e);
+							} else {
+								callback(data, e);
+							}
+						}
+					}
+				} else {
+					delete SERVER.events[event_id];
+				}
+			};
+		}(event_id, template_id, element_id, callback);
 	},
 	render : function(uid) {
 		SKIN.template("sidebar", {}, $_('sidebar'));

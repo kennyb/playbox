@@ -190,12 +190,35 @@ function toggle(id, st) {
 	}
 }
 
+function remove_element(parent, id) {
+	for(var i = 0, nodes = parent.childNodes, len = nodes.length; i < len; i++) {
+		if(nodes[i]._id === id) {
+			return parent.removeChild(nodes[i]);
+		}
+	}
+}
+
+function replace_element(parent, child, append) {
+	//debugger;
+	for(var i = 0, nodes = parent.childNodes, len = nodes.length; i < len; i++) {
+		if(child._id === nodes[i]._id) {
+			parent.replaceChild(child, nodes[i]);
+			return child;
+		}
+	}
+	
+	if(append) {
+		parent.appendChild(child);
+	}
+}
+
 // ---------------
 
 SERVER = {
 	msg_id: 1,
 	socket: null,
 	callbacks: {},
+	events: {},
 	connect: function() {
 		SERVER.socket = new io.Socket();
 		SERVER.socket.connect();
@@ -204,8 +227,15 @@ SERVER = {
 		});
 		
 		SERVER.socket.on('message', function(msg) {
-			console.log("message", msg);
-			var c = SERVER.callbacks[msg.id];
+			var c;
+			if(msg.func === "event") {
+				console.log("event", msg);
+				c = SERVER.events[msg.args]
+			} else {
+				console.log("message", msg);
+				c = SERVER.callbacks[msg.id];
+			}
+			
 			c && c(msg);
 		});
 		
@@ -225,7 +255,16 @@ SERVER = {
 		});
 		
 		return id;
-	}
+	}/*,
+	event: function(event, callback) {
+		var arr = SERVER.events[event];
+		if(typeof arr !== 'object') {
+			arr = [];
+		}
+		
+		arr.push(callback);
+		SERVER.events[event] = arr;
+	}*/
 },
 
 STATEMANAGER = {

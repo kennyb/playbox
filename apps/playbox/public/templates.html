@@ -87,13 +87,9 @@
 				</div>
 			</xmp>
 			
-			<xmp id="template_library_entry">
-				<div><?=d.name?></div>
-			</xmp>
-			
 			<xmp id="template_library">
 				<h2>library</h2>
-				<?=SKIN.data_template("library_entry", "query", {})?>
+				<?=SKIN.data_template("library_entry", "query", {}, {add: "archive_added", remove: "archive_deleted", update: "archive_updated"})?>
 			</xmp>
 			
 			<xmp id="template_config">
@@ -103,7 +99,7 @@
 				<h4>
 					directories
 				</h4>
-				<?=SKIN.data_template("directory_entry", "get_dirs", {})?>
+				<?=SKIN.data_template("directory_entry", "get_dirs", {}, {add: "dir_added", remove: "dir_deleted", update: "dir_updated"})?>
 				<hr />
 				<?=SKIN.data_template("dir_entry", "list_dir", {})?>
 				<h4>
@@ -133,7 +129,16 @@
 			<xmp id="template_directory_entry">
 				<div>
 					<button onclick="alert('not yet implemented')">remove</button>
-					<em><?=d.path?></em>
+					<em><?=d._id?></em>
+				</div>
+				<div>
+					archives: <em><?=d.archives.length?></em>
+				</div>
+				<div>
+					processing: <em><?=d.processing.length?></em>
+				</div>
+				<div>
+					queued: <em><?=d.queued.length?></em>
 				</div>
 			</xmp>
 			

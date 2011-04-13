@@ -22,15 +22,19 @@ var playbox = new Playbox(),
 
 var Directory = function() {
 	var ds = new DataStore("playbox.dir");
+	// for now, I'm just going to do these manually, but I think having an event subscription system to where the html
+	// interface can subscribe/unsubscribe to data updates by providing a "query" in which to only see
+	// perhaps, I could cache the "window" it sees, and just send the "difference" out to the interface...
+	// of course custom events could be defined too
+	
 	ds.on("load", function(d) {
-		console.log("dir -> this shouldn't be a hash:", d._id);
 		(new Directory(d._id)).update({"$concat": {queued: d.archives.concat(d.processing)}, processing: [], archives:[]});
 	}).on("add", function(d) {
-		emit_event("dir_added", d.meta);
+		emit_event("dir_added", d);
 	}).on("remove", function(id) {
 		emit_event("dir_removed", id);
 	}).on("update", function(d) {
-		emit_event("dir_updated", d.meta);
+		emit_event("dir_updated", d);
 	});
 	
 	var add_dir_recursive = function(p, root) {
@@ -63,6 +67,7 @@ var Directory = function() {
 			ds.add(path, {
 				queued: [],
 				archives: [],
+				errors: [],
 				processing: []
 			});
 			
@@ -120,7 +125,7 @@ var Archive = function() {
 		if(a) {
 			// check archive is not modified
 			Log.info(a._id+" already in library ("+path+")");
-			dir.update({"$update": {processing: func_remove_path}});
+			dir.update({"$push": {archives: path}, "$update": {processing: func_remove_path}});
 		} else if((meta = playbox.get_metadata(path)) !== false) {
 			strip_metadata(path, function(stripped_archive_path, playbox_hash, st) {
 				if(stripped_archive_path) {
@@ -162,7 +167,7 @@ var Archive = function() {
 						
 						Fs.symlink(path, working_dir+playbox_hash, function(err) {
 							if(err && err.code !== 'EEXIST') {
-								dir.update({"$update": {processing: func_remove_path}});
+								dir.update({"$push": {archives: path}, "$update": {processing: func_remove_path}});
 								throw err;
 							}
 							
@@ -177,7 +182,7 @@ var Archive = function() {
 		} else {
 			// for now, this will make improper results if more than one path is processed at once
 			Log.info(path+": not a media file");
-			dir.update({"$update": {processing: func_remove_path}});
+			dir.update({"$push": {errors: path}, "$update": {processing: func_remove_path}});
 		}
 		
 		return self;
@@ -491,7 +496,6 @@ exports.cmds = {
 		}
 		
 		var name = params.name ? params.name.toLowerCase() : false;
-		console.log("name", name);
 		var archives = Archive.forEach(name === false ?
 				function(d) {
 					return d.meta;
@@ -506,7 +510,6 @@ exports.cmds = {
 	},
 	get_dirs: function(params, callback) {
 		var d = Directory.find();
-		console.log(d);
 		callback(d);
 	},
 	add_dir: function(params, callback) {

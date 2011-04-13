@@ -2,7 +2,7 @@
 
 global.start_time = new Date();
 
-// global error handler
+/*// global error handler
 process.on('uncaughtException', function(sys) {
 	return function(err) {
 		console.log(" [ERROR] "+err.toString()+"\n"+(err.stack));
