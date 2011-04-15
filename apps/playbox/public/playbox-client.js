@@ -35,8 +35,10 @@ $(document).ready(function(){
 
 SERVER.events["connected"] = function() {
 	console.log("connected");
+	$_('connected').innerHTML = "connected";
 };
 
 SERVER.events["disconnected"] = function() {
 	console.log("disconnected");
+	$_('connected').innerHTML = "disconnected";
 };

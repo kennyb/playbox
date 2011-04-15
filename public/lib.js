@@ -215,22 +215,33 @@ function replace_element(parent, child, append) {
 // ---------------
 
 SERVER = {
-	msg_id: 1,
+	msg_id: 0,
 	socket: null,
 	callbacks: {},
 	events: {},
+	emit: function(event, data) {
+		var f = SERVER.events[event];
+		f && f(data);
+	},
 	connect: function() {
+		if(SERVER.msg_id) {
+			clearInterval(SERVER.msg_id);
+		}
+		
 		SERVER.socket = new io.Socket();
 		SERVER.socket.connect();
+		SERVER.msg_id = 1;
 		SERVER.socket.on('connect', function() {
-			console.log("connected");
+			var f = SERVER.events["connected"];
+			typeof f === 'function' && f();
+			STATEMANAGER.hash = null;
 		});
 		
 		SERVER.socket.on('message', function(msg) {
 			var c;
 			if(msg.func === "event") {
 				console.log("event", msg);
-				c = SERVER.events[msg.args]
+				c = SERVER.events[msg.args];
 			} else {
 				console.log("message", msg);
 				c = SERVER.callbacks[msg.id];
@@ -240,7 +251,15 @@ SERVER = {
 		});
 		
 		SERVER.socket.on('disconnect', function(){
-			console.log("disconnected");
+			SERVER.connected = 0;
+			SERVER.socket.disconnect();
+			//SERVER.socket = null;
+			var f = SERVER.events["disconnected"];
+			typeof f === 'function' && f();
+			SERVER.msg_id = setInterval(function() {
+				console.log("reconnect");
+				SERVER.socket.connect();
+			}, 2000);
 		});
 	},
 	cmd: function(cmd, params, callback, app) {

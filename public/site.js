@@ -340,11 +340,12 @@ var SKIN = {
 		STATEMANAGER.hash = null;
 	},
 	resize : function() {
-		// nada
+		// get rid of this
 	}
 };
 
 //---------------------------------------
+// move these to real events
 
 var RENDER = {
 	
