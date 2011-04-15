@@ -10,6 +10,10 @@ keep track of parent dirs (when removing a parent dir, simply disable it, cause 
 bugs:
 when a file is not found, it doesn't return a 404... just an error on the console
 sometimes building isn't done correctly. convert most of the build script over to a node js script (after node is compiled)
+/home/kenny/hellacoders/playbox/poem/app-manager.js:185
+						if(err) throw err;
+              ^
+Error: ENOENT, No such file or directory '/home/kenny/Library/poem/.tmp/apf/'
 
 current:
 need database for config

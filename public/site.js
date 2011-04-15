@@ -3,6 +3,7 @@
 
 var SKIN = {
 	templates: {},
+	templates_txt: {},
 	get_template : function(tpl, txt) {
 		var fn = SKIN.templates[tpl],
 			is_panel = 0;
@@ -115,12 +116,8 @@ var SKIN = {
 			// --------------
 			
 			if(typeof txt === 'undefined') {
-				if(txt = $_('template_' + tpl)) {
-					txt = txt.textContent;
-				} else if(txt = $_('panel_' + tpl)) {
-					is_panel = 1;
-					txt = txt.textContent;
-				} else {
+				txt = SKIN.templates_txt[tpl];
+				if(!txt) {
 					return null;
 				}
 			}

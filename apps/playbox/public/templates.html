@@ -6,7 +6,11 @@
 		<script type="text/javascript">
 			/*<![CDATA[*/
 			top.LIB.addEvent('load', function() {
-				top.document.getElementsByTagName("body")[0].appendChild(top.document.importNode(document.getElementById("templates"), true));
+				var xmp = document.getElementById("templates").getElementsByTagName("xmp");
+				for(var i = 0; i < xmp.length; i++) {
+					var x = xmp[i];
+					top.SKIN.templates_txt[x.id] = x.textContent;
+				}
 				top.LIB.loadedLib({templates: true});
 			}, window);
 			/*]]>*/
@@ -15,18 +19,18 @@
 	<body>
 		<div id="templates" style="display:none">
 			
-			<xmp id="template_loading">
+			<xmp id="loading">
 				<div>loading...</div>
 			</xmp>
 			
-			<xmp id="template_sidebar">
+			<xmp id="sidebar">
 				<ul>
 					<li><a href="#/library">library</a></li>
 					<li><a href="#/config">config</a></li>
 				</ul>
 			</xmp>
 			
-			<xmp id="template_footer">
+			<xmp id="footer">
 				<ul>
 					<li id="menu_version">
 						<a href="#/version">version</a>
@@ -37,7 +41,7 @@
 				</ul>
 			</xmp>
 			
-			<xmp id="template_home">
+			<xmp id="home">
 				<h4>
 					about
 				</h4>
@@ -46,7 +50,7 @@
 				</div>
 			</xmp>
 			
-			<xmp id="template_test">
+			<xmp id="test">
 				<div>
 					test panel
 				</div>
@@ -69,14 +73,14 @@
 				?>
 			</xmp>
 			
-			<xmp id="template_player">
+			<xmp id="player">
 				<div>testing some stuff out...</div>
 				<div id="song_list">
 					<?=SKIN.data_template("library_entry", "query", {})?>
 				</div>
 			</xmp>
 			
-			<xmp id="template_library_entry">
+			<xmp id="library_entry">
 				<div onclick="play_song(d.id)">
 					<div style="display:inline">
 						<?=d.name?>
@@ -87,16 +91,26 @@
 				</div>
 			</xmp>
 			
-			<xmp id="template_empty">
-				empty - no data
+			<xmp id="connected">
+				<?
+				if(d.connected) {
+					?>* connected<?
+				} else {
+					?>- disconnected<?
+				}
+				?>
 			</xmp>
 			
-			<xmp id="template_library">
+			<xmp id="empty">
+				empty
+			</xmp>
+			
+			<xmp id="library">
 				<h2>library</h2>
 				<?=SKIN.data_template("library_entry", "query", {}, {add: "archive_added", remove: "archive_deleted", update: "archive_updated"})?>
 			</xmp>
 			
-			<xmp id="template_config">
+			<xmp id="config">
 				<h2>
 					config
 				</h2>
@@ -111,7 +125,7 @@
 				</h4>
 			</xmp>
 			
-			<xmp id="template_dir_entry">
+			<xmp id="dir_entry">
 				<div>
 					<?
 					if(d.dir) {
@@ -130,7 +144,7 @@
 				</div>
 			</xmp>
 			
-			<xmp id="template_directory_entry">
+			<xmp id="directory_entry">
 				<div>
 					<button onclick="alert('not yet implemented')">remove</button>
 					<em><?=d._id?></em>
@@ -146,7 +160,7 @@
 				</div>
 			</xmp>
 			
-			<xmp id="template_app_button">
+			<xmp id="app_button">
 				<h4>
 					<?=d.id?>
 				</h4>
