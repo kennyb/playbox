@@ -129,10 +129,11 @@
 				<div>
 					<?
 					if(d.dir) {
+						var dir = d.root + d.dir;
 						?>
-						<button onclick="alert('not yet implemented')">add</button>
-						<a href="javascript:;" onclick="dir_item(this, d.root+d.dir)">
-							<button>+</button> <?=d.root+d.dir?>
+						<button onclick="add_dir(dir)">add</button>
+						<a href="javascript:;" onclick="dir_item(this, dir)">
+							<button>+</button> <?=dir?>
 						</a>
 						<?
 					} else {

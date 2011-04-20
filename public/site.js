@@ -8,6 +8,7 @@ var SKIN = {
 		var fn = SKIN.templates[tpl],
 			is_panel = 0;
 		
+		//TODO: perhaps I want to change this to {{variable}} instead of {{{{variable}}}}
 		if(typeof fn !== 'function') {
 			function arg_vars(str) {
 				str = '"'+LIB.trim(str).replace(/\{\{\{\{(.*?)\}\}\}\}/g, function(nothing, variable) {
@@ -41,40 +42,52 @@ var SKIN = {
 				return str;
 			}
 			
+			function concat_scope(scope) {
+				var code = "";
+				for(var i = 0; i < scope.length; i++) {
+					var last_s = scope[i-1] ? scope[i-1]+"" : "";
+					var s = scope[i];
+					var c1 = s.charAt(0);
+					var c2 = last_s.length ? last_s[0].substr(-1) : "";
+					code += ((
+							!last_s.length ||
+							((c1 !== ';' || c1 !== '}') && (c2 === ';' || c2 === '}')) ||
+							((c1 === ';' || c1 === '}') && (c2 !== ';' || c2 !== '}'))
+						) ? "" : ";") + s;
+				}
+				
+				return code;
+			}
+			
+			function print_scope(code_blocks) {
+				var i = 0,
+					len = code_blocks.length,
+					scope = [],
+					node, inner;
+				
+				for(; i < len; i++) {
+					node = code_blocks[i];
+					
+					if(node.nodeName.toLowerCase() === "code") {
+						inner = LIB.trim(node.innerHTML + "")
+						scope.push(cE("x", {innerHTML: inner}).firstChild.data);
+					} else if(len === 1) {
+						return "function(){return " + print_node(node) + "}()";
+					} else {
+						scope.push("o.push("+print_node(node)+")");
+					}
+				}
+				
+				// do the return lengths
+				return !len ? "null" :
+						"function(){var o=[];" + concat_scope(scope.concat("return o}()"));
+			}
+			
 			function print_node(node) {
 				var node_type = node.nodeName.toLowerCase();
 				
 				if(node_type === "code") {
-					var scope = [];
-					while(true) {
-						node_type = node.nodeName.toLowerCase();
-						var inner = LIB.trim(node.innerHTML + "");
-						if(inner.charAt(inner.length-1) === ';') {
-							inner = inner.substr(0, inner.length-1);
-						}
-						
-						if(inner) {
-							if(node_type === "code") {
-								scope.push(cE("x", {innerHTML: inner}).firstChild.data);
-							} else {
-								scope.push("o.push("+print_node(node)+");");
-							}
-						}
-						
-						if(node.nextSibling) {
-							node = node.nextSibling;
-						} else {
-							// rewind the stack until the last codeblock
-							while(node.nodeName.toLowerCase() !== "code") {
-								node = node.previousSibling; 
-								scope.pop();
-							}
-							
-							break;
-						}
-					}
-					
-					return "function(){var o=[];"+scope.join('')+";return o}()";
+					console.trace();
 				} else if(node_type === "#text") {
 					return arg_vars(node.nodeValue);
 				} else {
@@ -88,8 +101,13 @@ var SKIN = {
 						a = attributes[i];
 						attr = a.nodeName.toLowerCase();
 						
-						if(attr.substr(0, 2) === "on") {
+						if(attr.substr(0, 2) === "on" && a.nodeValue) {
 							// for now we'll assume this is an event
+							//TODO: if there is no reference to 'd' then we don't need a scope
+							// perhaps we can search for it by doing a search for 'd.'
+							// but then, what if someone does something like myfunc(d) or myfunc("lala", d)
+							// so maybe we could search for 'd.' or 'd)' or 'd,' (that'd probably take care of about 99% of the cases)
+							// since it's ridiculous, we're just going to always do a scope... in modern engines, it probably doesn't cost much
 							attrs.push(attr+":function(d){return function(){"+a.nodeValue+"}}(d)")
 						} else {
 							attrs.push(attr+":"+concat_vars(a.nodeValue));
@@ -98,10 +116,18 @@ var SKIN = {
 					
 					for(i = 0; i < children.length; i++) {
 						n = children[i];
-						child_funcs.push(print_node(n));
 						if(n.nodeName.toLowerCase() === "code") {
+							a = i;
 							i = children.length;
 							while(children[--i].nodeName.toLowerCase() !== "code") {}
+							var scope = [];
+							do {
+								scope.push(children[a]);
+							} while(a++ !== i);
+							
+							child_funcs.push(print_scope(scope));
+						} else {
+							child_funcs.push(print_node(n));
 						}
 					}
 					
