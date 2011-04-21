@@ -284,11 +284,55 @@ function init() {
 		};
 	}(require));
 	*/
-	
-	server.listen(1155, function() {
-		Log.info("listening on port: " + 1155);
-		Poem.init({broadcast: broadcast});
+
+	var args = {};
+	process.argv.forEach(function(val, index) {
+		if(index > 1) {
+			var app_offset = val.indexOf('.');
+			var val_offset = val.indexOf('=');
+			if(app_offset !== -1 && val_offset > app_offset) {
+				var a = val.substr(0, app_offset++);
+				var k = val.substr(app_offset, val_offset - app_offset);
+				var v = val.substr(++val_offset);
+				if(typeof args[a] !== 'object') {
+					args[a] = {};
+				}
+				
+				args[a][k] = v;
+			} else {
+				console.log("invalid param '"+val+"'");
+			}
+		}
 	});
+	
+	//TODO: localhost should also work, even if it's bound to a different ip address
+	// -- and in the future, binding to more than one ip address...
+	
+	var host = 'localhost';
+	var port = args.poem.listen || 1155;
+	var port_offset = host.indexOf(':');
+	if(port_offset !== -1) {
+		host = port.substr(0, port_offset++);
+		port = port.substr(port_offset) * 1;
+	}
+	
+	server.listen(port, host, function() {
+		Log.info("listening on port: " + port);
+		Poem.init({
+			broadcast: broadcast,
+			args: args
+		});
+	});
+	
+	// crossdomain policy server 
+	Net.createServer(function(s) {
+		s.write('<?xml version="1.0"?>'+
+					'<cross-domain-policy>'+
+						'<allow-access-from domain="*" to-ports="1111-1155"/>'+
+					'</cross-domain-policy>');
+		s.end();
+		Log.info("sent policy file");
+	}).listen(1156);
 }
 
 
@@ -559,17 +603,6 @@ try {
 
 
 init();
-
-
-// crossdomain policy server 
-Net.createServer(function(s) {
-	s.write('<?xml version="1.0"?>'+
-				'<cross-domain-policy>'+
-					'<allow-access-from domain="*" to-ports="1111-1155"/>'+
-				'</cross-domain-policy>');
-	s.end();
-	Log.info("sent policy file");
-}).listen(1156);
 
 
 
