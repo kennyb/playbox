@@ -240,7 +240,7 @@ SERVER = {
 		SERVER.socket.on('message', function(msg) {
 			var c;
 			if(msg.func === "event") {
-				console.log("event", msg);
+				console.log("event", msg.args, msg);
 				c = SERVER.events[msg.args];
 			} else {
 				console.log("message", msg);

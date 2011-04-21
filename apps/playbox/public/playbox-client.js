@@ -33,6 +33,18 @@ $(document).ready(function(){
 	//document.documentElement.style.display = "";
 });
 
+function add_dir(path) {
+	var id = SERVER.cmd("add_dir", {_id: path}, function(msg) {
+		console.log("add_dir response", msg);
+	});
+}
+
+function rm_dir(path) {
+	var id = SERVER.cmd("rm_dir", {_id: path}, function(msg) {
+		console.log("rm_dir response", msg);
+	});
+}
+
 SERVER.events["connected"] = function() {
 	console.log("connected");
 	$_('connected').innerHTML = "connected";

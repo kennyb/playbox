@@ -117,7 +117,7 @@
 				<h4>
 					directories
 				</h4>
-				<?=SKIN.data_template("directory_entry", "get_dirs", {}, {add: "dir_added", remove: "dir_deleted", update: "dir_updated"})?>
+				<?=SKIN.data_template("directory_entry", "get_dirs", {}, {add: "dir_added", remove: "dir_removed", update: "dir_updated"})?>
 				<hr />
 				<?=SKIN.data_template("dir_entry", "list_dir", {})?>
 				<h4>
@@ -147,17 +147,19 @@
 			
 			<xmp id="directory_entry">
 				<div>
-					<button onclick="alert('not yet implemented')">remove</button>
-					<em><?=d._id?></em>
-				</div>
-				<div>
-					archives: <em><?=d.archives.length?></em>
-				</div>
-				<div>
-					processing: <em><?=d.processing.length?></em>
-				</div>
-				<div>
-					queued: <em><?=d.queued.length?></em>
+					<div>
+						<button onclick="rm_dir(d._id)">remove</button>
+						<em><?=d._id?></em>
+					</div>
+					<div>
+						archives: <em><?=d.archives.length?></em>
+					</div>
+					<div>
+						processing: <em><?=d.processing.length?></em>
+					</div>
+					<div>
+						queued: <em><?=d.queued.length?></em>
+					</div>
 				</div>
 			</xmp>
 			

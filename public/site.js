@@ -237,9 +237,9 @@ var SKIN = {
 		}
 		
 		if(opts.remove) {
-			SKIN.subscribe(opts.remove, template_id, id, function(data, e) {
-				//console.log("remove event", template_id, data, e);
-				remove_element(data._id);
+			SKIN.subscribe(opts.remove, template_id, id, function(id, e) {
+				//console.log("remove event", template_id, id, e);
+				remove_element(e, id);
 			});
 		}
 		
@@ -256,23 +256,19 @@ var SKIN = {
 		var template_func, template, output, error, func_ret, fn_t,
 			i, d;
 		
-		//console.log("template", template_id, data, element, common);
 		if(typeof data !== 'object') {
 			data = {};
 		}
 		
 		if(element) {
+			console.log(element.empty, data.length);
 			if(element.empty) {
 				element.is_empty = 0;
 				element.innerHTML = "";
 			}
 			
-			if(data.length == 0) {
+			if(data.length === 0) {
 				element.is_empty = 1;
-			}
-			
-			if(typeof data._id !== 'undefined' && element._id !== data._id) {
-				element._id = data._id;
 			}
 		}
 		
@@ -297,6 +293,10 @@ var SKIN = {
 			} else {
 				output = cE("error", 0, "template '"+template_id+"' does not exist");
 			}
+		}
+		
+		if(typeof data._id !== 'undefined' && typeof output._id === 'undefined') {
+			output._id = data._id;
 		}
 		
 		if(element) {
