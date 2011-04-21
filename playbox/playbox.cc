@@ -171,23 +171,40 @@ Handle<Value> Playbox::New(const Arguments &args)
 }
 
 Handle<Value> Playbox::start(const Arguments &args) {
-	int32_t port1 = 6881;
-	int32_t port2 = 6889;
+	int32_t port1 = 0;
+	int32_t port2 = 0;
 	
 #ifndef BOOST_NO_EXCEPTIONS
 	try {
 #endif
 		switch(args.Length()) {
+			default:
+			case 3:
+				return VException("[hostname, port1, port2] not yet supported");
+			
 			case 2:
-				// localhost, select the ports
-				port1 = args[0]->ToInt32()->Value();
 				port2 = args[1]->ToInt32()->Value();
-				if(port1 < 6000 || port2 < 6000) {
-					return VException("ports given can not be less than 6000");
-				}
+				// fall through
 				
-			default: break;
+			case 1:
+				port1 = args[0]->ToInt32()->Value();
+				// fall through
+				
+			case 0:
 				//return VException("args should be: [hostname] || [port1, port2] || [hostname, port1, port2]");
+				break;
+		}
+		
+		if(!port1) {
+			port1 = 6881;
+		}
+		
+		if(!port2) {
+			port2 = 6889;
+		}
+		
+		if(port1 < 6000 || port2 < 6000) {
+			return VException("ports given can not be less than 6000");
 		}
 		
 		cur_session.set_alert_mask(libtorrent::alert::all_categories);
@@ -197,7 +214,7 @@ Handle<Value> Playbox::start(const Arguments &args) {
 		cur_session.start_lsd();
 		cur_session.start_dht();
 		cur_session.add_dht_router(std::make_pair("router.bitorrent.com", 6881));
-		cur_session.add_dht_node(std::make_pair("192.168.1.34", 6881));
+		//cur_session.add_dht_node(std::make_pair("192.168.1.34", 6881));
 		cur_session.add_extension(&libtorrent::create_metadata_plugin);
 		//cur_session.add_extension(&libtorrent::create_ut_metadata_plugin);
 		cur_session.add_extension(&libtorrent::create_ut_pex_plugin);
@@ -736,7 +753,7 @@ Handle<Value> Playbox::update(const Arguments &args)
 				break;
 				
 			default:
-				//std::cout << "alert: " << (*alert).type() << ": " << (*alert).message() << std::endl;
+				std::cout << "alert: " << (*alert).type() << ": " << (*alert).message() << std::endl;
 				continue;
 			
 		}

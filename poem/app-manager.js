@@ -11,6 +11,7 @@ var Fs = require('fs'),
 var apps = {},
 	applist = {},
 	app_status = {},
+	args,
 	Poem = exports,
 	working_dir = process.env["HOME"] + "/Library/poem/",
 	tmp_dir = process.env["TMPDIR"] || working_dir+".tmp/";
@@ -36,6 +37,7 @@ exports.apps = apps;
 
 exports.init = function(opts) {
 	broadcast = opts.broadcast;
+	args = opts.args;
 	
 	try {
 		Fs.readFile('applist.json', function(err, content) {
@@ -96,6 +98,7 @@ function load_apps() {
 					// it's obvious that I need them to run in their own thread to prevent an infinite loop from fucking everyone else (chromium vs. firefox)
 					var context = {
 						__app: app,
+						args: args[app] || {},
 						exports: {},
 						Module: {
 							_load: function(path, self) {

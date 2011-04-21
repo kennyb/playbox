@@ -285,7 +285,7 @@ function init() {
 	}(require));
 	*/
 
-	var args = {};
+	var args = {poem: {listen: '1155'}};
 	process.argv.forEach(function(val, index) {
 		if(index > 1) {
 			var app_offset = val.indexOf('.');
@@ -308,22 +308,26 @@ function init() {
 	//TODO: localhost should also work, even if it's bound to a different ip address
 	// -- and in the future, binding to more than one ip address...
 	
-	var host = 'localhost';
-	var port = args.poem.listen || 1155;
-	var port_offset = host.indexOf(':');
+	var host = '127.0.0.1';
+	var port = args.poem.listen;
+	var port_offset = port.indexOf(':');
 	if(port_offset !== -1) {
 		host = port.substr(0, port_offset++);
 		port = port.substr(port_offset) * 1;
+	} else {
+		port = port * 1;
 	}
 	
+	console.log("port:", port, "host:", host, "port_offset", port_offset);
 	server.listen(port, host, function() {
-		Log.info("listening on port: " + port);
+		Log.info("listening on: "+host+':'+port);
 		Poem.init({
 			broadcast: broadcast,
 			args: args
 		});
 	});
 	
+	/*
 	// crossdomain policy server 
 	Net.createServer(function(s) {
 		s.write('<?xml version="1.0"?>'+
@@ -333,6 +337,7 @@ function init() {
 		s.end();
 		Log.info("sent policy file");
 	}).listen(1156);
+	*/
 }
 
 

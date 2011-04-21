@@ -425,7 +425,7 @@ exports.start = function() {
 		update_loop = setInterval(update, 100);
 	}
 	
-	return playbox.start();
+	return playbox.start(args["port1"] || 6881, args["port2"] || 6889);
 };
 
 exports.stop = function() {
