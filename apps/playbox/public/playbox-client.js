@@ -21,10 +21,34 @@ function dir_item(e, root) {
 $(document).ready(function(){
 	SERVER.connect();
 	$("#jplayer_1").jPlayer({
-		ready: function () {
+		ready: function() {
 			/*$(this).jPlayer("setMedia", {
 				mp3: "http://localhost:1155/playbox/g/68fd78fc9b89542081a89ef9f03ae6ef253879ae",
 			});*/
+		},
+		progress: function(e) {
+			console.log("progress", e);
+		},
+		ended: function(e) {
+			console.log("ended", e);
+		},
+		play: function(e) {
+			console.log("play", e);
+		},
+		pause: function(e) {
+			console.log("pause", e);
+		},
+		seeking: function(e) {
+			console.log("seeking", e);
+		},
+		seeked: function(e) {
+			console.log("seeked", e);
+		},
+		timeupdate: function(e) {
+			console.log("timeupdate", e);
+			// e.jPlayer.status.currentTime
+			// e.jPlayer.status.duration
+			$_('song_time').innerHTML = $.jPlayer.convertTime(e.jPlayer.status.currentTime) + " / " + $.jPlayer.convertTime(e.jPlayer.status.duration);
 		},
 		swfPath: "/jPlayer",
 		supplied: "mp3"

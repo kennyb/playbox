@@ -261,7 +261,6 @@ var SKIN = {
 		}
 		
 		if(element) {
-			console.log(element.empty, data.length);
 			if(element.empty) {
 				element.is_empty = 0;
 				element.innerHTML = "";
