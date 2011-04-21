@@ -18,24 +18,28 @@ function update() {
 			switch(op[0]) {
 				case "set":
 					var value = op[3];
-					Fs.writeFile(edb_dir + '/' + key, JSON.stringify({v: op[3]}), function(err, data) {
-						if(callback) {
-							callback(key, value, err);
-						} else if(err) {
-							throw err;
-						}
-					});
+					Fs.writeFile(edb_dir + '/' + key, JSON.stringify({v: value}), function(callback, value) {
+						return function(err) {
+							if(callback) {
+								callback(err, value);
+							} else if(err) {
+								throw err;
+							}
+						};
+					}(callback, value));
 					
 					break;
 				
 				case "rm":
-					Fs.unlink(edb_dir + '/' + key, function(err) {
-						if(callback) {
-							callback(err);
-						} else if(err) {
-							throw err;
-						}
-					});
+					Fs.unlink(edb_dir + '/' + key, function(callback) {
+						return function(err) {
+							if(callback) {
+								callback(err);
+							} else if(err) {
+								throw err;
+							}
+						};
+					}(callback));
 					
 					break;
 			}
