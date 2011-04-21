@@ -88,6 +88,15 @@ var Directory = function() {
 	Directory.find = ds.find;
 	Directory.findOne = ds.findOne;
 	Directory.forEach = ds.forEach;
+	Directory.remove = function(path) {
+		var dir = ds.findOne({"_id": function(v) {return typeof v === 'string' && v.indexOf(path) === 0}});
+		if(dir) {
+			ds.remove(path);
+			return true;
+		}
+		
+		return false;
+	}
 	
 	Util.inherits(Directory, EventEmitter);
 	return Directory;
@@ -150,8 +159,13 @@ var Archive = function() {
 					
 					//playbox.load_torrent(bencode.encode(torrent));
 					
-					Log.info("addded "+playbox_hash);
 					var lib_file = working_dir+playbox_hash;
+					var successful = function() {
+						Fs.unlink(stripped_archive_path);
+						ds.add(playbox_hash, a2);
+						dir.update({"$push": {archives: path}, "$update": {processing: func_remove_path}});
+						Log.info("added "+playbox_hash);
+					};
 					
 					Fs.lstat(lib_file, function(err, st) {
 						if(err) {
@@ -161,22 +175,21 @@ var Archive = function() {
 							// fall through
 						} else {
 							if(st.isSymbolicLink() && Fs.readlinkSync(lib_file) === meta.path) {
+								return successful();
+							} else {
 								Fs.unlinkSync(lib_file);
 							}
 						}
 						
-						Fs.symlink(path, working_dir+playbox_hash, function(err) {
+						Fs.symlink(path, lib_file, function(err) {
 							if(err && err.code !== 'EEXIST') {
 								dir.update({"$push": {archives: path}, "$update": {processing: func_remove_path}});
 								throw err;
 							}
 							
-							ds.add(playbox_hash, a2);
-							dir.update({"$push": {archives: path}, "$update": {processing: func_remove_path}});
+							successful();
 						});
 					});
-					
-					Fs.unlink(stripped_archive_path);
 				}
 			});
 		} else {
@@ -513,16 +526,28 @@ exports.cmds = {
 		callback(d);
 	},
 	add_dir: function(params, callback) {
-		var path = params.path;
+		var path = params._id;
 		if(!path) {
-			throw new Error("'path' not defined");
+			throw new Error("'_id' ('path') not defined");
 		}
 		
-		// throw event
-		add_dir(path, Path.dirname(path));
+		Fs.stat(path, function(err, st) {
+			if(st.isDirectory()) {
+				(new Directory(path));
+			} else if(st.isFile()) {
+				(new Directory(Path.dirname(path)));
+			} else {
+				callback({"$error": "not a directory"});
+			}
+		});
 	},
 	rm_dir: function(params, callback) {
-		throw new Error("not yet implemented");
+		var id = params._id;
+		if(!id) {
+			throw new Error("'_id' not defined");
+		}
+		
+		Directory.remove(id);
 	},
 	list_dir: function(params, callback, error) {
 		var root = Path.normalize(params && params.root || "/"),
