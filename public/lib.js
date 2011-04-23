@@ -401,11 +401,8 @@ LIB = {
 	},
 	allLibsLoaded : function() {
 		console.log('All libs loaded');
-		SKIN.parsePanelsLang();
-		//document.body.innerHTML = "";
-		//aC(document.body, SKIN.inline_template("loading"));
 		
-		SKIN.render();
+		SKIN.template("sidebar", 0, $_('sidebar'));
 		STATEMANAGER.start();
 		LIB.addEvent('resize', EVENTS.onResize, window);
 		LIB.addEvent('keydown', EVENTS.onKeydown, window);

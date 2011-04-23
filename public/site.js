@@ -11,9 +11,11 @@ var SKIN = {
 		//TODO: perhaps I want to change this to {{variable}} instead of {{{{variable}}}}
 		if(typeof fn !== 'function') {
 			function arg_vars(str) {
-				str = '"'+LIB.trim(str).replace(/\{\{\{\{(.*?)\}\}\}\}/g, function(nothing, variable) {
+				str = ('"'+LIB.trim(str).replace(/\{\{\{\{(.*?)\}\}\}\}/g, function(nothing, variable) {
 					return '",'+variable+',"';
-				})+'"';
+				})+'"').replace(/\{\{(.*?)\}\}/g, function(nothing, variable) {
+					return '",L.'+variable+',"';
+				});
 				
 				while(str.substr(0, 1) === ',') {
 					str = str.substr(1);
@@ -27,9 +29,11 @@ var SKIN = {
 			}
 			
 			function concat_vars(str) {
-				str = '"'+LIB.trim(str).replace(/\{\{\{\{(.*?)\}\}\}\}/g, function(nothing, variable) {
+				str = ('"'+LIB.trim(str).replace(/\{\{\{\{(.*?)\}\}\}\}/g, function(nothing, variable) {
 					return '"+'+variable+'+"';
-				})+'"';
+				})+'"').replace(/\{\{(.*?)\}\}/g, function(nothing, variable) {
+					return '"+L.'+variable+'+"';
+				});
 				
 				while(str.substr(0, 3) === '""+') {
 					str = str.substr(3);
@@ -339,33 +343,8 @@ var SKIN = {
 			};
 		}(event_id, template_id, element_id, callback);
 	},
-	render : function(uid) {
-		SKIN.template("sidebar", 0, $_('sidebar'));
-		SKIN.resize();
-	},
-	parsePanelsLang : function() {
-		var	xmps=document.getElementsByTagName("xmp"),
-			i, xmp, c, id, e;
-
-		for(i = 0; i < xmps.length; i++) {
-			xmp=xmps[i];
-			e = xmp.id.indexOf("_noLang");
-			if(e !== -1) {
-				c = LIB.trim(xmp.innerHTML).replace(/\{\{(.*?)\}\}/g, function(a, b) { return L[b]; });
-				id = xmp.id.substr(0, e);
-				LIB.removeElement(id);
-				e = document.createElement("xmp");
-				e.id = id;
-				e.textNode = c;
-				xmp.parentNode.appendChild(e);
-			}
-		}
-	},
 	reloadCurrentPanel : function() {
 		STATEMANAGER.hash = null;
-	},
-	resize : function() {
-		// get rid of this
 	}
 };
 
