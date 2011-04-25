@@ -46,3 +46,6 @@
 [submodule "deps/libtorrent"]
 	path = deps/libtorrent
 	url = http://git.deluge-torrent.org/libtorrent.git/
+[submodule "deps/node-uuid"]
+	path = deps/node-uuid
+	url = git://github.com/broofa/node-uuid.git
