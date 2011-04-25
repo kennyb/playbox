@@ -207,8 +207,14 @@ function replace_element(parent, child, append) {
 		}
 	}
 	
-	if(append) {
-		parent.appendChild(child);
+	if(append && typeof child === 'object') {
+		if(child.length) {
+			for(var i = 0; i < child.length; i++) {
+				parent.appendChild(child[i]);
+			}
+		} else {
+			parent.appendChild(child);
+		}
 	}
 }
 
@@ -319,9 +325,9 @@ STATEMANAGER = {
 		if(panel) {
 			var intercept = STATEMANAGER.intercept[panel];
 			if(intercept) {
-				intercept(params);
+				intercept(panel, params);
 			} else {
-				SKIN.template(panel, params, $_('content'));
+				SKIN.template(panel, {args: params}, $_('content'));
 			}
 		} else {
 			document.location.hash = '#/home';
