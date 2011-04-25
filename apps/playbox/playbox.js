@@ -102,6 +102,56 @@ var Directory = function() {
 	return Directory;
 }();
 
+var Playlist = function() {
+	var ds = new DataStore("playbox.playlist");
+	ds.on("add", function(d) {
+		emit_event("playlist_added", d);
+	}).on("remove", function(id) {
+		emit_event("playlist_removed", id);
+	}).on("update", function(d) {
+		emit_event("playlist_updated", d);
+	});
+	
+	var Playlist = function(id, name, archives) {
+		/*if(!id) {
+			id = uuid();
+		}*/
+		
+		var self = this,
+			p = ds.findOne({_id: id});
+		
+		if(!p) {
+			var now = new Date();
+			ds.add(id, {
+				name: name || "untitled playlist",
+				d_created: now,
+				d_updated: now,
+				privacy: 'public',
+				archives: archives || [],
+				comments: []
+			});
+		}
+		
+		return self;	
+	};
+	
+	Playlist.find = ds.find;
+	Playlist.findOne = ds.findOne;
+	Playlist.forEach = ds.forEach;
+	Playlist.remove = function(id) {
+		var playlist = ds.findOne({"_id": id});
+		if(playlist) {
+			ds.remove(id);
+			return true;
+		}
+		
+		return false;
+	}
+	
+	Util.inherits(Playlist, EventEmitter);
+	return Playlist;
+}();
+
 var Archive = function() {
 	var ds = new DataStore("playbox.archive");
 	ds.on("load", function(d) {
@@ -525,7 +575,7 @@ exports.cmds = {
 		var d = Directory.find();
 		callback(d);
 	},
-	add_dir: function(params, callback) {
+	add_dir: function(params, callback, error) {
 		var path = params._id;
 		if(!path) {
 			throw new Error("'_id' ('path') not defined");
@@ -537,14 +587,14 @@ exports.cmds = {
 			} else if(st.isFile()) {
 				(new Directory(Path.dirname(path)));
 			} else {
-				callback({"$error": "not a directory"});
+				error("not a directory");
 			}
 		});
 	},
-	rm_dir: function(params, callback) {
+	rm_dir: function(params, callback, error) {
 		var id = params._id;
 		if(!id) {
-			throw new Error("'_id' not defined");
+			error("'_id' not defined");
 		}
 		
 		Directory.remove(id);
@@ -579,6 +629,47 @@ exports.cmds = {
 				callback(dirs, {root: root});					
 			}
 		});
+	},
+	get_playlists: function(params, callback, error) {
+		if(typeof params !== 'object') {
+			params = {};
+		}
+		
+		var playlists = Playlist.forEach(function(d) {
+			return {_id: d._id, name: d.name};
+		}, params.offset, params.limit);
+		
+		callback(playlists);
+	},
+	get_playlist: function(params, callback, error) {
+		if(typeof params !== 'object') {
+			params = {};
+		}
+		
+		var playlists = Playlist.findOne(params);
+		
+		callback(playlists);
+	},
+	add_playlist: function(params, callback, error) {
+		var name = params.name, p;
+		if(name) {
+			p = Playlist.findOne({"name": params.name});
+		}
+		
+		if(p) {
+			error("playlist with that name exists");
+		} else {
+			p = new Playlist(0, name, params.archives);
+			callback(p);
+		}
+	},
+	rm_playlist: function(params, callback) {
+		var id = params._id;
+		if(!id) {
+			error("'_id' not defined");
+		}
+		
+		Playlist.remove(id);
 	}
 };
 

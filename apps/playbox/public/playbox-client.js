@@ -57,6 +57,18 @@ $(document).ready(function(){
 	//document.documentElement.style.display = "";
 });
 
+function add_playlist(name) {
+	var id = SERVER.cmd("add_playlist", {name: name}, function(msg) {
+		console.log("add_playlist response", msg);
+	});
+}
+
+function rm_playlist(id) {
+	var id = SERVER.cmd("rm_playlist", {_id: id}, function(msg) {
+		console.log("rm_playlist response", msg);
+	});
+}
+
 function add_dir(path) {
 	var id = SERVER.cmd("add_dir", {_id: path}, function(msg) {
 		console.log("add_dir response", msg);

@@ -24,10 +24,16 @@
 			</xmp>
 			
 			<xmp id="sidebar">
-				<ul>
-					<li><a href="#/library">library</a></li>
-					<li><a href="#/config">config</a></li>
-				</ul>
+				<div><a href="#/library">library</a></div>
+				<hr />
+				<div>
+					<?=SKIN.data_template("playlist_entry", "get_playlists", {}, {add: "playlist_added", remove: "playlist_removed", update: "playlist_updated"})?>
+				</div>
+				<div>
+					<?=SKIN.Textbox({default_text: "new playlist...", onkeyup: function(e) {if(e.keyCode == 13) add_playlist(this.value)}})?>
+				</div>
+				<hr />
+				<div><a href="#/config">config</a></div>
 			</xmp>
 			
 			<xmp id="footer">
@@ -91,16 +97,6 @@
 				</div>
 			</xmp>
 			
-			<xmp id="connected">
-				<?
-				if(d.connected) {
-					?>* connected<?
-				} else {
-					?>- disconnected<?
-				}
-				?>
-			</xmp>
-			
 			<xmp id="empty">
 				empty
 			</xmp>
@@ -142,6 +138,35 @@
 						<?
 					}
 					?>
+				</div>
+			</xmp>
+			
+			<xmp id="playlist">
+				<?
+				if(d.args) {
+					?><?=SKIN.data_template("playlist", "get_playlist", {_id: d.args[0]})?><?
+				} else {
+					?>
+					<h3><?=d.name?></h3>
+					<div>
+						<button onclick="rm_playlist(d._id)">delete</button>
+					</div>
+					<hr />
+					<div>
+						songs: <?=d.archives.length?>
+					</div>
+					<?
+				}
+				?>
+			</xmp>
+			
+			<xmp id="playlist_archive_entry">
+			
+			</xmp>
+			
+			<xmp id="playlist_entry">
+				<div>
+					<a href="#/playlist/<?=d._id?>"><?=d.name?></a>
 				</div>
 			</xmp>
 			

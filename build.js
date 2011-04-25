@@ -167,6 +167,7 @@ switch(mode) {
 			symlink('deps/async.js/lib', 'build/release/lib/async.js');
 			symlink('deps/node-id3/lib/id3', 'build/release/lib/node-id3'); //TODO: change this over to music-metadata (or whatever it was)
 			symlink('deps/node-strtok/lib', 'build/release/lib/node-strtok');
+			symlink('deps/node-uuid', 'build/release/lib/node-uuid');
 			symlink('deps/sha1_stream/sha1_stream.js', 'build/release/lib/sha1_stream.js');
 			//symlink('deps/long-stack-traces/lib/long-stack-traces.js', 'build/release/lib/long-stack-traces.js');
 			symlink('deps/requirejs/require.js', 'build/release/require.js');
