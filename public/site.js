@@ -92,6 +92,7 @@ var SKIN = {
 				
 				if(node_type === "code") {
 					console.trace();
+					//return "function(){"+(cE("x", {innerHTML: node.innerHTML}).firstChild.data)+"}";
 				} else if(node_type === "#text") {
 					return arg_vars(node.nodeValue);
 				} else {
@@ -173,10 +174,19 @@ var SKIN = {
 			
 			for(; i < code_blocks.length; i++) {
 				n = code_blocks[i];
-				top_level.push(print_node(n));
+				
 				if(n.nodeName.toLowerCase() === "code") {
+					a = i;
 					i = code_blocks.length;
 					while(code_blocks[--i].nodeName.toLowerCase() !== "code") {}
+					var scope = [];
+					do {
+						scope.push(code_blocks[a]);
+					} while(a++ !== i);
+					
+					top_level.push(print_scope(scope));
+				} else {
+					top_level.push(print_node(n));
 				}
 			}
 			
@@ -194,7 +204,7 @@ var SKIN = {
 					fn = SKIN.templates[tpl] = new Function("t", "d", "o", txt);
 				}
 			} catch(e) {
-				console.log("template error:", e);
+				console.log("template error:", e, "\n", txt);
 			}
 			
 			//console.log(tpl, " :: ", fn.toString());
@@ -218,6 +228,10 @@ var SKIN = {
 					e = els[i];
 					
 					if(e.i === id) {
+						/*if(data._id && !e._id) {
+							e._id = data._id;
+						}*/
+						
 						if(err) {
 							SKIN.template(template_id, {"$error": err}, e, common);
 						} else {
@@ -254,7 +268,7 @@ var SKIN = {
 			});
 		}
 		
-		return cE("div", {c: "cmd_"+template_id, i: id}, "Loading...");
+		return cE("div", {c: "cmd_"+template_id, i: id, empty: 1}, "Loading...");
 	},
 	template : function(template_id, data, element, common) {
 		var template_func, template, output, error, func_ret, fn_t,
