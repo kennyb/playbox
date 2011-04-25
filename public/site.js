@@ -359,6 +359,67 @@ var SKIN = {
 	},
 	reloadCurrentPanel : function() {
 		STATEMANAGER.hash = null;
+	},
+	Textbox : function(opts) {
+		if(typeof opts !== 'object') {
+			opts = {};
+		}
+		
+		var _default_text = opts.default_text,
+			_active_class = opts.active_class,
+			_inactive_class = opts.inactive_class,
+			_value = opts.value;
+		
+		if(_default_text) {
+			delete opts.default_text;
+		} else {
+			_default_text = "Type here...";
+		}
+		
+		if(_active_class) {
+			delete opts.active_class;
+		} else {
+			_active_class = "form-active";
+		}
+		
+		if(_inactive_class) {
+			delete opts.inactive_class;
+		} else {
+			_inactive_class = "form-active";
+		}
+		
+		if(!opts.type) {
+			opts.type = "text";
+		}
+		
+		if(!opts.value) {
+			opts.value = _default_text;
+		}
+		
+		opts.c = _value ? _active_class : _inactive_class;
+		
+		// I know that if onfocus is not set, this is a waste of memory... don't care right now.
+		opts.onfocus = function(onfocus) {
+			return function() {
+				onfocus && onfocus();
+				if(this.value == _default_text) {
+					this.className = _active_class;
+					this.value = '';
+				}
+			};
+		}(opts.onfocus);
+		
+		opts.onblur = function(onblur) {
+			onblur && onblur();
+			return function() {
+				if(!this.value) {
+					this.className = _inactive_class;
+					this.value = _default_text;
+				}
+			};
+		}(opts.onblur);
+		
+		return cE('input', opts);
 	}
 };
 
