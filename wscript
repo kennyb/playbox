@@ -111,7 +111,7 @@ def build_playbox(bld):
 		playbox.linkflags = ['./lib/libtorrent.so', './lib/libavformat.so']
   
 	playbox.source = ["playbox/playbox.cc"]
-	playbox.includes = ['deps/libtorrent/include', '/opt/local/include', 'deps/ffmpeg/libavformat']
+	playbox.includes = ['deps/libtorrent/include', '/opt/local/include', 'deps/libav/libavformat']
 	playbox.cflags = ['-Wall']
 	playbox.cxxflags = ['-Wall']
 

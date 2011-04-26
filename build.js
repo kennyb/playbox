@@ -6,6 +6,8 @@ var Fs = require("fs"),
 	spawn = require('child_process').spawn,
 	async = require("./deps/async.js/lib/async");
 
+require("./deps/async.js/lib/plugins/fs-node");
+
 var verbose = false,
 	mode = process.argv[2] || "--help";
 
@@ -138,17 +140,26 @@ switch(mode) {
 		break;
 		
 	case "--prepare-libav":
-		copy_dll('deps/libav/libavformat/libavformat.so', 'build/lib/libavformat.so');
-		copy_dll('deps/libav/libavcodec/libavcodec.so', 'build/lib/libavcodec.so');
-		copy_dll('deps/libav/libavutil/libavutil.so', 'build/lib/libavutil.so');
+		mkdirs('build/lib', function(err) {
+			copy_dll('deps/libav/libavformat/libavformat.so', 'build/lib/libavformat.so');
+			copy_dll('deps/libav/libavcodec/libavcodec.so', 'build/lib/libavcodec.so');
+			copy_dll('deps/libav/libavutil/libavutil.so', 'build/lib/libavutil.so');
+		});
+		
 		break;
 		
 	case "--prepare-libtorrent":
-		copy_dll('build/default/libtorrent.so', 'build/lib/libtorrent.so');
+		mkdirs('build/lib', function(err) {
+			copy_dll('build/default/libtorrent.so', 'build/lib/libtorrent.so');
+		});
+		
 		break;
 	
 	case "--prepare-playbox":
-		copy('build/default/playbox.node', 'build/lib/playbox.node');
+		mkdirs('build/lib', function(err) {
+			copy('build/default/playbox.node', 'build/lib/playbox.node');
+		});
+		
 		break;
 	
 	case "--make-release":

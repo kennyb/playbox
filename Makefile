@@ -15,21 +15,14 @@ all:
 	then \
 		patch -N -p1 -d deps/node < patches/node_compile_fixes.diff; \
 		cd deps/node && ./configure && make; \
-		pwd; \
-		cp node ../../build/release/node; \
 	fi
 	
 	# copy node
 	if [ ! -f build/release/node ]; \
 	then \
-		cp deps/node/node build/release/node; \
+		mkdir -p build/release; \
+		cp deps/node/build/default/node build/release/node; \
 	fi
-	
-	# libav needs libswscale to build
-	#if [ ! -d deps/libav/libswscale ]; \
-	#then \
-	#	git clone git://gitorious.org/libswscale/mainline.git deps/libav/libswscale; \
-	#fi
 	
 	# build libav
 	if [ ! -f deps/libav/libavformat/libavformat.ver ]; \
@@ -54,12 +47,16 @@ all:
 			--enable-postproc \
 			--enable-avfilter \
 			--disable-doc \
+			--disable-ffmpeg \
+			--disable-ffplay \
+			--disable-ffprobe \
 			--arch=x86_64 \
 			--enable-debug \
+			--disable-symver \
 			--prefix="." && \
 		make -j2; \
 	fi
-	./build/release/node build.js --prepare-ffmpeg
+	./build/release/node build.js --prepare-libav
 	
 	# build libtorrent
 	node-waf build --targets=torrent
