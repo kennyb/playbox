@@ -25,16 +25,16 @@ all:
 		cp deps/node/node build/release/node; \
 	fi
 	
-	# ffmpeg needs libswscale to build
-	if [ ! -d deps/ffmpeg/libswscale ]; \
-	then \
-		git clone git://gitorious.org/libswscale/mainline.git deps/ffmpeg/libswscale; \
-	fi
+	# libav needs libswscale to build
+	#if [ ! -d deps/libav/libswscale ]; \
+	#then \
+	#	git clone git://gitorious.org/libswscale/mainline.git deps/libav/libswscale; \
+	#fi
 	
-	# build ffmpeg
-	if [ ! -f deps/ffmpeg/libavformat/libavformat.ver ]; \
+	# build libav
+	if [ ! -f deps/libav/libavformat/libavformat.ver ]; \
 	then \
-		cd deps/ffmpeg && ./configure \
+		cd deps/libav && ./configure \
 			--disable-static \
 			--enable-shared \
 			--enable-gpl \
@@ -53,10 +53,8 @@ all:
 			--enable-protocol=file \
 			--enable-postproc \
 			--enable-avfilter \
-			--enable-avfilter-lavf \
 			--disable-doc \
 			--arch=x86_64 \
-			--disable-stripping \
 			--enable-debug \
 			--prefix="." && \
 		make -j2; \

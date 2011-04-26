@@ -4,15 +4,9 @@
 [submodule "deps/node"]
 	path = deps/node
 	url = git://github.com/joyent/node.git
-[submodule "deps/ffmpeg"]
-	path = deps/ffmpeg
-	url = git://gitorious.org/ffmpeg/mainline.git
 [submodule "deps/headjs"]
 	path = deps/headjs
 	url = git://github.com/headjs/headjs.git
-[submodule "deps/video-js"]
-	path = deps/video-js
-	url = git://github.com/zencoder/video-js.git
 [submodule "deps/node-id3"]
 	path = deps/node-id3
 	url = git://github.com/Tim-Smart/node-id3.git
@@ -22,9 +16,6 @@
 [submodule "deps/sha1_stream"]
 	path = deps/sha1_stream
 	url = git://github.com/kennyb/sha1_stream.git
-[submodule "deps/long-stack-traces"]
-	path = deps/long-stack-traces
-	url = git://github.com/tlrobinson/long-stack-traces.git
 [submodule "deps/requirejs"]
 	path = deps/requirejs
 	url = git://github.com/kennyb/requirejs.git
@@ -49,3 +40,6 @@
 [submodule "deps/node-uuid"]
 	path = deps/node-uuid
 	url = git://github.com/broofa/node-uuid.git
+[submodule "deps/libav"]
+	path = deps/libav
+	url = git://gitorious.org/libav/libav.git

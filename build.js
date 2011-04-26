@@ -137,10 +137,10 @@ switch(mode) {
 		console.log("something of help here");
 		break;
 		
-	case "--prepare-ffmpeg":
-		copy_dll('deps/ffmpeg/libavformat/libavformat.so', 'build/lib/libavformat.so');
-		copy_dll('deps/ffmpeg/libavcodec/libavcodec.so', 'build/lib/libavcodec.so');
-		copy_dll('deps/ffmpeg/libavutil/libavutil.so', 'build/lib/libavutil.so');
+	case "--prepare-libav":
+		copy_dll('deps/libav/libavformat/libavformat.so', 'build/lib/libavformat.so');
+		copy_dll('deps/libav/libavcodec/libavcodec.so', 'build/lib/libavcodec.so');
+		copy_dll('deps/libav/libavutil/libavutil.so', 'build/lib/libavutil.so');
 		break;
 		
 	case "--prepare-libtorrent":
