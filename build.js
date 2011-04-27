@@ -209,6 +209,7 @@ switch(mode) {
 			symlink('apps/playbox', 'build/release/apps/playbox');
 
 			// js lib: APF (ajax.org)
+			/*
 			mkdirs('build/release/apps/apf/public', function(err) {
 				symlink('deps/apf/apf.js', 'build/release/apps/apf/public/apf.js');
 				symlink('deps/apf/loader.js', 'build/release/apps/apf/public/loader.js');
@@ -216,6 +217,7 @@ switch(mode) {
 				symlink('deps/apf/elements', 'build/release/apps/apf/public/elements');
 				symlink('deps/apf/processinginstructions', 'build/release/apps/apf/public/processinginstructions');
 			});
+			*/
 
 			// js lib: jPlayer (http://www.jplayer.org)
 			mkdirs('build/release/apps/jPlayer/public', function(err) {

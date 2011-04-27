@@ -28,7 +28,7 @@
 #include <libtorrent/extensions/smart_ban.hpp>
 #include <libtorrent/extensions/ut_pex.hpp>
 
-#include <boost/filesystem/operations.hpp>
+#include <boost/filesystem/v2/operations.hpp>
 #include <boost/filesystem/path.hpp>
 #include <boost/filesystem/fstream.hpp>
 #include <boost/bind.hpp>
@@ -508,31 +508,31 @@ Handle<Value> Playbox::get_metadata(const Arguments &args)
 	//	std::cerr << "file to large" << std::endl;
 	} else if((err = av_open_input_file(&fmt_ctx, filename, iformat, 4096, NULL)) < 0) {
 		switch(err) {
-			case AVERROR_INVALIDDATA:
+			case AVERROR(EINVAL):
 			std::cerr << " [W] invalid metadata (" << err << ") " << std::endl;
 			break;
 			
-			case AVERROR_IO:
+			case AVERROR(EIO):
 			std::cerr << " [W] metadata io error (" << err << ") " << std::endl;
 			break;
 			
-			case AVERROR_NOENT:
+			case AVERROR(ENOENT):
 			std::cerr << " [W] NOENT: file does not exist (" << err << ") " << std::endl;
 			break;
 			
-			case AVERROR_NOFMT:
-			std::cerr << " [W] metadata no format information (" << err << ") " << std::endl;
+			case AVERROR(EILSEQ):
+			std::cerr << " [W] metadata unknown format (" << err << ") " << std::endl;
 			break;
 			
-			case AVERROR_NOMEM:
+			case AVERROR(ENOMEM):
 			std::cerr << " [W] metadata extraction ran out of memory (" << err << ") " << std::endl;
 			break;
 			
-			case AVERROR_NOTSUPP:
+			case AVERROR(ENOSYS):
 			std::cerr << " [W] metadata information not supported (" << err << ") " << std::endl;
 			break;
 			
-			case AVERROR_NUMEXPECTED:
+			case AVERROR(EDOM):
 			std::cerr << " [W] metadata NUMEXPECTED (" << err << ") " << std::endl;
 			break;
 			

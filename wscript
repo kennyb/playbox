@@ -42,13 +42,14 @@ def configure(conf):
 	#conf.env.append_value('CXXFLAGS', ['-DDEBUG', '-g', '-O0'])
 	#conf.env.append_value('CXXFLAGS', ['-Wall', '-Wextra'])
 	conf.env.append_value('CFLAGS', ['-Os', '-ffunction-sections', '-fdata-sections', '-fPIC'])
-	conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections', '-fdata-sections', '-fno-rtti'])
+	conf.env.append_value('CXXFLAGS', ['-Os', '-ffunction-sections', '-fdata-sections'])
 	
 	if sys.platform.startswith("darwin"):
 		conf.env.append_value('LINKFLAGS', ['-Wl,-dead_strip'])
 		conf.env.append_value('LINKFLAGS', ['-Wl,-bind_at_load'])
 	elif sys.platform.startswith("linux"):
-		conf.env.append_value('LINKFLAGS', ['-Wl,--gc-sections'])
+		conf.env.append_value('LINKFLAGS', ['-Wl,--gc-sections', '-Wl,--as-needed'])
+		conf.env.append_value('CXXFLAGS', ['-fno-rtti'])
 	
 	conf.check(lib="iconv",
 						includes=['/opt/local/include', '/usr/include', '/usr/local/include'],
@@ -111,7 +112,7 @@ def build_playbox(bld):
 		playbox.linkflags = ['./lib/libtorrent.so', './lib/libavformat.so']
   
 	playbox.source = ["playbox/playbox.cc"]
-	playbox.includes = ['deps/libtorrent/include', '/opt/local/include', 'deps/libav/libavformat']
+	playbox.includes = ['deps/libtorrent/include', '/opt/local/include', 'deps/libav/libavformat', 'deps/libav']
 	playbox.cflags = ['-Wall']
 	playbox.cxxflags = ['-Wall']
 

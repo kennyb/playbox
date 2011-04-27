@@ -14,7 +14,7 @@ all:
 	if [ ! -f deps/node/build/default/node ]; \
 	then \
 		patch -N -p1 -d deps/node < patches/node_compile_fixes.diff; \
-		cd deps/node && ./configure && make; \
+		cd deps/node && ./configure --without-snapshot --without-ssl && make; \
 	fi
 	
 	# copy node
@@ -24,7 +24,7 @@ all:
 		cp deps/node/build/default/node build/release/node; \
 	fi
 	
-	# build libav
+	# configure libav
 	if [ ! -f deps/libav/libavformat/libavformat.ver ]; \
 	then \
 		cd deps/libav && ./configure \
@@ -56,18 +56,20 @@ all:
 			--prefix="." && \
 		make -j2; \
 	fi
-	./build/release/node build.js --prepare-libav
+	
+	# prepare libav
+	node build.js --prepare-libav
 	
 	# build libtorrent
 	node-waf build --targets=torrent
-	./build/release/node build.js --prepare-libtorrent
+	node build.js --prepare-libtorrent
 	
 	# build playbox
 	node-waf build --targets=playbox
-	./build/release/node build.js --prepare-playbox
+	node build.js --prepare-playbox
 	
 	
-	./build/release/node build.js --make-release
+	node build.js --make-release
 	
 	cd build/release && CWD=`pwd` && node --debug --always_full_compiler main.js
 		
@@ -77,9 +79,17 @@ debug: build
 
 release_mac:
 	# this is total caca...
+	# build custom openssl (cause osx doesn't ship with it for some reason)
+	if [ ! -f deps/openssl-1.0.0d/libssl.dylib ]; \
+	then \
+		curl "http://www.openssl.org/source/openssl-1.0.0d.tar.gz" | tar xzv -C deps; \
+		cd deps/openssl-1.0.0d && make clean && \
+		./Configure darwin64-x86_64-cc shared zlib-dynamic && make; \
+	fi
+	
 	# puedes hacer algo un poco mas wapo aqui con otool -L
-	cp /opt/local/lib/libssl.1.0.0.dylib build/release/lib/libssl.dylib
-	cp /opt/local/lib/libcrypto.1.0.0.dylib build/release/lib/libcrypto.dylib
+	cp deps/openssl-1.0.0d/libssl.dylib build/release/lib/libssl.dylib
+	cp deps/openssl-1.0.0d/libcrypto.dylib build/release/lib/libcrypto.dylib
 	cp /opt/local/lib/libz.1.dylib build/release/lib/libz.dylib
 	cp /opt/local/lib/libboost_thread-mt.dylib build/release/lib/libboost_thread-mt.dylib
 	cp /opt/local/lib/libboost_system-mt.dylib build/release/lib/libboost_system-mt.dylib
@@ -91,7 +101,7 @@ release_mac:
 	install_name_tool -change /opt/local/lib/libcrypto.1.0.0.dylib ./lib/libcrypto.dylib build/release/node
 	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/node
 	
-	install_name_tool -change /opt/local/lib/libcrypto.1.0.0.dylib ./lib/libcrypto.dylib build/release/lib/libssl.dylib
+	install_name_tool -change /usr/local/ssl/lib/libcrypto.1.0.0.dylib ./lib/libcrypto.dylib build/release/lib/libssl.dylib
 	install_name_tool -change /opt/local/lib/libz.1.dylib ./lib/libz.dylib build/release/lib/libssl.dylib
 	
 	install_name_tool -change /opt/local/lib/libssl.1.0.0.dylib ./lib/libssl.dylib build/release/lib/libcrypto.dylib
