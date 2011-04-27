@@ -18,7 +18,8 @@ function dir_item(e, root) {
 	}
 }
 
-$(document).ready(function(){
+$(document).ready(function() {
+	LIB.loadLibs({templates: true});
 	SERVER.connect();
 	$("#jplayer_1").jPlayer({
 		ready: function() {

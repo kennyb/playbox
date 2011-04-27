@@ -440,18 +440,4 @@ var RENDER = {
 	}
 };
 
-var UI = {};
-
-var EVENTS = {
-	pageLoaded: function() {
-		LIB.loadLibs({templates: true});
-	},
-	onResize: function(e) {
-		
-	},
-	onKeydown: function(e) {
-		
-	}
-};
-
 LIB.addEvent('load', EVENTS.pageLoaded, window);

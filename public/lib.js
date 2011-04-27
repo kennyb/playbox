@@ -317,10 +317,11 @@ STATEMANAGER = {
 		}
 	},
 	loadPanel : function(panel, params) {
-		if(EVENTS.onUnloadPanel) {
+		//TODO: move me!!
+		/*if(EVENTS.onUnloadPanel) {
 			EVENTS.onUnloadPanel();
 			EVENTS.onUnloadPanel = null;
-		}
+		}*/
 		
 		if(panel) {
 			var intercept = STATEMANAGER.intercept[panel];
@@ -407,11 +408,11 @@ LIB = {
 	},
 	allLibsLoaded : function() {
 		console.log('All libs loaded');
-		
+		//TODO: move this!!!
 		SKIN.template("sidebar", 0, $_('sidebar'));
 		STATEMANAGER.start();
-		LIB.addEvent('resize', EVENTS.onResize, window);
-		LIB.addEvent('keydown', EVENTS.onKeydown, window);
+		//LIB.addEvent('resize', EVENTS.onResize, window);
+		//LIB.addEvent('keydown', EVENTS.onKeydown, window);
 	},
 	addEvent : function(event, func, element) {
 		if(element.addEventListener) {
